@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import Toast from '../../components/Toast';
+import { useAuth } from '../../hooks/useAuth';
 
 //ICONS
 const I = {
@@ -262,9 +262,8 @@ function Modal({ open, onClose, title, icon, children, footer, maxWidth = 'max-w
 
 //MAIN
 export default function AdminDashboard() {
-    const navigate = useNavigate();
+    const { user: admin, setUser: setAdmin, logout } = useAuth('admin');
 
-    const [admin, setAdmin] = useState(null);
     const [currentTab, setCurrentTab] = useState('dashboard');
     const [students, setStudents] = useState([]);
     const [penalties, setPenalties] = useState([]);
@@ -339,21 +338,6 @@ export default function AdminDashboard() {
         if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
         setToast(null);
     };
-
-    //SESSION
-    useEffect(() => {
-        const stored = localStorage.getItem('currentAdmin');
-        if (!stored) { navigate('/admin/login', { replace: true }); return; }
-        try {
-            const parsed = JSON.parse(stored);
-            if (!parsed || parsed.id === undefined) throw new Error('Invalid');
-            setAdmin(parsed);
-            setAdminForm({ name: parsed.full_name || parsed.name || '', email: parsed.email || '' });
-        } catch {
-            localStorage.removeItem('currentAdmin');
-            navigate('/admin/login', { replace: true });
-        }
-    }, [navigate]);
 
     //DARK MODE
     useEffect(() => {
@@ -1011,11 +995,7 @@ export default function AdminDashboard() {
     };
 
     const confirmLogout = () => {
-        localStorage.removeItem('currentAdmin');
-        localStorage.removeItem('adminSessionExpiry');
-        localStorage.removeItem('adminCurrentPage');
-        sessionStorage.clear();
-        navigate('/admin/login', { replace: true });
+        logout();
     };
 
     if (!admin) return null;

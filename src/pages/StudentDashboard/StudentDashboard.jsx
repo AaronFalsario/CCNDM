@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import Toast from '../../components/Toast';
+import { useAuth } from '../../hooks/useAuth';
 
 /* ICONS */
 const I = {
@@ -230,8 +231,8 @@ const BADGE_DEFS = [
 /* MAIN */
 export default function StudentDashboard() {
     const navigate = useNavigate();
+    const { user: student, setUser: setStudent, logout } = useAuth('student');
 
-    const [student, setStudent] = useState(null);
     const [currentTab, setCurrentTab] = useState('dashboard');
     const [penalties, setPenalties] = useState([]);
     const [appeals, setAppeals] = useState([]);
@@ -279,23 +280,6 @@ export default function StudentDashboard() {
         if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
         setToast(null);
     };
-
-    /* SESSION */
-    useEffect(() => {
-        const stored = sessionStorage.getItem('currentStudent');
-        if (!stored) {
-            navigate('/student/login', { replace: true });
-            return;
-        }
-        try {
-            const parsed = JSON.parse(stored);
-            if (!parsed || parsed.id === undefined || parsed.id === null) throw new Error('Invalid');
-            setStudent(parsed);
-        } catch {
-            sessionStorage.removeItem('currentStudent');
-            navigate('/student/login', { replace: true });
-        }
-    }, [navigate]);
 
     /* DARK MODE — uses Tailwind 'dark' class */
     useEffect(() => {
@@ -778,9 +762,7 @@ export default function StudentDashboard() {
 
     /* LOGOUT */
     const confirmLogout = () => {
-        sessionStorage.removeItem('currentStudent');
-        sessionStorage.clear();
-        navigate('/student/login', { replace: true });
+        logout();
     };
 
     if (!student) return null;
