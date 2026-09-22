@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import Toast from '../../components/Toast';
 
-/* ICONS — balanced sizes  */
+/* ICONS */
 const I = {
     close: <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>,
     logout: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>,
@@ -42,19 +43,16 @@ const I = {
     trendUp: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>,
 };
 
-/*  HELPERS */
+/* HELPERS */
 const getGreeting = () => {
     const h = new Date().getHours();
     return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 };
-
 const formatDate = (s) => (!s ? 'N/A' : new Date(s).toLocaleDateString());
-
 const timeAgo = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
     const now = new Date();
-
     const sec = Math.floor((now - d) / 1000);
     if (sec < 60) return 'Just now';
     const min = Math.floor(sec / 60);
@@ -67,16 +65,93 @@ const timeAgo = (dateStr) => {
     if (day < 30) return `${Math.floor(day / 7)}w ago`;
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
-
 const getInitials = (name) => {
     if (!name || name === 'Student') return 'ST';
     const p = name.trim().split(/\s+/);
     return p.length === 1 ? p[0].substring(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
 };
-
+const parseDbDate = (value) => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    const s = String(value);
+    if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(s)) return new Date(s);
+    return new Date(s + 'Z');
+};
+const calculateRemainingTime = (penalty) => {
+    if (!penalty) return null;
+    const s = (penalty.status || '').toLowerCase();
+    if (s === 'completed' || s === 'resolved') return null;
+    if (s !== 'in-progress' && s !== 'active') return null;
+    const hours = parseInt(penalty.hours, 10) || 0;
+    if (hours <= 0) return null;
+    const src = penalty.started_at || penalty.updated_at || penalty.created_at;
+    if (!src) return null;
+    const started = parseDbDate(src);
+    if (!started) return null;
+    const elapsed = Math.floor((Date.now() - started.getTime()) / 1000);
+    const total = hours * 3600;
+    const remaining = Math.max(0, total - elapsed);
+    if (remaining <= 0) return { hours: 0, minutes: 0, seconds: 0, completed: true };
+    return {
+        hours: Math.floor(remaining / 3600),
+        minutes: Math.floor((remaining % 3600) / 60),
+        seconds: remaining % 60,
+        completed: false,
+    };
+};
+const calculateProgress = (penalty) => {
+    if (!penalty) return 0;
+    const s = (penalty.status || '').toLowerCase();
+    if (s === 'completed' || s === 'resolved') return 100;
+    if (s !== 'in-progress' && s !== 'active') return 0;
+    const hours = parseInt(penalty.hours, 10) || 0;
+    if (hours <= 0) return 0;
+    const src = penalty.started_at || penalty.updated_at || penalty.created_at || Date.now();
+    const started = parseDbDate(src) || new Date();
+    const elapsed = Math.floor((Date.now() - started.getTime()) / 1000);
+    return Math.round(Math.min(100, Math.max(0, (elapsed / (hours * 3600)) * 100)));
+};
+const formatCountdown = (t) => {
+    if (!t) return '—';
+    if (t.completed) return 'Complete!';
+    return `${String(t.hours).padStart(2, '0')}:${String(t.minutes).padStart(2, '0')}:${String(t.seconds).padStart(2, '0')}`;
+};
 const fadeInStyle = { animation: 'fadeIn 0.3s ease-out' };
 
-/* NOTIFICATION ITEM COMPONENT */
+/* COUNTDOWN TIMER */
+function CountdownTimer({ penalty }) {
+    const time = calculateRemainingTime(penalty);
+    const progress = calculateProgress(penalty);
+    if (!time) return <span className="text-[11px] text-slate-400 dark:text-slate-500">—</span>;
+    if (time.completed) {
+        return (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                {I.check} Complete!
+            </span>
+        );
+    }
+    return (
+        <div className="min-w-[110px]">
+            <div className="flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                </span>
+                <span className="text-[11px] font-mono font-bold text-blue-600 dark:text-blue-400">
+                    {formatCountdown(time)}
+                </span>
+            </div>
+            <div className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-full mt-1 overflow-hidden">
+                <div
+                    className="h-full bg-gradient-to-r from-blue-500 to-violet-500 transition-all duration-1000 rounded-full"
+                    style={{ width: `${progress}%` }}
+                />
+            </div>
+        </div>
+    );
+}
+
+/* NOTIFICATION META */
 const notifMeta = (n) => {
     const type = (n.type || n.notification_type || '').toLowerCase();
     if (type.includes('penalty') || type.includes('violation'))
@@ -93,7 +168,6 @@ const notifMeta = (n) => {
 function NotificationItem({ notification: n, onMarkRead, onDelete, onAction }) {
     const meta = notifMeta(n);
     const IconEl = I[meta.icon] || I.info;
-
     return (
         <div
             onClick={() => {
@@ -101,24 +175,20 @@ function NotificationItem({ notification: n, onMarkRead, onDelete, onAction }) {
                 if (onAction) onAction(n);
             }}
             className={`group relative flex items-start gap-3 p-3 rounded-xl mx-1 mb-1 transition cursor-pointer ${!n.is_read
-                ? 'bg-blue-50/70 dark:bg-blue-900/20 hover:bg-blue-50 dark:hover:bg-blue-900/30'
-                : 'hover:bg-slate-50 dark:hover:bg-slate-700/40'
+                ? 'bg-blue-50/70 dark:bg-blue-950/40 hover:bg-blue-50 dark:hover:bg-blue-900/30'
+                : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'
                 }`}
         >
             {!n.is_read && (
                 <span className="absolute left-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500" />
             )}
-
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.fg}`}>
                 {IconEl}
             </div>
-
             <div className="flex-1 min-w-0 pr-8">
-                <div className="flex items-center gap-2">
-                    <p className={`text-sm truncate ${!n.is_read ? 'font-bold text-slate-800 dark:text-slate-100' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                        {n.title || 'Notification'}
-                    </p>
-                </div>
+                <p className={`text-sm truncate ${!n.is_read ? 'font-bold text-slate-800 dark:text-slate-100' : 'font-semibold text-slate-700 dark:text-slate-200'}`}>
+                    {n.title || 'Notification'}
+                </p>
                 {n.message && (
                     <p className={`text-xs mt-0.5 leading-relaxed line-clamp-2 ${!n.is_read ? 'text-slate-600 dark:text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>
                         {n.message}
@@ -135,7 +205,6 @@ function NotificationItem({ notification: n, onMarkRead, onDelete, onAction }) {
                     )}
                 </div>
             </div>
-
             <button
                 onClick={(e) => { e.stopPropagation(); onDelete(n.id); }}
                 className="absolute top-2.5 right-2.5 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 opacity-0 group-hover:opacity-100 transition"
@@ -147,7 +216,7 @@ function NotificationItem({ notification: n, onMarkRead, onDelete, onAction }) {
     );
 }
 
-/* ACHIEVEMENT BADGE DEFINITIONS */
+/* ACHIEVEMENT BADGES */
 const BADGE_DEFS = [
     { key: 'first_step', name: 'First Step', desc: 'Complete your first hour', icon: 'award', color: 'from-emerald-400 to-emerald-600' },
     { key: 'getting_started', name: 'Getting Started', desc: 'Complete 5 hours', icon: 'zap', color: 'from-blue-400 to-blue-600' },
@@ -228,7 +297,7 @@ export default function StudentDashboard() {
         }
     }, [navigate]);
 
-    /* DARK MODE — persisted, respects system pref */
+    /* DARK MODE — uses Tailwind 'dark' class */
     useEffect(() => {
         const saved = localStorage.getItem('docst_dark_mode');
         let initial;
@@ -237,13 +306,13 @@ export default function StudentDashboard() {
         else initial = window.matchMedia?.('(prefers-color-scheme: dark)').matches || false;
 
         setDarkMode(initial);
-        document.documentElement.classList.toggle('dark-mode', initial);
+        document.documentElement.classList.toggle('dark', initial);
     }, []);
 
     const toggleDarkMode = () => {
         setDarkMode((v) => {
             const next = !v;
-            document.documentElement.classList.toggle('dark-mode', next);
+            document.documentElement.classList.toggle('dark', next);
             localStorage.setItem('docst_dark_mode', String(next));
             return next;
         });
@@ -252,6 +321,12 @@ export default function StudentDashboard() {
     /* CLOCK */
     useEffect(() => {
         const id = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(id);
+    }, []);
+
+    /* LIVE TICK for countdowns */
+    useEffect(() => {
+        const id = setInterval(() => setPenalties((prev) => [...prev]), 1000);
         return () => clearInterval(id);
     }, []);
 
@@ -265,7 +340,7 @@ export default function StudentDashboard() {
                 .select('*')
                 .eq('student_id', sid)
                 .order('created_at', { ascending: false });
-            if (error) console.error(error);
+            if (error) console.error('[loadPenalties]', error);
             setPenalties(data || []);
         } catch (e) {
             console.error('loadPenalties:', e);
@@ -295,19 +370,30 @@ export default function StudentDashboard() {
         }
     }, [student]);
 
+    /* NOTIFICATIONS — matches direct student_id or broadcast notifications. */
     const loadNotifications = useCallback(async () => {
         if (!student) return;
         const sid = student.student_id_number || student.studentId || student.id;
+
         try {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('notifications')
                 .select('*')
-                .eq('student_id', sid)
+                .or(`student_id.eq.${sid},student_id.is.null`)
                 .order('created_at', { ascending: false })
-                .limit(20);
+                .limit(50);
+
+            if (error) {
+                console.error('[loadNotifications] error:', error);
+                setNotifications([]);
+                return;
+            }
+
+            console.log('[loadNotifications] fetched:', data?.length || 0, 'notifications');
             setNotifications(data || []);
         } catch (e) {
             console.error('loadNotifications:', e);
+            setNotifications([]);
         }
     }, [student]);
 
@@ -353,6 +439,60 @@ export default function StudentDashboard() {
             loadAchievements(),
         ]).finally(() => setLoading(false));
     }, [student, loadPenalties, loadAppeals, loadNotifications, loadSessions, loadAchievements]);
+
+    useEffect(() => {
+        if (!student) return undefined;
+        const sid = student.student_id_number || student.studentId || student.id;
+        const channel = supabase
+            .channel(`student-penalties-${sid}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'penalties', filter: `student_id=eq.${sid}` },
+                () => loadPenalties()
+            )
+            .subscribe();
+
+        const fallbackId = setInterval(loadPenalties, 15000);
+
+        return () => {
+            clearInterval(fallbackId);
+            supabase.removeChannel(channel);
+        };
+    }, [student, loadPenalties]);
+
+    useEffect(() => {
+        if (!student) return undefined;
+        const sid = student.student_id_number || student.studentId || student.id;
+        const channel = supabase
+            .channel(`student-notifications-${sid}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'notifications' },
+                (payload) => {
+                    const row = payload.new || payload.old;
+                    if (!row || row.student_id === null || String(row.student_id) === String(sid)) {
+                        loadNotifications();
+                    }
+                }
+            )
+            .subscribe();
+
+        const fallbackId = setInterval(loadNotifications, 15000);
+
+        return () => {
+            clearInterval(fallbackId);
+            supabase.removeChannel(channel);
+        };
+    }, [student, loadNotifications]);
+
+    /* Auto-refresh notifications every 60s */
+    useEffect(() => {
+        if (!student) return;
+        const id = setInterval(() => {
+            loadNotifications();
+        }, 60000);
+        return () => clearInterval(id);
+    }, [student, loadNotifications]);
 
     /* DERIVED STATS */
     const pendingCount = penalties.filter((p) =>
@@ -452,13 +592,11 @@ export default function StudentDashboard() {
         if (s === 'completed' || s === 'resolved') return 'completed';
         return 'pending';
     };
-
     const statusLabel = (p) => {
         if (p.offense_level === '1st Offense' || p.is_warning === true) return 'Warning Only';
         const s = (p.status || 'Pending').toString();
         return s.charAt(0).toUpperCase() + s.slice(1);
     };
-
     const badgeCls = (cls) =>
     ({
         warning: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
@@ -469,7 +607,7 @@ export default function StudentDashboard() {
         rejected: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
     }[cls] || 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300');
 
-    /*  SUBMIT APPEAL */
+    /* SUBMIT APPEAL */
     const submitAppeal = async () => {
         if (!appealPenaltyId || !appealReason.trim()) {
             showToast('error', 'Missing fields', 'Please select a penalty and provide a reason');
@@ -477,9 +615,7 @@ export default function StudentDashboard() {
         }
         const penalty = penalties.find((p) => String(p.id) === String(appealPenaltyId));
         if (!penalty) return;
-
         const sid = student.student_id_number || student.studentId || student.id;
-
         const { error } = await supabase.from('appeals').insert([
             {
                 student_id: sid,
@@ -495,12 +631,10 @@ export default function StudentDashboard() {
                 created_at: new Date().toISOString(),
             },
         ]);
-
         if (error) {
             showToast('error', 'Submission failed', error.message);
             return;
         }
-
         showToast('success', 'Appeal submitted', 'Your appeal has been sent for review');
         setAppealPenaltyId('');
         setAppealReason('');
@@ -603,7 +737,7 @@ export default function StudentDashboard() {
         await loadNotifications();
     };
 
-    /*  IDLE TIMER*/
+    /* IDLE TIMER */
     const idleTimer = useRef(null);
     const idleCountdownTimer = useRef(null);
 
@@ -658,11 +792,10 @@ export default function StudentDashboard() {
     );
     const selectedAppealPenalty = appealable.find((p) => String(p.id) === String(appealPenaltyId));
 
-    /* Balanced sizing tokens */
-    const cardCls = 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl';
+    const cardCls = 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl';
     const btnPrimary = 'px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed';
-    const btnSecondary = 'px-4 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg transition';
-    const inputCls = 'w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
+    const btnSecondary = 'px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg transition';
+    const inputCls = 'w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
 
     const tabLabel =
         currentTab === 'dashboard' ? 'Dashboard'
@@ -674,7 +807,7 @@ export default function StudentDashboard() {
                                 : currentTab === 'appeal' ? 'Submit Appeal'
                                     : currentTab === 'help' ? 'Help Center' : '';
 
-    /*  SCHEDULE COMPUTED VALUES  */
+    /* SCHEDULE COMPUTED VALUES */
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const weekStart = new Date(today);
@@ -692,7 +825,6 @@ export default function StudentDashboard() {
         .reduce((sum, s) => sum + (parseInt(s.hours) || 0), 0);
     const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    /* PROGRESS WEEKLY ACTIVITY */
     const weeklyActivity = dayLabels.map((_, i) => {
         const d = new Date(weekStart);
         d.setDate(weekStart.getDate() + i);
@@ -703,13 +835,15 @@ export default function StudentDashboard() {
     const weeklyMax = Math.max(...weeklyActivity, 1);
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans text-[15px] leading-relaxed">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans text-[15px] leading-relaxed">
             <style>{`
                 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
                 @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+                html.dark { color-scheme: dark; }
+                html.dark body { background-color: #020617; }
             `}</style>
 
-            {/* DRAWER OVERLAY (mobile only) */}
+            {/* DRAWER OVERLAY */}
             {drawerOpen && (
                 <div
                     className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] md:hidden"
@@ -719,10 +853,10 @@ export default function StudentDashboard() {
 
             {/* DRAWER */}
             <aside
-                className={`group fixed top-0 left-0 bottom-0 w-[68px] hover:w-[220px] bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-[300] flex flex-col transition-all duration-300 ease-out overflow-hidden md:translate-x-0 ${drawerOpen ? 'translate-x-0' : '-translate-x-full'
+                className={`group fixed top-0 left-0 bottom-0 w-[68px] hover:w-[220px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-[300] flex flex-col transition-all duration-300 ease-out overflow-hidden md:translate-x-0 ${drawerOpen ? 'translate-x-0' : '-translate-x-full'
                     }`}
             >
-                <div className="flex flex-col items-center pt-4 pb-4 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+                <div className="flex flex-col items-center pt-4 pb-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
                     <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-md">
                         {getInitials(studentName)}
                     </div>
@@ -752,8 +886,8 @@ export default function StudentDashboard() {
                             key={item.tab}
                             onClick={() => { setCurrentTab(item.tab); setDrawerOpen(false); }}
                             className={`relative flex items-center w-full h-12 transition-colors duration-150 ${currentTab === item.tab
-                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
+                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                                 }`}
                         >
                             {currentTab === item.tab && (
@@ -767,10 +901,10 @@ export default function StudentDashboard() {
                     ))}
                 </nav>
 
-                <div className="border-t border-slate-200 dark:border-slate-700 flex-shrink-0">
+                <div className="border-t border-slate-200 dark:border-slate-800 flex-shrink-0">
                     <button
                         onClick={() => setShowLogoutConfirm(true)}
-                        className="relative flex items-center w-full h-12 text-slate-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors duration-150"
+                        className="relative flex items-center w-full h-12 text-slate-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400 transition-colors duration-150"
                     >
                         <span className="w-[68px] flex-shrink-0 flex items-center justify-center">{I.logout}</span>
                         <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm">
@@ -781,7 +915,7 @@ export default function StudentDashboard() {
             </aside>
 
             {/* TOPBAR */}
-            <header className="sticky top-0 z-[100] h-16 bg-white/90 dark:bg-slate-800/90 backdrop-blur border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-8 md:ml-[68px]">
+            <header className="sticky top-0 z-[100] h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-8 md:ml-[68px]">
                 <div className="flex items-center gap-3">
                     <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={() => setDrawerOpen(true)}>
                         <span className="w-5 h-0.5 bg-slate-700 dark:bg-slate-200 rounded" />
@@ -789,9 +923,9 @@ export default function StudentDashboard() {
                         <span className="w-5 h-0.5 bg-slate-700 dark:bg-slate-200 rounded" />
                     </button>
                     <div className="flex items-center gap-3">
-                        <img src="/CC.png" alt="CCNDM" className="w-9 h-9 object-contain rounded-lg bg-blue-50 dark:bg-slate-700 p-1" />
+                        <img src="/CC.png" alt="CCNDM" className="w-9 h-9 object-contain rounded-lg bg-blue-50 dark:bg-slate-800 p-1" />
                         <span className="text-lg font-bold text-blue-600">CCNDM</span>
-                        <span className="hidden md:inline text-xs text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-3 uppercase tracking-wide">
+                        <span className="hidden md:inline text-xs text-slate-400 border-l border-slate-200 dark:border-slate-800 pl-3 uppercase tracking-wide">
                             {tabLabel}
                         </span>
                     </div>
@@ -799,14 +933,14 @@ export default function StudentDashboard() {
 
                 <div className="flex items-center gap-1.5">
                     <button
-                        className="p-2.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                        className="p-2.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                         onClick={toggleDarkMode}
                         title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
                     >
                         {darkMode ? I.sun : I.moon}
                     </button>
                     <button
-                        className="p-2.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition relative"
+                        className="p-2.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition relative"
                         onClick={() => setShowNotifications(true)}
                         title="Notifications"
                     >
@@ -834,14 +968,13 @@ export default function StudentDashboard() {
                     className="fixed inset-0 z-[20000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
                     onClick={(e) => e.target === e.currentTarget && setShowNotifications(false)}
                 >
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
                             <div className="flex items-center gap-2">
                                 <div className="relative">
                                     <span className="text-slate-700 dark:text-slate-200">{I.bellRing}</span>
                                     {unreadCount > 0 && (
-                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-800 animate-pulse" />
+                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse" />
                                     )}
                                 </div>
                                 <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
@@ -854,14 +987,14 @@ export default function StudentDashboard() {
                                 )}
                             </div>
                             <button
-                                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                 onClick={() => setShowNotifications(false)}
                             >
                                 {I.close}
                             </button>
                         </div>
 
-                        <div className="flex items-center gap-1 px-3 pt-3 pb-2 border-b border-slate-100 dark:border-slate-700/60">
+                        <div className="flex items-center gap-1 px-3 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800/60">
                             {[
                                 { key: 'all', label: 'All', count: notifications.length },
                                 { key: 'unread', label: 'Unread', count: unreadCount },
@@ -870,14 +1003,14 @@ export default function StudentDashboard() {
                                     key={f.key}
                                     onClick={() => setNotifFilter(f.key)}
                                     className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 ${notifFilter === f.key
-                                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                                        : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/60 dark:text-slate-400'
+                                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
+                                        : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400'
                                         }`}
                                 >
                                     {f.label}
                                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${notifFilter === f.key
                                         ? 'bg-blue-200/70 dark:bg-blue-800 text-blue-800 dark:text-blue-100'
-                                        : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                                         }`}>
                                         {f.count}
                                     </span>
@@ -896,7 +1029,7 @@ export default function StudentDashboard() {
                         <div className="flex-1 overflow-y-auto px-2 py-2">
                             {filteredNotifications.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center mb-4 relative">
+                                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-800 dark:to-slate-900 flex items-center justify-center mb-4 relative">
                                         <span className="text-blue-400 dark:text-blue-500">{I.bell}</span>
                                         <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                                             {I.check}
@@ -959,7 +1092,7 @@ export default function StudentDashboard() {
                         </div>
 
                         {notifications.length > 0 && (
-                            <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-900/40">
+                            <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/60 dark:bg-slate-950/60">
                                 <p className="text-[11px] text-center text-slate-400 dark:text-slate-500">
                                     Showing {filteredNotifications.length} of {notifications.length} notifications
                                 </p>
@@ -976,9 +1109,9 @@ export default function StudentDashboard() {
                     <div style={fadeInStyle}>
                         <div className="mb-6">
                             <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
-                                {getGreeting()}, <span className="text-blue-600">{studentName}</span>
+                                {getGreeting()}, <span className="text-blue-600 dark:text-blue-400">{studentName}</span>
                             </h1>
-                            <p className="text-sm text-slate-400 mt-1.5 mb-4">
+                            <p className="text-sm text-slate-400 dark:text-slate-400 mt-1.5 mb-4">
                                 {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at{' '}
                                 <strong className="text-slate-700 dark:text-slate-200">
                                     {now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
@@ -986,9 +1119,8 @@ export default function StudentDashboard() {
                             </p>
                         </div>
 
-                        {/* Next deadline banner */}
                         {pendingCount > 0 && (
-                            <div className="flex items-center gap-3 p-4 mb-6 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border border-blue-200 dark:border-blue-800">
+                            <div className="flex items-center gap-3 p-4 mb-6 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/60 dark:to-indigo-950/60 border border-blue-200 dark:border-blue-900">
                                 <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center flex-shrink-0">
                                     {I.clock}
                                 </div>
@@ -1012,7 +1144,6 @@ export default function StudentDashboard() {
                             </div>
                         )}
 
-                        {/* Stats */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                             {[
                                 { icon: I.clock, value: pendingCount, label: 'Pending Penalties', bg: 'bg-blue-500' },
@@ -1032,7 +1163,6 @@ export default function StudentDashboard() {
                             ))}
                         </div>
 
-                        {/* Action cards */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                             {[
                                 { tab: 'penalties', icon: I.rect, title: 'View Penalties', desc: 'Check your active penalties and violations' },
@@ -1044,7 +1174,7 @@ export default function StudentDashboard() {
                                     onClick={() => setCurrentTab(a.tab)}
                                     className={`${cardCls} p-6 text-center cursor-pointer hover:-translate-y-0.5 hover:border-blue-500 hover:shadow-md transition`}
                                 >
-                                    <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center mx-auto mb-3">
+                                    <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-3">
                                         {a.icon}
                                     </div>
                                     <h3 className="text-sm font-semibold mb-1">{a.title}</h3>
@@ -1053,29 +1183,28 @@ export default function StudentDashboard() {
                             ))}
                         </div>
 
-                        {/* Recent penalties */}
                         <div className={`${cardCls} overflow-hidden mb-6`}>
-                            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
                                 <div className="flex items-center gap-2 text-sm font-semibold">
                                     {I.rect}
                                     My Recent Penalties
                                 </div>
                                 <button
                                     onClick={() => setCurrentTab('penalties')}
-                                    className="text-xs text-blue-600 hover:underline font-medium"
+                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
                                 >
                                     View all →
                                 </button>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
-                                    <thead className="bg-slate-50 dark:bg-slate-900/40">
-                                        <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                    <thead className="bg-slate-50 dark:bg-slate-950/60">
+                                        <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                             <th className="px-5 py-3">Date</th>
                                             <th className="px-5 py-3">Violation</th>
-                                            <th className="px-5 py-3">Service Type</th>
                                             <th className="px-5 py-3">Hours</th>
                                             <th className="px-5 py-3">Status</th>
+                                            <th className="px-5 py-3">Progress</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1090,15 +1219,17 @@ export default function StudentDashboard() {
                                             </tr>
                                         ) : (
                                             penalties.slice(0, 5).map((p) => (
-                                                <tr key={p.id} className="border-t border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                                                <tr key={p.id} className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                                     <td className="px-5 py-3 whitespace-nowrap">{formatDate(p.created_at)}</td>
                                                     <td className="px-5 py-3 font-medium">{p.violation}</td>
-                                                    <td className="px-5 py-3">{p.service_type || 'Community Service'}</td>
                                                     <td className="px-5 py-3">{p.hours || 0} hrs</td>
                                                     <td className="px-5 py-3">
                                                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold ${badgeCls(statusClass(p))}`}>
                                                             {statusLabel(p)}
                                                         </span>
+                                                    </td>
+                                                    <td className="px-5 py-3">
+                                                        <CountdownTimer penalty={p} />
                                                     </td>
                                                 </tr>
                                             ))
@@ -1108,12 +1239,11 @@ export default function StudentDashboard() {
                             </div>
                         </div>
 
-                        {/* Offense summary */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {[
-                                { icon: I.info, title: '1st Offense', desc: 'Warning Only · No community service required', iconBg: 'bg-emerald-100 dark:bg-emerald-900/40', iconText: 'text-emerald-600 dark:text-emerald-300' },
-                                { icon: I.clock, title: '2nd Offense', desc: '5 hours community service + Formal Notice', iconBg: 'bg-amber-100 dark:bg-amber-900/40', iconText: 'text-amber-600 dark:text-amber-300' },
-                                { icon: I.rect, title: '3rd Offense', desc: '10 hours community service + Meeting with SAO', iconBg: 'bg-red-100 dark:bg-red-900/40', iconText: 'text-red-600 dark:text-red-300' },
+                                { icon: I.info, title: '1st Offense', desc: 'Warning Only · No community service required', iconBg: 'bg-emerald-100 dark:bg-emerald-950/60', iconText: 'text-emerald-600 dark:text-emerald-400' },
+                                { icon: I.clock, title: '2nd Offense', desc: '5 hours community service + Formal Notice', iconBg: 'bg-amber-100 dark:bg-amber-950/60', iconText: 'text-amber-600 dark:text-amber-400' },
+                                { icon: I.rect, title: '3rd Offense', desc: '10 hours community service + Meeting with SAO', iconBg: 'bg-red-100 dark:bg-red-950/60', iconText: 'text-red-600 dark:text-red-400' },
                             ].map((c) => (
                                 <div key={c.title} className={`${cardCls} p-5 text-center`}>
                                     <div className={`w-12 h-12 rounded-full ${c.iconBg} ${c.iconText} flex items-center justify-center mx-auto mb-3`}>
@@ -1151,7 +1281,7 @@ export default function StudentDashboard() {
                                 { icon: I.star, value: `${complianceRate}%`, label: 'Compliance Rate' },
                             ].map((s, i) => (
                                 <div key={i} className={`${cardCls} p-5 flex items-center gap-4`}>
-                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-50 dark:bg-blue-900/40 text-blue-600 flex-shrink-0">
+                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex-shrink-0">
                                         {s.icon}
                                     </div>
                                     <div>
@@ -1164,11 +1294,11 @@ export default function StudentDashboard() {
 
                         <div className={`${cardCls} p-4 mb-6 flex flex-wrap items-center gap-3`}>
                             <div className="flex items-center gap-2">
-                                <label className="text-xs font-medium text-slate-500">Status:</label>
+                                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Status:</label>
                                 <select
                                     value={statusFilter}
                                     onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs"
+                                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-800 dark:text-slate-100"
                                 >
                                     <option value="all">All Status</option>
                                     <option value="pending">Pending</option>
@@ -1177,21 +1307,21 @@ export default function StudentDashboard() {
                                 </select>
                             </div>
                             <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                                <label className="text-xs font-medium text-slate-500">Search:</label>
+                                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Search:</label>
                                 <input
                                     type="text"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     placeholder="Search violations..."
-                                    className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs"
+                                    className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-800 dark:text-slate-100"
                                 />
                             </div>
                             <div className="flex items-center gap-2">
-                                <label className="text-xs font-medium text-slate-500">Sort:</label>
+                                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Sort:</label>
                                 <select
                                     value={sortOption}
                                     onChange={(e) => setSortOption(e.target.value)}
-                                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs"
+                                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-800 dark:text-slate-100"
                                 >
                                     <option value="date-desc">Latest First</option>
                                     <option value="date-asc">Oldest First</option>
@@ -1201,7 +1331,7 @@ export default function StudentDashboard() {
                             </div>
                             <button
                                 onClick={() => { setStatusFilter('all'); setSearchTerm(''); setSortOption('date-desc'); }}
-                                className="px-3 py-2 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-white underline"
+                                className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white underline"
                             >
                                 Clear filters
                             </button>
@@ -1210,20 +1340,21 @@ export default function StudentDashboard() {
                         <div className={`${cardCls} overflow-hidden`}>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
-                                    <thead className="bg-slate-50 dark:bg-slate-900/40">
-                                        <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                    <thead className="bg-slate-50 dark:bg-slate-950/60">
+                                        <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                             <th className="px-5 py-3">Date</th>
                                             <th className="px-5 py-3">Violation</th>
                                             <th className="px-5 py-3">Service Type</th>
                                             <th className="px-5 py-3">Hours</th>
                                             <th className="px-5 py-3">Status</th>
+                                            <th className="px-5 py-3">Progress</th>
                                             <th className="px-5 py-3">Deadline</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filteredPenalties.length === 0 ? (
                                             <tr>
-                                                <td colSpan="6" className="text-center py-12">
+                                                <td colSpan="7" className="text-center py-12">
                                                     <div className="font-semibold text-slate-600 dark:text-slate-300">No Penalty Records</div>
                                                     <div className="text-xs text-slate-400 mt-1">
                                                         {penalties.length ? 'Try adjusting your filters' : 'You have no violations recorded'}
@@ -1232,15 +1363,18 @@ export default function StudentDashboard() {
                                             </tr>
                                         ) : (
                                             filteredPenalties.map((p) => (
-                                                <tr key={p.id} className="border-t border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                                                <tr key={p.id} className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                                     <td className="px-5 py-3">{formatDate(p.created_at)}</td>
                                                     <td className="px-5 py-3 font-medium">{p.violation}</td>
                                                     <td className="px-5 py-3">{p.service_type || 'Community Service'}</td>
-                                                    <td className="px-5 py-3 font-semibold text-blue-600">{p.hours || 0} hrs</td>
+                                                    <td className="px-5 py-3 font-semibold text-blue-600 dark:text-blue-400">{p.hours || 0} hrs</td>
                                                     <td className="px-5 py-3">
                                                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold ${badgeCls(statusClass(p))}`}>
                                                             {statusLabel(p)}
                                                         </span>
+                                                    </td>
+                                                    <td className="px-5 py-3">
+                                                        <CountdownTimer penalty={p} />
                                                     </td>
                                                     <td className="px-5 py-3">{formatDate(p.deadline)}</td>
                                                 </tr>
@@ -1280,13 +1414,13 @@ export default function StudentDashboard() {
                         </div>
 
                         <div className={`${cardCls} overflow-hidden mb-6`}>
-                            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                                 <h3 className="text-base font-semibold flex items-center gap-2">{I.calendar} This Week's Schedule</h3>
-                                <span className="text-xs text-slate-500">
+                                <span className="text-xs text-slate-500 dark:text-slate-400">
                                     {weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {weekDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                 </span>
                             </div>
-                            <div className="grid grid-cols-7 divide-x divide-slate-100 dark:divide-slate-700">
+                            <div className="grid grid-cols-7 divide-x divide-slate-100 dark:divide-slate-800">
                                 {weekDays.map((day, i) => {
                                     const daySessions = sessions.filter(s => {
                                         const sd = new Date(s.scheduled_date);
@@ -1294,14 +1428,14 @@ export default function StudentDashboard() {
                                     });
                                     const isToday = day.toDateString() === new Date().toDateString();
                                     return (
-                                        <div key={i} className={`p-2 text-center min-h-[120px] ${isToday ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
+                                        <div key={i} className={`p-2 text-center min-h-[120px] ${isToday ? 'bg-blue-50/50 dark:bg-blue-950/40' : ''}`}>
                                             <div className={`text-[10px] font-bold uppercase mb-1 ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
                                                 {dayLabels[i]}
                                             </div>
                                             <div className="text-[10px] text-slate-400 mb-2">{day.getDate()}</div>
                                             {daySessions.length > 0 ? (
                                                 daySessions.slice(0, 2).map((s, j) => (
-                                                    <div key={j} className="bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 rounded-lg p-1.5 text-left mb-1">
+                                                    <div key={j} className="bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 rounded-lg p-1.5 text-left mb-1">
                                                         <div className="text-[9px] font-bold text-blue-700 dark:text-blue-300 truncate">
                                                             {s.start_time?.slice(0, 5) || '—'}
                                                         </div>
@@ -1311,7 +1445,7 @@ export default function StudentDashboard() {
                                                     </div>
                                                 ))
                                             ) : (
-                                                <div className="text-[10px] text-slate-300 dark:text-slate-600 pt-4">—</div>
+                                                <div className="text-[10px] text-slate-300 dark:text-slate-700 pt-4">—</div>
                                             )}
                                         </div>
                                     );
@@ -1320,16 +1454,16 @@ export default function StudentDashboard() {
                         </div>
 
                         <div className={`${cardCls} overflow-hidden`}>
-                            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
+                            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60">
                                 <h3 className="text-base font-semibold">Upcoming Sessions</h3>
                             </div>
                             {upcomingSessions.length === 0 ? (
                                 <div className="text-center py-12 text-slate-400 text-sm">No upcoming sessions scheduled</div>
                             ) : (
-                                <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                                <div className="divide-y divide-slate-100 dark:divide-slate-800">
                                     {upcomingSessions.map((s) => (
-                                        <div key={s.id} className="flex items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
-                                            <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                                        <div key={s.id} className="flex items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                                            <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
                                                 {I.calendar}
                                             </div>
                                             <div className="flex-1 min-w-0">
@@ -1342,7 +1476,7 @@ export default function StudentDashboard() {
                                                 {s.venue && <div className="text-xs text-slate-400 mt-0.5">📍 {s.venue}</div>}
                                             </div>
                                             <div className="text-right flex-shrink-0">
-                                                <div className="text-sm font-bold text-blue-600">{s.hours || 0}h</div>
+                                                <div className="text-sm font-bold text-blue-600 dark:text-blue-400">{s.hours || 0}h</div>
                                                 <div className="text-[10px] text-slate-400 uppercase">
                                                     {s.status === 'completed' ? 'Done' : 'Hours'}
                                                 </div>
@@ -1364,11 +1498,10 @@ export default function StudentDashboard() {
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-                            {/* Compliance ring */}
                             <div className={`${cardCls} p-6 flex flex-col items-center justify-center lg:col-span-1`}>
                                 <div className="relative w-40 h-40">
                                     <svg className="w-40 h-40 -rotate-90" viewBox="0 0 100 100">
-                                        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="8" className="text-slate-100 dark:text-slate-700" />
+                                        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="8" className="text-slate-100 dark:text-slate-800" />
                                         <circle
                                             cx="50" cy="50" r="42" fill="none"
                                             stroke="url(#grad)" strokeWidth="8" strokeLinecap="round"
@@ -1392,7 +1525,6 @@ export default function StudentDashboard() {
                                 </p>
                             </div>
 
-                            {/* Breakdown bars */}
                             <div className={`${cardCls} p-6 lg:col-span-2`}>
                                 <h3 className="text-base font-semibold mb-5 flex items-center gap-2">{I.trendUp} Hour Breakdown</h3>
                                 <div className="space-y-5">
@@ -1405,9 +1537,9 @@ export default function StudentDashboard() {
                                             <div key={b.label}>
                                                 <div className="flex items-center justify-between mb-2">
                                                     <span className="text-sm font-medium">{b.label}</span>
-                                                    <span className="text-xs text-slate-500">{b.value} hrs · {pct}%</span>
+                                                    <span className="text-xs text-slate-500 dark:text-slate-400">{b.value} hrs · {pct}%</span>
                                                 </div>
-                                                <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                                     <div className={`h-full bg-gradient-to-r ${b.color} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
                                                 </div>
                                             </div>
@@ -1415,11 +1547,11 @@ export default function StudentDashboard() {
                                     })}
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-3 mt-6 pt-5 border-t border-slate-100 dark:border-slate-700">
+                                <div className="grid grid-cols-3 gap-3 mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
                                     {[
                                         { label: 'Total', value: penalties.length, color: 'text-slate-700 dark:text-slate-200' },
-                                        { label: 'Pending', value: pendingCount, color: 'text-amber-600' },
-                                        { label: 'Done', value: penalties.filter(p => ['completed', 'Completed', 'Resolved'].includes(p.status)).length, color: 'text-emerald-600' },
+                                        { label: 'Pending', value: pendingCount, color: 'text-amber-600 dark:text-amber-400' },
+                                        { label: 'Done', value: penalties.filter(p => ['completed', 'Completed', 'Resolved'].includes(p.status)).length, color: 'text-emerald-600 dark:text-emerald-400' },
                                     ].map((s) => (
                                         <div key={s.label} className="text-center">
                                             <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
@@ -1430,13 +1562,12 @@ export default function StudentDashboard() {
                             </div>
                         </div>
 
-                        {/* Weekly activity from real sessions */}
                         <div className={`${cardCls} p-6`}>
                             <h3 className="text-base font-semibold mb-5 flex items-center gap-2">{I.zap} Weekly Activity</h3>
                             <div className="flex items-end justify-between gap-2 h-40">
                                 {weeklyActivity.map((v, i) => (
                                     <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                                        <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-t-lg relative overflow-hidden" style={{ height: '100%' }}>
+                                        <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-t-lg relative overflow-hidden" style={{ height: '100%' }}>
                                             <div
                                                 className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-500 to-violet-500 rounded-t-lg transition-all duration-700"
                                                 style={{ height: `${(v / weeklyMax) * 100}%` }}
@@ -1464,18 +1595,18 @@ export default function StudentDashboard() {
                         <div className={`${cardCls} p-6 mb-6`}>
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-base font-semibold">Overall Progress</h3>
-                                <span className="text-sm font-bold text-blue-600">
+                                <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
                                     {completedHours} / {totalHours || 0} hrs
                                 </span>
                             </div>
-                            <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 rounded-full transition-all duration-700"
                                     style={{ width: `${totalHours ? Math.min(100, (completedHours / totalHours) * 100) : 0}%` }}
                                 />
                             </div>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                                Keep going! You're making great progress. 
+                                Keep going! You're making great progress.
                             </p>
                         </div>
 
@@ -1498,11 +1629,11 @@ export default function StudentDashboard() {
                                         <h4 className="text-sm font-bold mb-1">{b.name}</h4>
                                         <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">{b.desc}</p>
                                         {isUnlocked ? (
-                                            <span className="inline-block mt-3 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/40 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                            <span className="inline-block mt-3 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full uppercase tracking-wider">
                                                 Unlocked{unlockedRecord?.unlocked_at ? ` · ${timeAgo(unlockedRecord.unlocked_at)}` : ''}
                                             </span>
                                         ) : (
-                                            <span className="inline-block mt-3 text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                            <span className="inline-block mt-3 text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full uppercase tracking-wider">
                                                 Locked
                                             </span>
                                         )}
@@ -1535,11 +1666,11 @@ export default function StudentDashboard() {
                             ))}
                         </div>
 
-                        <div className="flex gap-2 mb-5 border-b border-slate-200 dark:border-slate-700">
+                        <div className="flex gap-2 mb-5 border-b border-slate-200 dark:border-slate-800">
                             <button
                                 className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition ${historySubTab === 'penalties'
-                                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 font-semibold'
-                                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300 font-semibold'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
                                     }`}
                                 onClick={() => setHistorySubTab('penalties')}
                             >
@@ -1547,8 +1678,8 @@ export default function StudentDashboard() {
                             </button>
                             <button
                                 className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition ${historySubTab === 'appeals'
-                                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 font-semibold'
-                                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300 font-semibold'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
                                     }`}
                                 onClick={() => setHistorySubTab('appeals')}
                             >
@@ -1560,37 +1691,41 @@ export default function StudentDashboard() {
                             <div className={`${cardCls} overflow-hidden`}>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
-                                        <thead className="bg-slate-50 dark:bg-slate-900/40">
-                                            <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                        <thead className="bg-slate-50 dark:bg-slate-950/60">
+                                            <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                                 <th className="px-5 py-3">#</th>
                                                 <th className="px-5 py-3">Violation</th>
                                                 <th className="px-5 py-3">Service Type</th>
                                                 <th className="px-5 py-3">Hours</th>
                                                 <th className="px-5 py-3">Status</th>
+                                                <th className="px-5 py-3">Progress</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {penalties.length === 0 ? (
-                                                <tr><td colSpan="5" className="text-center py-12 text-slate-400 text-sm">No penalties found</td></tr>
+                                                <tr><td colSpan="6" className="text-center py-12 text-slate-400 text-sm">No penalties found</td></tr>
                                             ) : (
                                                 penalties.map((p, i) => (
-                                                    <tr key={p.id} className="border-t border-slate-100 dark:border-slate-700">
+                                                    <tr key={p.id} className="border-t border-slate-100 dark:border-slate-800">
                                                         <td className="px-5 py-3">
-                                                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-semibold text-slate-500">
+                                                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400">
                                                                 {i + 1}
                                                             </span>
                                                         </td>
                                                         <td className="px-5 py-3 font-medium">{p.violation}</td>
                                                         <td className="px-5 py-3">
-                                                            <span className="inline-block px-3 py-1 rounded-full text-[11px] bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300">
+                                                            <span className="inline-block px-3 py-1 rounded-full text-[11px] bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300">
                                                                 {p.service_type || 'Community Service'}
                                                             </span>
                                                         </td>
-                                                        <td className="px-5 py-3 font-semibold text-blue-600">{p.hours || 0} hrs</td>
+                                                        <td className="px-5 py-3 font-semibold text-blue-600 dark:text-blue-400">{p.hours || 0} hrs</td>
                                                         <td className="px-5 py-3">
                                                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold ${badgeCls(statusClass(p))}`}>
                                                                 {statusLabel(p)}
                                                             </span>
+                                                        </td>
+                                                        <td className="px-5 py-3">
+                                                            <CountdownTimer penalty={p} />
                                                         </td>
                                                     </tr>
                                                 ))
@@ -1605,8 +1740,8 @@ export default function StudentDashboard() {
                             <div className={`${cardCls} overflow-hidden`}>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
-                                        <thead className="bg-slate-50 dark:bg-slate-900/40">
-                                            <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                        <thead className="bg-slate-50 dark:bg-slate-950/60">
+                                            <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                                 <th className="px-5 py-3">#</th>
                                                 <th className="px-5 py-3">Date</th>
                                                 <th className="px-5 py-3">Penalty</th>
@@ -1620,7 +1755,7 @@ export default function StudentDashboard() {
                                                 appeals.map((a, i) => {
                                                     const s = (a.status || 'pending').toLowerCase();
                                                     return (
-                                                        <tr key={a.id} className="border-t border-slate-100 dark:border-slate-700">
+                                                        <tr key={a.id} className="border-t border-slate-100 dark:border-slate-800">
                                                             <td className="px-5 py-3">{i + 1}</td>
                                                             <td className="px-5 py-3">{formatDate(a.created_at)}</td>
                                                             <td className="px-5 py-3 font-medium">{a.penalty_violation || a.violation || 'N/A'}</td>
@@ -1651,9 +1786,9 @@ export default function StudentDashboard() {
 
                         <div className="grid grid-cols-1 lg:grid-cols-[1fr_0.7fr] gap-5 mb-6">
                             <div className={`${cardCls} overflow-hidden`}>
-                                <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
+                                <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60">
                                     <h3 className="text-base font-semibold flex items-center gap-2">{I.doc} Appeal Form</h3>
-                                    <p className="text-xs text-slate-500 mt-0.5">Fill out the form below to submit your appeal</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Fill out the form below to submit your appeal</p>
                                 </div>
                                 <div className="p-5 space-y-4">
                                     <div>
@@ -1674,10 +1809,10 @@ export default function StudentDashboard() {
                                     </div>
 
                                     {selectedAppealPenalty && (
-                                        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700 text-sm space-y-1.5">
-                                            <div className="flex"><span className="w-32 font-semibold text-slate-500">Violation:</span><span>{selectedAppealPenalty.violation}</span></div>
-                                            <div className="flex"><span className="w-32 font-semibold text-slate-500">Hours:</span><span>{selectedAppealPenalty.hours} hours</span></div>
-                                            <div className="flex"><span className="w-32 font-semibold text-slate-500">Deadline:</span><span>{formatDate(selectedAppealPenalty.deadline)}</span></div>
+                                        <div className="bg-slate-50 dark:bg-slate-950 rounded-lg p-4 border border-slate-200 dark:border-slate-800 text-sm space-y-1.5">
+                                            <div className="flex"><span className="w-32 font-semibold text-slate-500 dark:text-slate-400">Violation:</span><span>{selectedAppealPenalty.violation}</span></div>
+                                            <div className="flex"><span className="w-32 font-semibold text-slate-500 dark:text-slate-400">Hours:</span><span>{selectedAppealPenalty.hours} hours</span></div>
+                                            <div className="flex"><span className="w-32 font-semibold text-slate-500 dark:text-slate-400">Deadline:</span><span>{formatDate(selectedAppealPenalty.deadline)}</span></div>
                                         </div>
                                     )}
 
@@ -1703,7 +1838,7 @@ export default function StudentDashboard() {
                                         />
                                     </div>
 
-                                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                                         <button
                                             className={btnSecondary}
                                             onClick={() => {
@@ -1722,9 +1857,9 @@ export default function StudentDashboard() {
                             </div>
 
                             <div className={`${cardCls} overflow-hidden`}>
-                                <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
+                                <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60">
                                     <h3 className="text-base font-semibold">Appeal Guidelines</h3>
-                                    <p className="text-xs text-slate-500 mt-0.5">Important information before submitting</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Important information before submitting</p>
                                 </div>
                                 <div className="p-5 space-y-4">
                                     {[
@@ -1733,8 +1868,8 @@ export default function StudentDashboard() {
                                         { title: 'Processing Time', desc: 'Appeals are typically reviewed within 3-5 business days.' },
                                         { title: 'Notification', desc: 'You will be notified via email once your appeal has been reviewed.' },
                                     ].map((g) => (
-                                        <div key={g.title} className="flex gap-3 pb-4 border-b border-slate-100 dark:border-slate-700 last:border-0">
-                                            <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center flex-shrink-0">
+                                        <div key={g.title} className="flex gap-3 pb-4 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                                            <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
                                                 {I.info}
                                             </div>
                                             <div>
@@ -1743,7 +1878,7 @@ export default function StudentDashboard() {
                                             </div>
                                         </div>
                                     ))}
-                                    <div className="flex gap-3 p-3.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 border-l-4 border-amber-500">
+                                    <div className="flex gap-3 p-3.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 border-l-4 border-amber-500">
                                         {I.info}
                                         <div className="text-xs text-amber-800 dark:text-amber-200">
                                             <strong>Important:</strong> Submitting false or misleading information may result in additional penalties.
@@ -1754,13 +1889,13 @@ export default function StudentDashboard() {
                         </div>
 
                         <div className={`${cardCls} overflow-hidden`}>
-                            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
+                            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60">
                                 <h3 className="text-base font-semibold">My Recent Appeals</h3>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
-                                    <thead className="bg-slate-50 dark:bg-slate-900/40">
-                                        <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                    <thead className="bg-slate-50 dark:bg-slate-950/60">
+                                        <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                             <th className="px-5 py-3">Date</th>
                                             <th className="px-5 py-3">Violation</th>
                                             <th className="px-5 py-3">Status</th>
@@ -1773,7 +1908,7 @@ export default function StudentDashboard() {
                                             appeals.slice(0, 5).map((a) => {
                                                 const s = (a.status || 'pending').toLowerCase();
                                                 return (
-                                                    <tr key={a.id} className="border-t border-slate-100 dark:border-slate-700">
+                                                    <tr key={a.id} className="border-t border-slate-100 dark:border-slate-800">
                                                         <td className="px-5 py-3">{formatDate(a.created_at)}</td>
                                                         <td className="px-5 py-3 font-medium">{a.penalty_violation || a.violation || 'N/A'}</td>
                                                         <td className="px-5 py-3">
@@ -1820,11 +1955,11 @@ export default function StudentDashboard() {
                         </div>
 
                         <div className={`${cardCls} overflow-hidden`}>
-                            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 flex items-center gap-2">
+                            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 flex items-center gap-2">
                                 {I.book}
                                 <h3 className="text-base font-semibold">Frequently Asked Questions</h3>
                             </div>
-                            <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                            <div className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {[
                                     { q: 'How do I check my remaining service hours?', a: 'Go to the Dashboard or My Progress tab to see a live counter of your completed and remaining hours.' },
                                     { q: 'Can I choose my own community service site?', a: 'No — all service sessions are assigned by the Student Affairs Office to ensure fairness and proper documentation.' },
@@ -1834,7 +1969,7 @@ export default function StudentDashboard() {
                                     { q: 'Can I request a certificate after completing?', a: 'Absolutely. Visit the SAO office after your final session to receive an official Certificate of Completion.' },
                                 ].map((f, i) => (
                                     <details key={i} className="group">
-                                        <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/30 transition list-none">
+                                        <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition list-none">
                                             <span className="text-sm font-medium">{f.q}</span>
                                             <span className="text-slate-400 group-open:rotate-180 transition-transform flex-shrink-0">
                                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1850,7 +1985,7 @@ export default function StudentDashboard() {
                             </div>
                         </div>
 
-                        <div className="mt-6 flex gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/30 border-l-4 border-amber-500">
+                        <div className="mt-6 flex gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/60 border-l-4 border-amber-500">
                             {I.alert}
                             <div className="text-xs text-amber-800 dark:text-amber-200">
                                 <strong>Need urgent help?</strong> If you have an active deadline within 48 hours, contact the Nursing Department office directly by phone for immediate assistance.
@@ -1866,9 +2001,9 @@ export default function StudentDashboard() {
                     className="fixed inset-0 z-[30000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
                     onClick={(e) => e.target === e.currentTarget && setShowLogoutConfirm(false)}
                 >
-                    <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl">
+                    <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-sm p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
                         <div className="flex items-start gap-3 mb-5">
-                            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 flex items-center justify-center flex-shrink-0">
+                            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
                                 {I.alert}
                             </div>
                             <div>
@@ -1876,7 +2011,7 @@ export default function StudentDashboard() {
                                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Are you sure you want to log out of your account?</p>
                             </div>
                         </div>
-                        <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                             <button className={btnSecondary} onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
                             <button
                                 className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition"
@@ -1895,7 +2030,7 @@ export default function StudentDashboard() {
                     className="fixed inset-0 z-[30000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
                     onClick={(e) => e.target === e.currentTarget && setShowEditProfile(false)}
                 >
-                    <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl">
+                    <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-sm p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
                         <h3 className="text-lg font-bold mb-4">Edit Profile</h3>
                         <div className="space-y-4">
                             <div>
@@ -1912,7 +2047,7 @@ export default function StudentDashboard() {
                                 <p className="text-xs text-slate-400 mt-1.5">Contact admin to change your Student ID.</p>
                             </div>
                         </div>
-                        <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-slate-200 dark:border-slate-800">
                             <button className={btnSecondary} onClick={() => setShowEditProfile(false)}>Cancel</button>
                             <button className={btnPrimary} onClick={saveProfile}>Save Changes</button>
                         </div>
@@ -1926,7 +2061,7 @@ export default function StudentDashboard() {
                     className="fixed inset-0 z-[30000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
                     onClick={(e) => e.target === e.currentTarget && setShowChangePassword(false)}
                 >
-                    <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl">
+                    <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-sm p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">{I.lock} Change Password</h3>
                         <div className="space-y-4">
                             <div>
@@ -1942,7 +2077,7 @@ export default function StudentDashboard() {
                                 <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className={inputCls} placeholder="Repeat new password" />
                             </div>
                         </div>
-                        <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-slate-200 dark:border-slate-800">
                             <button className={btnSecondary} onClick={() => setShowChangePassword(false)}>Cancel</button>
                             <button className={btnPrimary} onClick={changePassword}>Update Password</button>
                         </div>
@@ -1953,14 +2088,14 @@ export default function StudentDashboard() {
             {/* IDLE WARNING */}
             {showIdleWarning && (
                 <div className="fixed inset-0 z-[40000] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl text-center">
-                        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 flex items-center justify-center mx-auto mb-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-sm p-6 shadow-2xl text-center border border-slate-200 dark:border-slate-800">
+                        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-4">
                             {I.alert}
                         </div>
                         <h3 className="text-xl font-bold mb-2">Session Expiring Soon</h3>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
                             You've been inactive. Your session will expire in{' '}
-                            <strong className="text-red-600">{idleCountdown}</strong> seconds.
+                            <strong className="text-red-600 dark:text-red-400">{idleCountdown}</strong> seconds.
                         </p>
                         <button className={btnPrimary + ' w-full'} onClick={resetIdleTimer}>
                             Stay Logged In
@@ -1969,40 +2104,7 @@ export default function StudentDashboard() {
                 </div>
             )}
 
-            {/* TOAST */}
-            {toast && (
-                <div
-                    className="fixed bottom-5 right-5 z-[50000] max-w-sm w-full animate-[slideInRight_0.3s_ease]"
-                    onClick={closeToast}
-                >
-                    <div
-                        className={`flex items-start gap-3 p-4 rounded-lg shadow-2xl border-l-4 cursor-pointer bg-white dark:bg-slate-800 ${toast.type === 'success' ? 'border-emerald-500' :
-                            toast.type === 'error' ? 'border-red-500' :
-                                toast.type === 'warning' ? 'border-amber-500' :
-                                    'border-blue-500'
-                            }`}
-                    >
-                        <div
-                            className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${toast.type === 'success' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300' :
-                                toast.type === 'error' ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300' :
-                                    toast.type === 'warning' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300' :
-                                        'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'
-                                }`}
-                        >
-                            {toast.type === 'success' ? I.success : toast.type === 'error' ? I.alert : I.info}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="text-sm font-semibold">{toast.title}</div>
-                            {toast.message && (
-                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{toast.message}</div>
-                            )}
-                        </div>
-                        <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" onClick={(e) => { e.stopPropagation(); closeToast(); }}>
-                            {I.close}
-                        </button>
-                    </div>
-                </div>
-            )}
+            {toast && <Toast message={toast.message} type={toast.type} title={toast.title} onClose={closeToast} duration={4000} />}
         </div>
     );
 }

@@ -20,6 +20,7 @@ export default function Toast({
             ring: 'bg-gradient-to-br from-emerald-400 to-green-500',
             glow: 'shadow-[0_0_20px_rgba(16,185,129,0.35)]',
             labelColor: 'text-emerald-600',
+            surface: 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/70 dark:border-emerald-800',
         },
         error: {
             icon: 'fas fa-times',
@@ -28,6 +29,7 @@ export default function Toast({
             ring: 'bg-gradient-to-br from-red-400 to-rose-500',
             glow: 'shadow-[0_0_20px_rgba(239,68,68,0.35)]',
             labelColor: 'text-red-600',
+            surface: 'bg-red-50 border-red-200 dark:bg-red-950/70 dark:border-red-800',
         },
         warning: {
             icon: 'fas fa-exclamation',
@@ -36,6 +38,7 @@ export default function Toast({
             ring: 'bg-gradient-to-br from-amber-400 to-orange-500',
             glow: 'shadow-[0_0_20px_rgba(245,158,11,0.35)]',
             labelColor: 'text-amber-600',
+            surface: 'bg-amber-50 border-amber-200 dark:bg-amber-950/70 dark:border-amber-800',
         },
         info: {
             icon: 'fas fa-info',
@@ -44,6 +47,7 @@ export default function Toast({
             ring: 'bg-gradient-to-br from-blue-400 to-indigo-500',
             glow: 'shadow-[0_0_20px_rgba(59,130,246,0.35)]',
             labelColor: 'text-blue-600',
+            surface: 'bg-blue-50 border-blue-200 dark:bg-blue-950/70 dark:border-blue-800',
         },
     };
 
@@ -109,7 +113,7 @@ export default function Toast({
 
             <div
                 onClick={close}
-                className="relative bg-white rounded-2xl shadow-[0_12px_40px_rgba(15,23,42,0.18)] border border-slate-100 overflow-hidden cursor-pointer"
+                className={`relative rounded-2xl shadow-[0_12px_40px_rgba(15,23,42,0.18)] border overflow-hidden cursor-pointer ${c.surface}`}
             >
                 {/*ACCENT TOP STRIP*/}
                 <div className={`absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r ${c.accent}`} />
@@ -130,11 +134,11 @@ export default function Toast({
                         <div className={`text-[10px] font-black tracking-[0.12em] ${c.labelColor} mb-0.5`}>
                             {c.label}
                         </div>
-                        <div className="text-[14.5px] font-bold text-slate-900 leading-tight truncate">
+                        <div className="text-[14.5px] font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
                             {finalTitle}
                         </div>
                         {message && (
-                            <div className="text-[12.5px] text-slate-500 leading-snug mt-1 line-clamp-2">
+                            <div className="text-[12.5px] text-slate-600 dark:text-slate-300 leading-snug mt-1 line-clamp-2">
                                 {message}
                             </div>
                         )}

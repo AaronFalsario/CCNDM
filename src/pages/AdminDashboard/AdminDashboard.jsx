@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import Toast from '../../components/Toast';
 
 //ICONS
 const I = {
@@ -295,6 +296,8 @@ export default function AdminDashboard() {
 
     //MODALS
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [completePenaltyId, setCompletePenaltyId] = useState(null);
+    const [confirmDialog, setConfirmDialog] = useState(null);
     const [showAddPenalty, setShowAddPenalty] = useState(false);
     const [showEditPenalty, setShowEditPenalty] = useState(false);
     const [showAddStudent, setShowAddStudent] = useState(false);
@@ -360,12 +363,12 @@ export default function AdminDashboard() {
         else if (saved === 'false') initial = false;
         else initial = window.matchMedia?.('(prefers-color-scheme: dark)').matches || false;
         setDarkMode(initial);
-        document.documentElement.classList.toggle('dark-mode', initial);
+        document.documentElement.classList.toggle('dark', initial);
     }, []);
     const toggleDarkMode = () => {
         setDarkMode(v => {
             const next = !v;
-            document.documentElement.classList.toggle('dark-mode', next);
+            document.documentElement.classList.toggle('dark', next);
             localStorage.setItem('docst_dark_mode', String(next));
             return next;
         });
@@ -395,12 +398,17 @@ export default function AdminDashboard() {
         setNotifications(data || []);
     }, []);
     const loadActivity = useCallback(async () => {
-        try {
-            const { data } = await supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(50);
-            setActivityLog(data || []);
-        } catch {
+        const { data, error } = await supabase
+            .from('activity_log')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
+        if (error) {
+            console.error('[loadActivity]', error);
             setActivityLog([]);
+            return;
         }
+        setActivityLog(data || []);
     }, []);
 
     useEffect(() => {
@@ -422,9 +430,25 @@ export default function AdminDashboard() {
             loadPenalties();
             loadAppeals();
             loadNotifications();
+            loadActivity();
         }, 60000);
         return () => clearInterval(id);
-    }, [loadPenalties, loadAppeals, loadNotifications]);
+    }, [loadPenalties, loadAppeals, loadNotifications, loadActivity]);
+
+    useEffect(() => {
+        const channel = supabase
+            .channel('admin-activity-log')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'activity_log' },
+                () => loadActivity()
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [loadActivity]);
 
     //DERIVED
     const stats = useMemo(() => {
@@ -553,17 +577,21 @@ export default function AdminDashboard() {
 
     //ACTIVITY LOGGER
     const logActivity = useCallback(async (type, description, targetId = null) => {
-        try {
-            await supabase.from('activity_log').insert([{
-                admin_id: admin?.id || null,
-                admin_name: admin?.full_name || admin?.name || 'Admin',
-                type,
-                description,
-                target_id: targetId,
-                created_at: new Date().toISOString(),
-            }]);
-        } catch (e) { /* silent */ }
-    }, [admin]);
+        const { data, error } = await supabase.from('activity_log').insert([{
+            admin_id: admin?.id || null,
+            admin_name: admin?.full_name || admin?.name || 'Admin',
+            type,
+            description,
+            target_id: targetId,
+            created_at: new Date().toISOString(),
+        }]).select().single();
+        if (error) {
+            console.error('[logActivity]', error);
+            showToast('error', 'Activity log failed', error.message);
+            return null;
+        }
+        return data;
+    }, [admin, showToast]);
 
     //HANDLERS
     const handleAddPenalty = async () => {
@@ -611,8 +639,22 @@ export default function AdminDashboard() {
 
         const { error } = await supabase.from('penalties').insert([data]).select();
         if (error) return showToast('error', 'Failed', error.message);
-        showToast('success', 'Penalty added', `Recorded for ${selectedStudent.name}`);
-        logActivity('penalty', `Added ${violation} (${offenseLevel}) for ${selectedStudent.name}`);
+
+        const { error: notificationError } = await supabase.from('notifications').insert([{
+            student_id: sid,
+            title: 'New violation assigned',
+            message: `${violation} has been assigned to your account.`,
+            type: 'violation',
+            is_read: false,
+            created_at: nowIso,
+        }]);
+        if (notificationError) {
+            console.error('[handleAddPenalty] notification error:', notificationError);
+            showToast('warning', 'Penalty added', 'The violation was saved, but its notification could not be sent');
+        } else {
+            showToast('success', 'Penalty added', `Recorded for ${selectedStudent.name}`);
+        }
+        await logActivity('penalty', `Added ${violation} (${offenseLevel}) for ${selectedStudent.name}`);
         setShowAddPenalty(false);
         resetPenaltyForm();
         await loadPenalties();
@@ -657,7 +699,7 @@ export default function AdminDashboard() {
         const { error } = await supabase.from('penalties').update(update).eq('id', selectedPenalty.id).select();
         if (error) return showToast('error', 'Failed', error.message);
         showToast('success', 'Updated', 'Penalty updated successfully');
-        logActivity('penalty', `Updated penalty for ${selectedStudent.name}`);
+        await logActivity('penalty', `Updated penalty for ${selectedStudent.name}`);
         setShowEditPenalty(false);
         setSelectedPenalty(null);
         resetPenaltyForm();
@@ -685,7 +727,7 @@ export default function AdminDashboard() {
         const { error } = await supabase.from('students').insert([data]).select();
         if (error) return showToast('error', 'Failed', error.message);
         showToast('success', 'Student added', `${name} added successfully`);
-        logActivity('student', `Added student ${name} (${studentId})`);
+        await logActivity('student', `Added student ${name} (${studentId})`);
         setShowAddStudent(false);
         resetStudentForm();
         await loadStudents();
@@ -708,7 +750,7 @@ export default function AdminDashboard() {
 
         if (error) return showToast('error', 'Failed', error.message);
         showToast('success', 'Updated', `${name} updated`);
-        logActivity('student', `Updated student ${name}`);
+        await logActivity('student', `Updated student ${name}`);
         setShowEditStudent(false);
         setSelectedStudent(null);
         await loadStudents();
@@ -721,7 +763,7 @@ export default function AdminDashboard() {
         const { error } = await supabase.from('penalties').delete().eq('id', id);
         if (error) return showToast('error', 'Failed', 'Failed to delete penalty');
         showToast('success', 'Deleted', 'Penalty removed');
-        logActivity('penalty', `Deleted penalty for ${target?.student_name || 'unknown student'}`);
+        await logActivity('penalty', `Deleted penalty for ${target?.student_name || 'unknown student'}`);
         await loadPenalties();
         await loadActivity();
     };
@@ -735,7 +777,7 @@ export default function AdminDashboard() {
         const { error } = await supabase.from('students').delete().eq('id', student.id);
         if (error) return showToast('error', 'Failed', 'Failed to delete student');
         showToast('success', 'Deleted', 'Student removed');
-        logActivity('student', `Deleted student ${student.name}`);
+        await logActivity('student', `Deleted student ${student.name}`);
         await loadStudents();
         await loadPenalties();
         await loadActivity();
@@ -746,38 +788,64 @@ export default function AdminDashboard() {
         if (!window.confirm(`Delete ${selectedPenalties.length} selected penalties?`)) return;
         await supabase.from('penalties').delete().in('id', selectedPenalties);
         showToast('success', 'Bulk delete', `${selectedPenalties.length} penalties removed`);
-        logActivity('penalty', `Bulk deleted ${selectedPenalties.length} penalties`);
+        await logActivity('penalty', `Bulk deleted ${selectedPenalties.length} penalties`);
         setSelectedPenalties([]);
         await loadPenalties();
         await loadActivity();
     };
 
     const handleApproveAppeal = async (id) => {
-        if (!window.confirm('Approve this appeal?')) return;
-        const { error } = await supabase.from('appeals')
-            .update({ status: 'Approved', reviewed_at: new Date().toISOString() })
-            .eq('id', id);
-        if (error) return showToast('error', 'Failed', error.message);
-        showToast('success', 'Approved', 'Appeal approved');
-        logActivity('appeal', `Approved appeal #${id}`);
-        await loadAppeals();
-        await loadActivity();
+        setConfirmDialog({
+            title: 'Approve this appeal?',
+            message: 'The appeal will be marked as approved.',
+            tone: 'success',
+            confirmLabel: 'Approve Appeal',
+            onConfirm: async () => {
+                const { error } = await supabase.from('appeals')
+                    .update({ status: 'Approved', reviewed_at: new Date().toISOString() })
+                    .eq('id', id);
+                if (error) return showToast('error', 'Failed', error.message);
+                showToast('success', 'Approved', 'Appeal approved');
+                await logActivity('appeal', `Approved appeal #${id}`);
+                await loadAppeals();
+                await loadActivity();
+            },
+        });
     };
 
     const handleRejectAppeal = async (id) => {
-        if (!window.confirm('Reject this appeal?')) return;
-        const { error } = await supabase.from('appeals')
-            .update({ status: 'Rejected', reviewed_at: new Date().toISOString() })
-            .eq('id', id);
-        if (error) return showToast('error', 'Failed', error.message);
-        showToast('success', 'Rejected', 'Appeal rejected');
-        logActivity('appeal', `Rejected appeal #${id}`);
-        await loadAppeals();
-        await loadActivity();
+        setConfirmDialog({
+            title: 'Reject this appeal?',
+            message: 'The appeal will be marked as rejected.',
+            tone: 'danger',
+            confirmLabel: 'Reject Appeal',
+            onConfirm: async () => {
+                const { error } = await supabase.from('appeals')
+                    .update({ status: 'Rejected', reviewed_at: new Date().toISOString() })
+                    .eq('id', id);
+                if (error) return showToast('error', 'Failed', error.message);
+                showToast('success', 'Rejected', 'Appeal rejected');
+                await logActivity('appeal', `Rejected appeal #${id}`);
+                await loadAppeals();
+                await loadActivity();
+            },
+        });
     };
 
-    const handleMarkPenaltyComplete = async (id) => {
-        if (!window.confirm('Mark this penalty as completed?')) return;
+    const confirmAppealAction = async () => {
+        const action = confirmDialog?.onConfirm;
+        setConfirmDialog(null);
+        if (action) await action();
+    };
+
+    const handleMarkPenaltyComplete = (id) => {
+        setCompletePenaltyId(id);
+    };
+
+    const confirmMarkPenaltyComplete = async () => {
+        const id = completePenaltyId;
+        setCompletePenaltyId(null);
+        if (!id) return;
         const nowIso = new Date().toISOString();
         const { error } = await supabase.from('penalties').update({
             status: 'Completed',
@@ -786,7 +854,7 @@ export default function AdminDashboard() {
         }).eq('id', id);
         if (error) return showToast('error', 'Failed', error.message);
         showToast('success', 'Completed', 'Penalty marked complete');
-        logActivity('penalty', `Marked penalty #${id} as complete`);
+        await logActivity('penalty', `Marked penalty #${id} as complete`);
         await loadPenalties();
         await loadActivity();
     };
@@ -863,7 +931,7 @@ export default function AdminDashboard() {
             if (error) return showToast('error', 'Import failed', error.message);
 
             showToast('success', 'Import complete', `${records.length} students imported`);
-            logActivity('student', `Imported ${records.length} students from CSV`);
+            await logActivity('student', `Imported ${records.length} students from CSV`);
             setShowImportCSV(false);
             setImportFile(null);
             await loadStudents();
@@ -886,7 +954,7 @@ export default function AdminDashboard() {
         const { error } = await supabase.from('notifications').insert([payload]);
         if (error) return showToast('error', 'Failed', error.message);
         showToast('success', 'Notification sent', quickNote.targetStudent ? 'Sent to selected student' : 'Broadcast sent');
-        logActivity('system', `Sent notification: ${quickNote.title}`);
+        await logActivity('system', `Sent notification: ${quickNote.title}`);
         setShowQuickNote(false);
         setQuickNote({ title: '', message: '', targetStudent: '', type: 'info' });
         await loadNotifications();
@@ -3142,32 +3210,39 @@ export default function AdminDashboard() {
                 </div>
             </Modal>
 
-            {/* ============ TOAST ============ */}
-            {toast && (
-                <div className="fixed bottom-6 right-6 z-[40000]" style={{ animation: 'slideInRight 0.3s ease-out' }}>
-                    <div className={`flex items-start gap-3 p-4 rounded-xl shadow-2xl border min-w-[280px] max-w-md ${toast.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/60 border-emerald-200 dark:border-emerald-800' :
-                        toast.type === 'error' ? 'bg-red-50 dark:bg-red-900/60 border-red-200 dark:border-red-800' :
-                            toast.type === 'warning' ? 'bg-amber-50 dark:bg-amber-900/60 border-amber-200 dark:border-amber-800' :
-                                'bg-blue-50 dark:bg-blue-900/60 border-blue-200 dark:border-blue-800'}`}>
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${toast.type === 'success' ? 'bg-emerald-500 text-white' :
-                            toast.type === 'error' ? 'bg-red-500 text-white' :
-                                toast.type === 'warning' ? 'bg-amber-500 text-white' :
-                                    'bg-blue-500 text-white'}`}>
-                            {toast.type === 'success' ? I.check : toast.type === 'error' ? I.close : I.info}
+            {confirmDialog && (
+                <div className="fixed inset-0 z-[50000] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${confirmDialog.tone === 'danger' ? 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-300'}`}>
+                            {confirmDialog.tone === 'danger' ? I.close : I.check}
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{toast.title}</p>
-                            {toast.message && <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">{toast.message}</p>}
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{confirmDialog.title}</h3>
+                        <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{confirmDialog.message}</p>
+                        <div className="flex justify-end gap-2 mt-6">
+                            <button onClick={() => setConfirmDialog(null)} className={btnSecondary}>Cancel</button>
+                            <button onClick={confirmAppealAction} className={confirmDialog.tone === 'danger' ? btnDanger : 'px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition'}>{confirmDialog.confirmLabel}</button>
                         </div>
-                        <button
-                            onClick={closeToast}
-                            className="p-1 rounded-lg text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700 transition flex-shrink-0"
-                        >
-                            {I.close}
-                        </button>
                     </div>
                 </div>
             )}
+
+            {completePenaltyId && (
+                <div className="fixed inset-0 z-[50000] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
+                        <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center mb-4">
+                            {I.check}
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Mark penalty complete?</h3>
+                        <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">This will mark the selected penalty as completed.</p>
+                        <div className="flex justify-end gap-2 mt-6">
+                            <button onClick={() => setCompletePenaltyId(null)} className={btnSecondary}>Cancel</button>
+                            <button onClick={confirmMarkPenaltyComplete} className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition">Mark Complete</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {toast && <Toast message={toast.message} type={toast.type} title={toast.title} onClose={closeToast} duration={4000} />}
         </div>
     );
 }

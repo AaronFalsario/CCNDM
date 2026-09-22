@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { hashPassword, verifyPassword, isBcryptHash } from '../../lib/password';
 
@@ -65,12 +65,10 @@ export default function StudentLogin() {
     const [signupPassword, setSignupPassword] = useState('');
     const [signupConfirm, setSignupConfirm] = useState('');
 
-    /* ── DARK MODE FIX ──
-       Force this page to always render in light mode,
-       regardless of what the dashboard left on <html>/<body>. */
+    /* DARK MODE FIX */
     useEffect(() => {
-        document.documentElement.classList.remove('dark-mode');
-        document.body.classList.remove('dark-mode');
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
     }, []);
 
     useEffect(() => {
@@ -297,7 +295,7 @@ export default function StudentLogin() {
                                         </fieldset>
                                     </div>
 
-                                    <div className="relative mb-5">
+                                    <div className="relative mb-3">
                                         <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
                                             <legend className="text-[11px] text-slate-500 px-1 font-semibold">Password <span className="text-red-500">*</span></legend>
                                             <div className="flex items-center">
@@ -310,10 +308,18 @@ export default function StudentLogin() {
                                         </fieldset>
                                     </div>
 
-                                    <label className="flex items-center gap-2 text-[13px] text-slate-500 cursor-pointer mb-7">
-                                        <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="w-4 h-4 accent-blue-600" />
-                                        Remember Me
-                                    </label>
+                                    <div className="flex items-center justify-between mb-7">
+                                        <label className="flex items-center gap-2 text-[13px] text-slate-500 cursor-pointer">
+                                            <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                                            Remember Me
+                                        </label>
+                                        <Link
+                                            to="/student/ForgotPassword"
+                                            className="text-[13px] text-blue-600 font-semibold hover:underline"
+                                        >
+                                            Forgot Password?
+                                        </Link>
+                                    </div>
 
                                     <button type="submit" disabled={loading} className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed text-white text-[15px] font-bold rounded-xl mb-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
                                         {loading ? 'Logging in...' : 'Login'}
