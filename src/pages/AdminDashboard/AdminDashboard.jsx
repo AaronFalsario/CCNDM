@@ -50,6 +50,8 @@ const I = {
     archive: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8" /><rect x="1" y="3" width="22" height="5" /><line x1="10" y1="12" x2="14" y2="12" /></svg>,
     messageCircle: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>,
     activity: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>,
+    megaphone: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-5v12L3 14v-3z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></svg>,
+    tag: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>,
 };
 
 //HELPERS
@@ -228,13 +230,33 @@ const badgeCls = (cls) => ({
     inactive: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
 }[cls] || 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300');
 
-//SHARED MODAL SHELL
+//SHARED MODAL SHELL — background fully locked while open
 function Modal({ open, onClose, title, icon, children, footer, maxWidth = 'max-w-lg' }) {
+    useEffect(() => {
+        if (!open) return;
+        const prevOverflow = document.body.style.overflow;
+        const prevPointer = document.body.style.pointerEvents;
+        document.body.style.overflow = 'hidden';
+        document.body.style.pointerEvents = 'none';
+        return () => {
+            document.body.style.overflow = prevOverflow;
+            document.body.style.pointerEvents = prevPointer;
+        };
+    }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+        const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [open, onClose]);
+
     if (!open) return null;
+
     return (
         <div
-            className="fixed inset-0 z-[30000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={(e) => e.target === e.currentTarget && onClose()}
+            className="fixed inset-0 z-[30000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 select-none"
+            style={{ pointerEvents: 'auto' }}
         >
             <div className={`bg-white dark:bg-slate-800 rounded-2xl w-full ${maxWidth} max-h-[90vh] flex flex-col shadow-2xl overflow-hidden`}>
                 <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
@@ -242,10 +264,7 @@ function Modal({ open, onClose, title, icon, children, footer, maxWidth = 'max-w
                         {icon && <span className="text-slate-700 dark:text-slate-200">{icon}</span>}
                         <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">{title}</h3>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
-                    >
+                    <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         {I.close}
                     </button>
                 </div>
@@ -264,12 +283,23 @@ function Modal({ open, onClose, title, icon, children, footer, maxWidth = 'max-w
 export default function AdminDashboard() {
     const { user: admin, setUser: setAdmin, logout } = useAuth('admin');
 
-    const [currentTab, setCurrentTab] = useState('dashboard');
+    //PERSIST CURRENT TAB ACROSS REFRESHES
+    const [currentTab, setCurrentTab] = useState(() => {
+        return sessionStorage.getItem('admin_current_tab') || 'dashboard';
+    });
+
+    useEffect(() => {
+        sessionStorage.setItem('admin_current_tab', currentTab);
+    }, [currentTab]);
+
     const [students, setStudents] = useState([]);
     const [penalties, setPenalties] = useState([]);
     const [appeals, setAppeals] = useState([]);
     const [notifications, setNotifications] = useState([]);
     const [activityLog, setActivityLog] = useState([]);
+    const [sessions, setSessions] = useState([]);
+    const [announcements, setAnnouncements] = useState([]);
+    const [violationCatalog, setViolationCatalog] = useState([]);
     const [darkMode, setDarkMode] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
@@ -288,6 +318,9 @@ export default function AdminDashboard() {
     const [appealSearch, setAppealSearch] = useState('');
     const [appealStatusFilter, setAppealStatusFilter] = useState('');
     const [activityFilter, setActivityFilter] = useState('all');
+    const [sessionSearch, setSessionSearch] = useState('');
+    const [sessionStatusFilter, setSessionStatusFilter] = useState('');
+    const [announcementSearch, setAnnouncementSearch] = useState('');
 
     //SELECTION (bulk actions)
     const [selectedPenalties, setSelectedPenalties] = useState([]);
@@ -307,10 +340,16 @@ export default function AdminDashboard() {
     const [showChangePassword, setShowChangePassword] = useState(false);
     const [showImportCSV, setShowImportCSV] = useState(false);
     const [showQuickNote, setShowQuickNote] = useState(false);
+    const [showSessionModal, setShowSessionModal] = useState(false);
+    const [showViolationModal, setShowViolationModal] = useState(false);
+    const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
 
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [selectedPenalty, setSelectedPenalty] = useState(null);
     const [selectedAppeal, setSelectedAppeal] = useState(null);
+    const [selectedSession, setSelectedSession] = useState(null);
+    const [selectedViolation, setSelectedViolation] = useState(null);
+    const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
 
     //FORMS
     const [penaltyForm, setPenaltyForm] = useState({
@@ -318,12 +357,53 @@ export default function AdminDashboard() {
         serviceType: 'Community Service', deadline: '', status: 'Pending', studentId: ''
     });
     const [studentForm, setStudentForm] = useState({
-        name: '', studentId: '', email: '', course: 'BSIT', year: '1st', status: 'Good'
+        name: '', studentId: '', email: '', course: 'BSN', year: '1st', status: 'Good'
     });
     const [adminForm, setAdminForm] = useState({ name: '', email: '' });
     const [pwForm, setPwForm] = useState({ current: '', newPw: '', confirm: '' });
     const [importFile, setImportFile] = useState(null);
     const [quickNote, setQuickNote] = useState({ title: '', message: '', targetStudent: '', type: 'info' });
+
+    // New: Session form
+    const [sessionForm, setSessionForm] = useState({
+        student_id: '', title: '', scheduled_date: '', start_time: '',
+        end_time: '', hours: 2, venue: '', status: 'scheduled', notes: '',
+    });
+
+    // New: Violation type form
+    const [violationForm, setViolationForm] = useState({
+        name: '', category: 'Academic', defaultLevel: '1st Offense',
+        defaultHours: 0, description: '', active: true,
+    });
+
+    // New: Announcement form
+    const [announcementForm, setAnnouncementForm] = useState({
+        title: '', message: '', type: 'info', target: '', priority: 'normal',
+    });
+
+    // New: Settings
+    const [settings, setSettings] = useState(() => {
+        try {
+            const raw = localStorage.getItem('ccndm_settings');
+            return raw ? JSON.parse(raw) : {
+                department: 'Nursing Department',
+                program: 'BSN',
+                semesterStart: '',
+                semesterEnd: '',
+                achievementResetMonths: 4,
+                autoArchiveMonths: 12,
+            };
+        } catch {
+            return {
+                department: 'Nursing Department',
+                program: 'BSN',
+                semesterStart: '',
+                semesterEnd: '',
+                achievementResetMonths: 4,
+                autoArchiveMonths: 12,
+            };
+        }
+    });
 
     const [toast, setToast] = useState(null);
     const toastTimeoutRef = useRef(null);
@@ -394,13 +474,76 @@ export default function AdminDashboard() {
         }
         setActivityLog(data || []);
     }, []);
+    const loadSessions = useCallback(async () => {
+        const { data, error } = await supabase
+            .from('service_sessions')
+            .select('*')
+            .order('scheduled_date', { ascending: false });
+        if (error) {
+            console.error('[loadSessions]', error);
+            setSessions([]);
+            return;
+        }
+        setSessions(data || []);
+    }, []);
+    const loadAnnouncements = useCallback(async () => {
+        // Announcements = notifications with type in a specific set, or all broadcast notifications
+        const { data, error } = await supabase
+            .from('notifications')
+            .select('*')
+            .is('student_id', null)
+            .order('created_at', { ascending: false })
+            .limit(50);
+        if (error) {
+            console.error('[loadAnnouncements]', error);
+            setAnnouncements([]);
+            return;
+        }
+        setAnnouncements(data || []);
+    }, []);
+    const loadViolationCatalog = useCallback(async () => {
+        // Try a dedicated table; if it doesn't exist, fall back to deriving from penalties
+        const { data, error } = await supabase
+            .from('violation_types')
+            .select('*')
+            .order('name', { ascending: true });
+        if (error) {
+            // Fallback: derive from penalties with default hours
+            const seen = new Map();
+            penalties.forEach(p => {
+                const name = p.violation_type || p.violation;
+                if (!name) return;
+                if (!seen.has(name)) {
+                    seen.set(name, {
+                        id: `derived-${name}`,
+                        name,
+                        category: p.category || 'Other',
+                        defaultLevel: p.offense_level || '1st Offense',
+                        defaultHours: p.hours || 0,
+                        description: '',
+                        active: true,
+                    });
+                }
+            });
+            setViolationCatalog([...seen.values()]);
+            return;
+        }
+        setViolationCatalog(data || []);
+    }, [penalties]);
 
     useEffect(() => {
         if (!admin) return;
         setLoading(true);
-        Promise.all([loadStudents(), loadPenalties(), loadAppeals(), loadNotifications(), loadActivity()])
-            .finally(() => setLoading(false));
-    }, [admin, loadStudents, loadPenalties, loadAppeals, loadNotifications, loadActivity]);
+        Promise.all([
+            loadStudents(), loadPenalties(), loadAppeals(), loadNotifications(),
+            loadActivity(), loadSessions(), loadAnnouncements(),
+        ]).finally(() => setLoading(false));
+    }, [admin, loadStudents, loadPenalties, loadAppeals, loadNotifications, loadActivity, loadSessions, loadAnnouncements]);
+
+    // Reload violation catalog when penalties change (for derived fallback)
+    useEffect(() => {
+        if (penalties.length > 0) loadViolationCatalog();
+    }, [penalties, loadViolationCatalog]);
 
     //LIVE COUNTDOWN
     useEffect(() => {
@@ -415,9 +558,10 @@ export default function AdminDashboard() {
             loadAppeals();
             loadNotifications();
             loadActivity();
+            loadSessions();
         }, 60000);
         return () => clearInterval(id);
-    }, [loadPenalties, loadAppeals, loadNotifications, loadActivity]);
+    }, [loadPenalties, loadAppeals, loadNotifications, loadActivity, loadSessions]);
 
     useEffect(() => {
         const channel = supabase
@@ -446,7 +590,6 @@ export default function AdminDashboard() {
         const totalHours = penalties.reduce((sum, p) => sum + (p.hours || 0), 0);
         const completedHours = penalties.filter(p => p.status === 'Completed' || p.status === 'Resolved').reduce((sum, p) => sum + (p.hours || 0), 0);
 
-        // Weekly trend - last 7 days
         const last7 = Array.from({ length: 7 }).map((_, i) => {
             const d = new Date();
             d.setDate(d.getDate() - (6 - i));
@@ -461,14 +604,12 @@ export default function AdminDashboard() {
             };
         });
 
-        // Category distribution
         const categories = ['Academic', 'Behavior', 'Attendance', 'Uniform', 'Other'];
         const categoryDist = categories.map(c => ({
             name: c,
             count: penalties.filter(p => (p.category || 'Other') === c).length,
         }));
 
-        // Offense distribution
         const offenseDist = ['1st Offense', '2nd Offense', '3rd Offense'].map(o => ({
             name: o,
             count: penalties.filter(p => p.offense_level === o).length,
@@ -494,6 +635,72 @@ export default function AdminDashboard() {
             categoryDist,
             offenseDist,
         };
+    }, [students, penalties, appeals]);
+
+    //ANALYTICS specific
+    const analytics = useMemo(() => {
+        const months = Array.from({ length: 6 }).map((_, i) => {
+            const d = new Date();
+            d.setMonth(d.getMonth() - (5 - i));
+            d.setDate(1);
+            d.setHours(0, 0, 0, 0);
+            const monthEnd = new Date(d);
+            monthEnd.setMonth(monthEnd.getMonth() + 1);
+            return {
+                label: d.toLocaleString('en-US', { month: 'short' }),
+                count: penalties.filter(p => {
+                    const pd = parseDbDate(p.created_at);
+                    return pd && pd >= d && pd < monthEnd;
+                }).length,
+                resolved: penalties.filter(p => {
+                    const pd = parseDbDate(p.created_at);
+                    return pd && pd >= d && pd < monthEnd && (p.status === 'Completed' || p.status === 'Resolved');
+                }).length,
+            };
+        });
+        const maxMonth = Math.max(...months.map(m => m.count), 1);
+
+        const resolvedWithTimes = penalties.filter(p =>
+            (p.status === 'Completed' || p.status === 'Resolved') && p.created_at && p.completed_at
+        );
+        const avgResolutionDays = resolvedWithTimes.length === 0 ? 0 : Math.round(
+            resolvedWithTimes.reduce((sum, p) => {
+                const start = parseDbDate(p.created_at);
+                const end = parseDbDate(p.completed_at);
+                return sum + (end - start) / (1000 * 60 * 60 * 24);
+            }, 0) / resolvedWithTimes.length
+        );
+
+        const violationCounts = {};
+        penalties.forEach(p => {
+            const v = p.violation_type || p.violation || 'Unknown';
+            violationCounts[v] = (violationCounts[v] || 0) + 1;
+        });
+        const topViolations = Object.entries(violationCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 6);
+        const maxViolationCount = Math.max(...topViolations.map(v => v[1]), 1);
+
+        const yearLevels = ['1st', '2nd', '3rd', '4th'];
+        const byYearLevel = yearLevels.map(y => {
+            const group = students.filter(s => {
+                const yl = String(s.year_level || '').trim();
+                return yl === y || yl.startsWith(y);
+            });
+            const studentIds = new Set(group.map(s => String(s.student_id_number || s.student_id || s.id)));
+            const yearPenalties = penalties.filter(p => studentIds.has(String(p.student_id)));
+            const resolved = yearPenalties.filter(p => p.status === 'Completed' || p.status === 'Resolved').length;
+            return {
+                year: y,
+                students: group.length,
+                cases: yearPenalties.length,
+                resolutionRate: yearPenalties.length > 0 ? Math.round((resolved / yearPenalties.length) * 100) : 0,
+            };
+        });
+
+        const appealRate = penalties.length > 0 ? Math.round((appeals.length / penalties.length) * 100) : 0;
+
+        return { months, maxMonth, avgResolutionDays, topViolations, maxViolationCount, byYearLevel, appealRate, resolvedCount: resolvedWithTimes.length };
     }, [students, penalties, appeals]);
 
     const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -559,6 +766,29 @@ export default function AdminDashboard() {
         return activityLog.filter(a => (a.type || '').toLowerCase() === activityFilter);
     }, [activityLog, activityFilter]);
 
+    const filteredSessions = useMemo(() => {
+        let f = sessions;
+        if (sessionSearch) {
+            const s = sessionSearch.toLowerCase();
+            f = f.filter(x =>
+                (x.student_name || '').toLowerCase().includes(s) ||
+                (x.title || '').toLowerCase().includes(s) ||
+                (x.venue || '').toLowerCase().includes(s)
+            );
+        }
+        if (sessionStatusFilter) f = f.filter(x => (x.status || '').toLowerCase() === sessionStatusFilter.toLowerCase());
+        return f;
+    }, [sessions, sessionSearch, sessionStatusFilter]);
+
+    const filteredAnnouncements = useMemo(() => {
+        let f = announcements;
+        if (announcementSearch) {
+            const s = announcementSearch.toLowerCase();
+            f = f.filter(a => (a.title || '').toLowerCase().includes(s) || (a.message || '').toLowerCase().includes(s));
+        }
+        return f;
+    }, [announcements, announcementSearch]);
+
     //ACTIVITY LOGGER
     const logActivity = useCallback(async (type, description, targetId = null) => {
         const { data, error } = await supabase.from('activity_log').insert([{
@@ -571,11 +801,10 @@ export default function AdminDashboard() {
         }]).select().single();
         if (error) {
             console.error('[logActivity]', error);
-            showToast('error', 'Activity log failed', error.message);
             return null;
         }
         return data;
-    }, [admin, showToast]);
+    }, [admin]);
 
     //HANDLERS
     const handleAddPenalty = async () => {
@@ -633,7 +862,6 @@ export default function AdminDashboard() {
             created_at: nowIso,
         }]);
         if (notificationError) {
-            console.error('[handleAddPenalty] notification error:', notificationError);
             showToast('warning', 'Penalty added', 'The violation was saved, but its notification could not be sent');
         } else {
             showToast('success', 'Penalty added', `Recorded for ${selectedStudent.name}`);
@@ -901,7 +1129,7 @@ export default function AdminDashboard() {
                 records.push({
                     name, student_id_number: sid,
                     email: emailIdx !== -1 ? cols[emailIdx] || '' : '',
-                    course: courseIdx !== -1 ? cols[courseIdx] || 'BSIT' : 'BSIT',
+                    course: courseIdx !== -1 ? cols[courseIdx] || 'BSN' : 'BSN',
                     year_level: yearIdx !== -1 ? cols[yearIdx] || '1st' : '1st',
                     status: 'Good', violation_count: 0,
                     created_at: new Date().toISOString(),
@@ -945,12 +1173,216 @@ export default function AdminDashboard() {
         await loadActivity();
     };
 
+    // ==== SESSION HANDLERS ====
+    const resetSessionForm = () => setSessionForm({
+        student_id: '', title: '', scheduled_date: '', start_time: '',
+        end_time: '', hours: 2, venue: '', status: 'scheduled', notes: '',
+    });
+
+    const handleSaveSession = async () => {
+        if (!sessionForm.student_id) return showToast('error', 'Missing', 'Select a student');
+        if (!sessionForm.title.trim()) return showToast('error', 'Missing', 'Session title is required');
+        if (!sessionForm.scheduled_date) return showToast('error', 'Missing', 'Pick a date');
+        if (!sessionForm.hours || sessionForm.hours <= 0) return showToast('error', 'Invalid', 'Hours must be > 0');
+
+        const student = students.find(s => String(s.student_id_number || s.student_id || s.id) === String(sessionForm.student_id));
+        const payload = {
+            student_id: sessionForm.student_id,
+            student_name: student?.name || '',
+            title: sessionForm.title.trim(),
+            scheduled_date: sessionForm.scheduled_date,
+            start_time: sessionForm.start_time || null,
+            end_time: sessionForm.end_time || null,
+            hours: Number(sessionForm.hours),
+            venue: sessionForm.venue.trim() || null,
+            status: sessionForm.status,
+            notes: sessionForm.notes.trim() || null,
+            updated_at: new Date().toISOString(),
+        };
+        if (sessionForm.status === 'completed') payload.completed_at = new Date().toISOString();
+
+        if (selectedSession) {
+            const { error } = await supabase.from('service_sessions').update(payload).eq('id', selectedSession.id);
+            if (error) return showToast('error', 'Failed', error.message);
+            showToast('success', 'Updated', 'Session updated');
+        } else {
+            payload.created_at = new Date().toISOString();
+            const { error } = await supabase.from('service_sessions').insert([payload]);
+            if (error) return showToast('error', 'Failed', error.message);
+            showToast('success', 'Session scheduled', `${sessionForm.title} — ${student?.name || ''}`);
+        }
+        await logActivity('system', `${selectedSession ? 'Updated' : 'Created'} session: ${sessionForm.title}`);
+        setShowSessionModal(false);
+        setSelectedSession(null);
+        resetSessionForm();
+        await loadSessions();
+        await loadActivity();
+    };
+
+    const handleDeleteSession = async (id) => {
+        if (!window.confirm('Delete this session?')) return;
+        const { error } = await supabase.from('service_sessions').delete().eq('id', id);
+        if (error) return showToast('error', 'Failed', error.message);
+        showToast('success', 'Deleted', 'Session removed');
+        await logActivity('system', `Deleted session #${id}`);
+        await loadSessions();
+        await loadActivity();
+    };
+
+    const openEditSession = (s) => {
+        setSelectedSession(s);
+        setSessionForm({
+            student_id: s.student_id || '',
+            title: s.title || '',
+            scheduled_date: s.scheduled_date || '',
+            start_time: s.start_time || '',
+            end_time: s.end_time || '',
+            hours: s.hours || 2,
+            venue: s.venue || '',
+            status: s.status || 'scheduled',
+            notes: s.notes || '',
+        });
+        setShowSessionModal(true);
+    };
+
+    // ==== VIOLATION TYPE HANDLERS ====
+    const resetViolationForm = () => setViolationForm({
+        name: '', category: 'Academic', defaultLevel: '1st Offense',
+        defaultHours: 0, description: '', active: true,
+    });
+
+    const handleSaveViolation = async () => {
+        if (!violationForm.name.trim()) return showToast('error', 'Missing', 'Violation name is required');
+        const payload = {
+            name: violationForm.name.trim(),
+            category: violationForm.category,
+            default_level: violationForm.defaultLevel,
+            default_hours: Number(violationForm.defaultHours) || 0,
+            description: violationForm.description.trim() || null,
+            active: violationForm.active,
+            updated_at: new Date().toISOString(),
+        };
+
+        if (selectedViolation && !String(selectedViolation.id).startsWith('derived-')) {
+            const { error } = await supabase.from('violation_types').update(payload).eq('id', selectedViolation.id);
+            if (error) return showToast('error', 'Failed', error.message);
+            showToast('success', 'Updated', 'Violation type saved');
+        } else if (selectedViolation && String(selectedViolation.id).startsWith('derived-')) {
+            // Insert into violation_types table since it's currently derived
+            payload.created_at = new Date().toISOString();
+            const { error } = await supabase.from('violation_types').insert([payload]);
+            if (error) return showToast('error', 'Failed', error.message);
+            showToast('success', 'Saved', 'Violation type saved (table created)');
+        } else {
+            payload.created_at = new Date().toISOString();
+            const { error } = await supabase.from('violation_types').insert([payload]);
+            if (error) return showToast('error', 'Failed', error.message);
+            showToast('success', 'Added', 'Violation type added');
+        }
+        await logActivity('system', `Saved violation type: ${violationForm.name}`);
+        setShowViolationModal(false);
+        setSelectedViolation(null);
+        resetViolationForm();
+        await loadViolationCatalog();
+        await loadActivity();
+    };
+
+    const handleDeleteViolation = async (v) => {
+        if (!window.confirm(`Delete violation type "${v.name}"?`)) return;
+        if (String(v.id).startsWith('derived-')) {
+            return showToast('warning', 'Cannot delete', 'This is a derived type from existing penalties');
+        }
+        const { error } = await supabase.from('violation_types').delete().eq('id', v.id);
+        if (error) return showToast('error', 'Failed', error.message);
+        showToast('success', 'Deleted', 'Violation type removed');
+        await logActivity('system', `Deleted violation type: ${v.name}`);
+        await loadViolationCatalog();
+        await loadActivity();
+    };
+
+    const openEditViolation = (v) => {
+        setSelectedViolation(v);
+        setViolationForm({
+            name: v.name || '',
+            category: v.category || 'Academic',
+            defaultLevel: v.defaultLevel || v.default_level || '1st Offense',
+            defaultHours: v.defaultHours || v.default_hours || 0,
+            description: v.description || '',
+            active: v.active !== false,
+        });
+        setShowViolationModal(true);
+    };
+
+    // ==== ANNOUNCEMENT HANDLERS ====
+    const resetAnnouncementForm = () => setAnnouncementForm({ title: '', message: '', type: 'info', target: '', priority: 'normal' });
+
+    const handleSaveAnnouncement = async () => {
+        if (!announcementForm.title.trim() || !announcementForm.message.trim()) {
+            return showToast('error', 'Missing', 'Title and message are required');
+        }
+        const payload = {
+            title: announcementForm.title.trim(),
+            message: announcementForm.message.trim(),
+            type: announcementForm.type,
+            priority: announcementForm.priority,
+            is_read: false,
+            updated_at: new Date().toISOString(),
+        };
+        if (announcementForm.target) payload.student_id = announcementForm.target;
+
+        if (selectedAnnouncement) {
+            const { error } = await supabase.from('notifications').update(payload).eq('id', selectedAnnouncement.id);
+            if (error) return showToast('error', 'Failed', error.message);
+            showToast('success', 'Updated', 'Announcement saved');
+        } else {
+            payload.created_at = new Date().toISOString();
+            const { error } = await supabase.from('notifications').insert([payload]);
+            if (error) return showToast('error', 'Failed', error.message);
+            showToast('success', 'Posted', announcementForm.target ? 'Sent to selected student' : 'Broadcast to all students');
+        }
+        await logActivity('system', `Announcement: ${announcementForm.title}`);
+        setShowAnnouncementModal(false);
+        setSelectedAnnouncement(null);
+        resetAnnouncementForm();
+        await loadAnnouncements();
+        await loadNotifications();
+        await loadActivity();
+    };
+
+    const handleDeleteAnnouncement = async (id) => {
+        if (!window.confirm('Delete this announcement?')) return;
+        const { error } = await supabase.from('notifications').delete().eq('id', id);
+        if (error) return showToast('error', 'Failed', error.message);
+        showToast('success', 'Deleted', 'Announcement removed');
+        await loadAnnouncements();
+        await loadNotifications();
+    };
+
+    const openEditAnnouncement = (a) => {
+        setSelectedAnnouncement(a);
+        setAnnouncementForm({
+            title: a.title || '',
+            message: a.message || '',
+            type: a.type || 'info',
+            target: a.student_id || '',
+            priority: a.priority || 'normal',
+        });
+        setShowAnnouncementModal(true);
+    };
+
+    // ==== SETTINGS HANDLER ====
+    const handleSaveSettings = () => {
+        localStorage.setItem('ccndm_settings', JSON.stringify(settings));
+        showToast('success', 'Settings saved', 'Preferences updated');
+        logActivity('system', 'Updated system settings');
+    };
+
     const resetPenaltyForm = () => setPenaltyForm({
         violation: '', description: '', offenseLevel: '1st Offense',
         serviceType: 'Community Service', deadline: '', status: 'Pending', studentId: ''
     });
     const resetStudentForm = () => setStudentForm({
-        name: '', studentId: generateStudentId(students), email: '', course: 'BSIT', year: '1st', status: 'Good'
+        name: '', studentId: generateStudentId(students), email: '', course: 'BSN', year: '1st', status: 'Good'
     });
 
     const openEditPenalty = (p) => {
@@ -973,7 +1405,7 @@ export default function AdminDashboard() {
             name: s.name || '',
             studentId: s.student_id_number || '',
             email: s.email || '',
-            course: s.course || 'BSIT',
+            course: s.course || 'BSN',
             year: s.year_level || '1st',
             status: s.status || 'Good',
         });
@@ -998,6 +1430,32 @@ export default function AdminDashboard() {
         logout();
     };
 
+    // Lock body when notifications modal is open
+    useEffect(() => {
+        if (!showNotifications) return;
+        const prevOverflow = document.body.style.overflow;
+        const prevPointer = document.body.style.pointerEvents;
+        document.body.style.overflow = 'hidden';
+        document.body.style.pointerEvents = 'none';
+        return () => {
+            document.body.style.overflow = prevOverflow;
+            document.body.style.pointerEvents = prevPointer;
+        };
+    }, [showNotifications]);
+
+    // Lock body when confirmDialog / completePenaltyId popups are open
+    useEffect(() => {
+        if (!confirmDialog && !completePenaltyId) return;
+        const prevOverflow = document.body.style.overflow;
+        const prevPointer = document.body.style.pointerEvents;
+        document.body.style.overflow = 'hidden';
+        document.body.style.pointerEvents = 'none';
+        return () => {
+            document.body.style.overflow = prevOverflow;
+            document.body.style.pointerEvents = prevPointer;
+        };
+    }, [confirmDialog, completePenaltyId]);
+
     if (!admin) return null;
     const adminName = admin.full_name || admin.name || 'Admin';
     const adminRole = admin.role || 'Discipline Officer';
@@ -1013,16 +1471,33 @@ export default function AdminDashboard() {
     const tabLabel = currentTab === 'dashboard' ? 'Dashboard'
         : currentTab === 'penalties' ? 'Penalties Management'
             : currentTab === 'students' ? 'Student Management'
-                : currentTab === 'appeals' ? 'Appeals Management'
-                    : currentTab === 'activity' ? 'Activity Log'
-                        : currentTab === 'reports' ? 'Reports & Analytics' : '';
+                : currentTab === 'sessions' ? 'Service Sessions'
+                    : currentTab === 'appeals' ? 'Appeals Management'
+                        : currentTab === 'announcements' ? 'Announcements'
+                            : currentTab === 'violationTypes' ? 'Violation Types'
+                                : currentTab === 'analytics' ? 'Analytics'
+                                    : currentTab === 'activity' ? 'Activity Log'
+                                        : currentTab === 'reports' ? 'Reports & Analytics'
+                                            : currentTab === 'dataExport' ? 'Data Export'
+                                                : currentTab === 'settings' ? 'System Settings' : '';
 
     const violationOptions = [
         'Academic Dishonesty', 'Cheating', 'Plagiarism',
         'Class Disruption', 'Insubordination', 'Bullying', 'Fighting',
         'Tardiness', 'Absenteeism', 'Uniform Violation',
     ];
-    const courseOptions = ['BSIT', 'BSCS', 'BSBA', 'BSED', 'BSN', 'BSCrim'];
+    const serviceTypeOptions = [
+        'Community Service',
+        'Library Duty',
+        'Clean-Up Drive',
+        'Office Assistance',
+        'Event Support',
+        'Peer Tutoring',
+        'Clinical Area Assistance',
+        'Campus Beautification',
+        'Others',
+    ];
+    const courseOptions = ['BSN'];
     const yearOptions = ['1st', '2nd', '3rd', '4th'];
     const statusOptions = ['Good', 'Probation', 'Warning', 'Suspended'];
 
@@ -1059,9 +1534,15 @@ export default function AdminDashboard() {
                         { tab: 'dashboard', label: 'Dashboard', icon: I.home },
                         { tab: 'penalties', label: 'Penalties', icon: I.rect },
                         { tab: 'students', label: 'Students', icon: I.users },
+                        { tab: 'sessions', label: 'Sessions', icon: I.calendar },
                         { tab: 'appeals', label: 'Appeals', icon: I.doc },
+                        { tab: 'announcements', label: 'Announcements', icon: I.megaphone },
+                        { tab: 'violationTypes', label: 'Violation Types', icon: I.tag },
+                        { tab: 'analytics', label: 'Analytics', icon: I.chart },
                         { tab: 'activity', label: 'Activity Log', icon: I.activity },
-                        { tab: 'reports', label: 'Reports', icon: I.chart },
+                        { tab: 'reports', label: 'Reports', icon: I.trendUp },
+                        { tab: 'dataExport', label: 'Data Export', icon: I.download },
+                        { tab: 'settings', label: 'Settings', icon: I.settings },
                     ].map((item) => (
                         <button
                             key={item.tab}
@@ -1153,7 +1634,7 @@ export default function AdminDashboard() {
 
             {/*NOTIFICATIONS MODAL*/}
             {showNotifications && (
-                <div className="fixed inset-0 z-[20000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && setShowNotifications(false)}>
+                <div className="fixed inset-0 z-[20000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 select-none" style={{ pointerEvents: 'auto' }}>
                     <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
                         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
                             <div className="flex items-center gap-2">
@@ -1255,7 +1736,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {/*Alert banners*/}
                         {stats.pendingAppeals > 0 && (
                             <div className="flex items-center gap-3 p-4 mb-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 border border-amber-200 dark:border-amber-800">
                                 <div className="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center flex-shrink-0">{I.alert}</div>
@@ -1286,7 +1766,6 @@ export default function AdminDashboard() {
                             </div>
                         )}
 
-                        {/*Stats*/}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                             {[
                                 { icon: I.users, value: stats.totalStudents, label: 'Total Students', bg: 'from-blue-500 to-blue-600', trend: '+12%', trendUp: true },
@@ -1315,7 +1794,6 @@ export default function AdminDashboard() {
                             ))}
                         </div>
 
-                        {/*Quick actions*/}
                         <div className={`${cardCls} p-5 mb-6`}>
                             <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
                                 {I.zap} Quick Actions
@@ -1324,10 +1802,10 @@ export default function AdminDashboard() {
                                 {[
                                     { icon: I.plus, label: 'Add Penalty', onClick: () => { resetPenaltyForm(); setShowAddPenalty(true); }, color: 'bg-blue-500' },
                                     { icon: I.plus, label: 'Add Student', onClick: () => { resetStudentForm(); setShowAddStudent(true); }, color: 'bg-emerald-500' },
+                                    { icon: I.calendar, label: 'New Session', onClick: () => { setSelectedSession(null); resetSessionForm(); setShowSessionModal(true); }, color: 'bg-indigo-500' },
+                                    { icon: I.megaphone, label: 'Announcement', onClick: () => { setSelectedAnnouncement(null); resetAnnouncementForm(); setShowAnnouncementModal(true); }, color: 'bg-fuchsia-500' },
                                     { icon: I.doc, label: 'Review Appeals', onClick: () => setCurrentTab('appeals'), color: 'bg-violet-500' },
-                                    { icon: I.messageCircle, label: 'Send Note', onClick: () => setShowQuickNote(true), color: 'bg-amber-500' },
-                                    { icon: I.upload, label: 'Import CSV', onClick: () => { setImportFile(null); setShowImportCSV(true); }, color: 'bg-indigo-500' },
-                                    { icon: I.chart, label: 'View Reports', onClick: () => setCurrentTab('reports'), color: 'bg-rose-500' },
+                                    { icon: I.chart, label: 'View Analytics', onClick: () => setCurrentTab('analytics'), color: 'bg-rose-500' },
                                 ].map((a, i) => (
                                     <button
                                         key={i}
@@ -1343,7 +1821,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {/*Weekly chart + categories*/}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
                             <div className={`${cardCls} p-5 lg:col-span-2`}>
                                 <div className="flex items-center justify-between mb-4">
@@ -1395,7 +1872,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {/*System overview rings*/}
                         <div className={`${cardCls} p-6 mb-6`}>
                             <h3 className="text-sm font-bold mb-5 flex items-center gap-2">{I.chart} System Overview</h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1428,7 +1904,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {/*Recent activity grid*/}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                             <div className={`${cardCls} overflow-hidden`}>
                                 <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
@@ -1490,7 +1965,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {/*Recent appeals*/}
                         <div className={`${cardCls} p-5`}>
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-sm font-semibold flex items-center gap-2">{I.doc} Recent Appeals</h3>
@@ -1866,6 +2340,108 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
+                {/*SESSIONS — NEW*/}
+                {currentTab === 'sessions' && (
+                    <div style={fadeInStyle}>
+                        <div className="bg-gradient-to-br from-indigo-600 to-blue-800 rounded-xl p-6 md:p-7 mb-6 text-white flex items-center justify-between flex-wrap gap-4">
+                            <div>
+                                <h1 className="text-2xl font-bold">Service Sessions</h1>
+                                <p className="text-sm text-blue-100 mt-1">Schedule and track community service sessions</p>
+                            </div>
+                            <button
+                                onClick={() => { setSelectedSession(null); resetSessionForm(); setShowSessionModal(true); }}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-white text-indigo-700 hover:bg-indigo-50 text-sm font-bold rounded-lg transition shadow-lg"
+                            >
+                                {I.plus} New Session
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            {[
+                                { icon: I.calendar, value: sessions.length, label: 'Total Sessions', bg: 'bg-indigo-500' },
+                                { icon: I.clock, value: sessions.filter(s => new Date(s.scheduled_date) >= new Date() && (s.status || '') !== 'completed' && (s.status || '') !== 'cancelled').length, label: 'Upcoming', bg: 'bg-blue-500' },
+                                { icon: I.check, value: sessions.filter(s => (s.status || '') === 'completed').length, label: 'Completed', bg: 'bg-emerald-500' },
+                                { icon: I.trendUp, value: `${sessions.filter(s => (s.status || '') === 'completed').reduce((sum, s) => sum + (parseInt(s.hours) || 0), 0)}h`, label: 'Hours Logged', bg: 'bg-amber-500' },
+                            ].map((s, i) => (
+                                <div key={i} className={`${cardCls} p-5 flex items-center gap-4`}>
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0 ${s.bg}`}>{s.icon}</div>
+                                    <div>
+                                        <div className="text-2xl font-bold leading-tight">{s.value}</div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{s.label}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className={`${cardCls} p-4 mb-6 flex flex-wrap items-center gap-3`}>
+                            <div className="flex-1 min-w-[200px] relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{I.search}</span>
+                                <input type="text" value={sessionSearch} onChange={(e) => setSessionSearch(e.target.value)}
+                                    placeholder="Search student, title, venue..." className={inputCls + ' pl-9'} />
+                            </div>
+                            <select value={sessionStatusFilter} onChange={(e) => setSessionStatusFilter(e.target.value)}
+                                className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs">
+                                <option value="">All Status</option>
+                                <option value="scheduled">Scheduled</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+
+                        <div className={`${cardCls} overflow-hidden`}>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-slate-50 dark:bg-slate-900/40">
+                                        <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                            <th className="px-4 py-3">Date</th>
+                                            <th className="px-4 py-3">Student</th>
+                                            <th className="px-4 py-3">Title</th>
+                                            <th className="px-4 py-3">Time</th>
+                                            <th className="px-4 py-3">Venue</th>
+                                            <th className="px-4 py-3">Hours</th>
+                                            <th className="px-4 py-3">Status</th>
+                                            <th className="px-4 py-3 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredSessions.length === 0 ? (
+                                            <tr><td colSpan="8" className="text-center py-12 text-slate-400 text-sm">No sessions found</td></tr>
+                                        ) : filteredSessions.map(s => {
+                                            const sk = (s.status || 'scheduled').toLowerCase();
+                                            return (
+                                                <tr key={s.id} className="border-t border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                                                    <td className="px-4 py-3 whitespace-nowrap">{formatDate(s.scheduled_date)}</td>
+                                                    <td className="px-4 py-3 font-medium truncate max-w-[140px]">{s.student_name || '—'}</td>
+                                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400 truncate max-w-[160px]">{s.title || '—'}</td>
+                                                    <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
+                                                        {s.start_time ? s.start_time.slice(0, 5) : '—'}
+                                                        {s.end_time ? ` – ${s.end_time.slice(0, 5)}` : ''}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-500 text-xs truncate max-w-[120px]">{s.venue || '—'}</td>
+                                                    <td className="px-4 py-3 font-mono font-semibold text-blue-600">{s.hours || 0}h</td>
+                                                    <td className="px-4 py-3">
+                                                        <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold ${sk === 'completed' ? badgeCls('completed')
+                                                            : sk === 'cancelled' ? badgeCls('rejected')
+                                                                : badgeCls('progress')}`}>
+                                                            {sk.charAt(0).toUpperCase() + sk.slice(1)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex gap-1 justify-end">
+                                                            <button onClick={() => openEditSession(s)} className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition" title="Edit">{I.edit}</button>
+                                                            <button onClick={() => handleDeleteSession(s.id)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition" title="Delete">{I.trash}</button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/*APPEALS*/}
                 {currentTab === 'appeals' && (
                     <div style={fadeInStyle}>
@@ -1972,6 +2548,249 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
+                {/*ANNOUNCEMENTS — NEW*/}
+                {currentTab === 'announcements' && (
+                    <div style={fadeInStyle}>
+                        <div className="bg-gradient-to-br from-fuchsia-600 to-purple-800 rounded-xl p-6 md:p-7 mb-6 text-white flex items-center justify-between flex-wrap gap-4">
+                            <div>
+                                <h1 className="text-2xl font-bold">Announcements</h1>
+                                <p className="text-sm text-fuchsia-100 mt-1">Broadcast messages to all students or target individuals</p>
+                            </div>
+                            <button
+                                onClick={() => { setSelectedAnnouncement(null); resetAnnouncementForm(); setShowAnnouncementModal(true); }}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-white text-fuchsia-700 hover:bg-fuchsia-50 text-sm font-bold rounded-lg transition shadow-lg"
+                            >
+                                {I.plus} New Announcement
+                            </button>
+                        </div>
+
+                        <div className={`${cardCls} p-4 mb-6 flex flex-wrap items-center gap-3`}>
+                            <div className="flex-1 min-w-[200px] relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{I.search}</span>
+                                <input type="text" value={announcementSearch} onChange={(e) => setAnnouncementSearch(e.target.value)}
+                                    placeholder="Search announcements..." className={inputCls + ' pl-9'} />
+                            </div>
+                        </div>
+
+                        {filteredAnnouncements.length === 0 ? (
+                            <div className={`${cardCls} p-12 text-center`}>
+                                <div className="w-16 h-16 rounded-full bg-fuchsia-50 dark:bg-fuchsia-900/30 text-fuchsia-500 flex items-center justify-center mx-auto mb-3">
+                                    {I.megaphone}
+                                </div>
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No announcements yet</p>
+                                <p className="text-xs text-slate-400 mt-1">Post your first announcement to reach students</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {filteredAnnouncements.map(a => {
+                                    const meta = notifMeta(a);
+                                    const IconEl = I[meta.icon] || I.info;
+                                    return (
+                                        <div key={a.id} className={`${cardCls} p-5 flex items-start gap-4 hover:shadow-md transition`}>
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.fg}`}>
+                                                {IconEl}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-start justify-between gap-3 flex-wrap">
+                                                    <h4 className="text-base font-bold text-slate-800 dark:text-slate-100">{a.title}</h4>
+                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                        {a.priority === 'high' && (
+                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 uppercase">
+                                                                High Priority
+                                                            </span>
+                                                        )}
+                                                        <span className="text-[11px] text-slate-400">{timeAgo(a.created_at)}</span>
+                                                    </div>
+                                                </div>
+                                                <p className="text-sm text-slate-600 dark:text-slate-300 mt-1.5 whitespace-pre-wrap">{a.message}</p>
+                                                <div className="flex items-center gap-3 mt-3">
+                                                    <span className="text-[11px] text-slate-400">
+                                                        {a.student_id ? '🎯 Targeted' : '📢 Broadcast to all students'}
+                                                    </span>
+                                                    <div className="flex-1" />
+                                                    <button onClick={() => openEditAnnouncement(a)} className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition" title="Edit">
+                                                        {I.edit}
+                                                    </button>
+                                                    <button onClick={() => handleDeleteAnnouncement(a.id)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition" title="Delete">
+                                                        {I.trash}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/*VIOLATION TYPES — NEW*/}
+                {currentTab === 'violationTypes' && (
+                    <div style={fadeInStyle}>
+                        <div className="bg-gradient-to-br from-rose-600 to-pink-800 rounded-xl p-6 md:p-7 mb-6 text-white flex items-center justify-between flex-wrap gap-4">
+                            <div>
+                                <h1 className="text-2xl font-bold">Violation Types</h1>
+                                <p className="text-sm text-rose-100 mt-1">Catalog of violation types with default offense levels and hours</p>
+                            </div>
+                            <button
+                                onClick={() => { setSelectedViolation(null); resetViolationForm(); setShowViolationModal(true); }}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-white text-rose-700 hover:bg-rose-50 text-sm font-bold rounded-lg transition shadow-lg"
+                            >
+                                {I.plus} Add Violation Type
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {violationCatalog.length === 0 ? (
+                                <div className={`${cardCls} p-12 text-center col-span-full`}>
+                                    <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-900/30 text-rose-500 flex items-center justify-center mx-auto mb-3">
+                                        {I.tag}
+                                    </div>
+                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No violation types yet</p>
+                                    <p className="text-xs text-slate-400 mt-1">Add your first one, or they'll appear here as they're used in penalties</p>
+                                </div>
+                            ) : violationCatalog.map(v => (
+                                <div key={v.id} className={`${cardCls} p-5 hover:shadow-md transition`}>
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-300 flex items-center justify-center">
+                                                {I.tag}
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-bold">{v.name}</h4>
+                                                <span className="text-[10px] uppercase text-slate-400 font-bold">{v.category}</span>
+                                            </div>
+                                        </div>
+                                        {v.active === false && (
+                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 font-bold">INACTIVE</span>
+                                        )}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                                        <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900/60">
+                                            <div className="text-[10px] uppercase text-slate-400 font-bold">Default Level</div>
+                                            <div className="font-semibold mt-0.5">{v.defaultLevel || v.default_level || '—'}</div>
+                                        </div>
+                                        <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900/60">
+                                            <div className="text-[10px] uppercase text-slate-400 font-bold">Default Hours</div>
+                                            <div className="font-semibold mt-0.5">{v.defaultHours || v.default_hours || 0}h</div>
+                                        </div>
+                                    </div>
+                                    {v.description && (
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">{v.description}</p>
+                                    )}
+                                    <div className="flex justify-end gap-1 pt-3 border-t border-slate-100 dark:border-slate-700">
+                                        <button onClick={() => openEditViolation(v)} className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition" title="Edit">
+                                            {I.edit}
+                                        </button>
+                                        <button onClick={() => handleDeleteViolation(v)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition" title="Delete">
+                                            {I.trash}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/*ANALYTICS — NEW*/}
+                {currentTab === 'analytics' && (
+                    <div style={fadeInStyle} className="space-y-4">
+                        <div className="bg-gradient-to-br from-fuchsia-600 to-purple-800 rounded-xl p-6 md:p-7 text-white">
+                            <h1 className="text-2xl font-bold">Analytics</h1>
+                            <p className="text-sm text-fuchsia-100 mt-1">Deep insights into disciplinary data and trends</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {[
+                                { label: 'Avg Resolution', value: `${analytics.avgResolutionDays}d`, sub: `across ${analytics.resolvedCount} resolved` },
+                                { label: 'Appeal Rate', value: `${analytics.appealRate}%`, sub: `${appeals.length} of ${penalties.length} cases` },
+                                { label: 'Top Violation', value: analytics.topViolations[0]?.[1] || 0, sub: analytics.topViolations[0]?.[0] || 'No data' },
+                                { label: 'Active Students', value: students.length, sub: 'total enrollment' },
+                            ].map((k, i) => (
+                                <div key={i} className={`${cardCls} p-5`}>
+                                    <div className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-1">{k.label}</div>
+                                    <div className="text-2xl font-bold">{k.value}</div>
+                                    <div className="text-[11px] text-slate-400 mt-0.5 truncate">{k.sub}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className={`${cardCls} p-5`}>
+                            <h3 className="text-sm font-bold mb-5 flex items-center gap-2">{I.trendUp} Monthly Trend — Last 6 Months</h3>
+                            <div className="flex items-end gap-4 h-48">
+                                {analytics.months.map((m, i) => (
+                                    <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                                        <span className="text-xs font-bold text-slate-500">{m.count}</span>
+                                        <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-t-lg relative overflow-hidden flex-1">
+                                            <div
+                                                className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-fuchsia-600 to-purple-500 rounded-t-lg transition-all duration-700"
+                                                style={{ height: `${(m.count / analytics.maxMonth) * 100}%` }}
+                                            />
+                                            <div
+                                                className="absolute bottom-0 left-0 right-0 bg-emerald-400/60 transition-all duration-700"
+                                                style={{ height: `${(m.resolved / analytics.maxMonth) * 100}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-xs font-bold text-slate-500">{m.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-4 mt-4 text-xs text-slate-500">
+                                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-fuchsia-600"></span> Total cases</span>
+                                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-400"></span> Resolved</span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div className={`${cardCls} p-5`}>
+                                <h3 className="text-sm font-bold mb-4 flex items-center gap-2">{I.alert} Top Violation Types</h3>
+                                <div className="space-y-3">
+                                    {analytics.topViolations.length === 0 ? (
+                                        <p className="text-center py-6 text-xs text-slate-400">No data</p>
+                                    ) : analytics.topViolations.map(([name, count]) => {
+                                        const pct = (count / analytics.maxViolationCount) * 100;
+                                        return (
+                                            <div key={name}>
+                                                <div className="flex justify-between text-xs mb-1.5">
+                                                    <span className="font-medium truncate">{name}</span>
+                                                    <span className="text-slate-500 font-bold">{count}</span>
+                                                </div>
+                                                <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-gradient-to-r from-fuchsia-500 to-purple-500 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className={`${cardCls} p-5`}>
+                                <h3 className="text-sm font-bold mb-4 flex items-center gap-2">{I.cap} Per Year Level</h3>
+                                <div className="space-y-4">
+                                    {analytics.byYearLevel.map(y => (
+                                        <div key={y.year} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-sm font-bold">{y.year} Year</span>
+                                                <span className="text-xs text-slate-500">{y.students} students</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3 text-xs">
+                                                <div>
+                                                    <div className="text-slate-400 uppercase font-bold text-[10px]">Cases</div>
+                                                    <div className="font-bold text-lg">{y.cases}</div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-slate-400 uppercase font-bold text-[10px]">Resolution</div>
+                                                    <div className="font-bold text-lg">{y.resolutionRate}%</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/*ACTIVITY LOG*/}
                 {currentTab === 'activity' && (
                     <div style={fadeInStyle}>
@@ -2048,8 +2867,6 @@ export default function AdminDashboard() {
                 {/*REPORTS*/}
                 {currentTab === 'reports' && (
                     <div style={fadeInStyle} className="w-full space-y-4">
-
-                        {/*HEADER*/}
                         <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl p-6 md:p-7 text-white flex flex-wrap items-center justify-between gap-4">
                             <div>
                                 <h1 className="text-2xl md:text-3xl font-bold">Reports & Analytics</h1>
@@ -2063,7 +2880,7 @@ export default function AdminDashboard() {
                                 <button
                                     onClick={() => {
                                         const data = [
-                                            ...students.map(s => ({ Name: s.name, ID: s.student_id_number, Course: s.course, Status: s.status })),
+                                            ...students.map(s => ({ Name: s.name, ID: s.student_id_number, Course: s.course, Year: s.year_level, Status: s.status })),
                                             ...penalties.map(p => ({ Violation: p.violation_type, Level: p.offense_level, Status: p.status })),
                                         ];
                                         if (exportToCSV(data, `report_${new Date().toISOString().slice(0, 10)}.csv`)) {
@@ -2080,7 +2897,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {/*KPI STRIP — 6 ACROSS ON DESKTOP*/}
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                             {[
                                 { icon: I.doc, value: stats.totalCases, label: 'Total Cases', accent: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
@@ -2098,18 +2914,12 @@ export default function AdminDashboard() {
                             ))}
                         </div>
 
-                        {/*ROW 1 — 14-day trend (2/3) + category donut (1/3)*/}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                             <div className={`${cardCls} p-5 lg:col-span-2`}>
                                 <div className="flex items-center justify-between mb-5">
                                     <div>
                                         <h3 className="text-sm font-bold flex items-center gap-2">{I.trendUp} Violations — Last 14 Days</h3>
                                         <p className="text-xs text-slate-400 mt-0.5">Daily count</p>
-                                    </div>
-                                    <div className="flex items-center gap-3 text-xs">
-                                        <span className="flex items-center gap-1.5">
-                                            <span className="w-2 h-2 rounded-full bg-blue-500"></span> Daily
-                                        </span>
                                     </div>
                                 </div>
                                 <div className="flex items-end justify-between gap-1 h-40">
@@ -2194,7 +3004,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {/*ROW 2 — 3-panel: top offenders, offense levels, appeal status*/}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div className={`${cardCls} p-5`}>
                                 <h3 className="text-sm font-bold mb-4 flex items-center gap-2">{I.award} Top Offenders</h3>
@@ -2235,14 +3044,6 @@ export default function AdminDashboard() {
                                         );
                                     })}
                                 </div>
-                                <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700 grid grid-cols-3 gap-2">
-                                    {stats.offenseDist.map((o, i) => (
-                                        <div key={o.name} className="text-center">
-                                            <div className={`text-xl font-bold ${['text-emerald-600', 'text-amber-600', 'text-red-600'][i]}`}>{o.count}</div>
-                                            <div className="text-[10px] text-slate-400 uppercase">{['1st', '2nd', '3rd'][i]}</div>
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
 
                             <div className={`${cardCls} p-5`}>
@@ -2267,33 +3068,23 @@ export default function AdminDashboard() {
                                         );
                                     })}
                                 </div>
-                                <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700 grid grid-cols-3 gap-2">
-                                    {[
-                                        { v: stats.approvedAppeals, l: 'Approved', c: 'text-emerald-600' },
-                                        { v: stats.rejectedAppeals, l: 'Rejected', c: 'text-red-600' },
-                                        { v: stats.pendingAppeals, l: 'Pending', c: 'text-amber-600' },
-                                    ].map(s => (
-                                        <div key={s.l} className="text-center">
-                                            <div className={`text-xl font-bold ${s.c}`}>{s.v}</div>
-                                            <div className="text-[10px] text-slate-400 uppercase">{s.l}</div>
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
                         </div>
 
-                        {/*ROW 3 — Students by course (1/3) + recent violations table (2/3)*/}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                             <div className={`${cardCls} p-5`}>
-                                <h3 className="text-sm font-bold mb-4 flex items-center gap-2">{I.cap} Students by Course</h3>
+                                <h3 className="text-sm font-bold mb-4 flex items-center gap-2">{I.cap} Students by Year Level</h3>
                                 <div className="space-y-3">
-                                    {courseOptions.map(c => {
-                                        const count = students.filter(s => s.course === c).length;
+                                    {yearOptions.map(y => {
+                                        const count = students.filter(s => {
+                                            const yl = String(s.year_level || '').trim();
+                                            return yl === y || yl.startsWith(y);
+                                        }).length;
                                         const pct = students.length > 0 ? Math.round((count / students.length) * 100) : 0;
                                         return (
-                                            <div key={c}>
+                                            <div key={y}>
                                                 <div className="flex justify-between text-xs mb-1.5">
-                                                    <span className="font-semibold">{c}</span>
+                                                    <span className="font-semibold">{y} Year</span>
                                                     <span className="text-slate-500">{count} · {pct}%</span>
                                                 </div>
                                                 <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -2302,6 +3093,12 @@ export default function AdminDashboard() {
                                             </div>
                                         );
                                     })}
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                                    <div className="flex items-center justify-between text-xs text-slate-500">
+                                        <span>Program</span>
+                                        <span className="font-semibold text-slate-700 dark:text-slate-200">BSN — Nursing</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -2347,69 +3144,156 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                )}
 
-                        {/*ROW 4 — Violation heatmap (day × hour)*/}
-                        <div className={`${cardCls} p-5`}>
-                            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                {/*DATA EXPORT — NEW*/}
+                {currentTab === 'dataExport' && (
+                    <div style={fadeInStyle} className="space-y-4">
+                        <div className="bg-gradient-to-br from-emerald-600 to-teal-800 rounded-xl p-6 md:p-7 text-white">
+                            <h1 className="text-2xl font-bold">Data Export</h1>
+                            <p className="text-sm text-emerald-100 mt-1">Bulk export your data in CSV format</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {[
+                                { title: 'All Students', icon: I.users, color: 'from-blue-500 to-blue-600', count: students.length, rows: students.map(s => ({ ID: s.student_id_number, Name: s.name, Email: s.email, Course: s.course, Year: s.year_level, Status: s.status })) },
+                                { title: 'All Penalties', icon: I.rect, color: 'from-amber-500 to-orange-600', count: penalties.length, rows: penalties.map(p => ({ Date: formatDate(p.created_at), Student: p.student_name, Violation: p.violation_type, Level: p.offense_level, Hours: p.hours, Status: p.status, Deadline: formatDate(p.deadline) })) },
+                                { title: 'All Appeals', icon: I.doc, color: 'from-violet-500 to-purple-600', count: appeals.length, rows: appeals.map(a => ({ ID: a.id, Student: a.student_name, Violation: a.penalty_violation || a.violation, Status: a.status, Submitted: formatDate(a.created_at) })) },
+                                { title: 'Service Sessions', icon: I.calendar, color: 'from-indigo-500 to-blue-600', count: sessions.length, rows: sessions.map(s => ({ Date: s.scheduled_date, Student: s.student_name, Title: s.title, Hours: s.hours, Venue: s.venue, Status: s.status })) },
+                                { title: 'Activity Log', icon: I.activity, color: 'from-slate-600 to-slate-800', count: activityLog.length, rows: activityLog.map(a => ({ Date: formatDate(a.created_at), Admin: a.admin_name, Type: a.type, Description: a.description })) },
+                                { title: 'Notifications', icon: I.bell, color: 'from-fuchsia-500 to-pink-600', count: notifications.length, rows: notifications.map(n => ({ Title: n.title, Message: n.message, Type: n.type, Read: n.is_read, Created: formatDate(n.created_at) })) },
+                            ].map((exp, i) => (
+                                <div key={i} className={`${cardCls} p-5 hover:-translate-y-0.5 hover:shadow-md transition`}>
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white bg-gradient-to-br ${exp.color} mb-3 shadow-md`}>
+                                        {exp.icon}
+                                    </div>
+                                    <h3 className="text-base font-bold">{exp.title}</h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-4">{exp.count} records ready</p>
+                                    <button
+                                        onClick={() => {
+                                            if (exp.rows.length === 0) return showToast('warning', 'No data', `No ${exp.title.toLowerCase()} to export`);
+                                            if (exportToCSV(exp.rows, `${exp.title.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`)) {
+                                                showToast('success', 'Exported', `${exp.title} downloaded`);
+                                                logActivity('system', `Exported ${exp.title}`);
+                                            }
+                                        }}
+                                        disabled={exp.rows.length === 0}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-lg transition"
+                                    >
+                                        {I.download} Export CSV
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className={`${cardCls} p-5 border-l-4 border-blue-500`}>
+                            <div className="flex items-start gap-3">
+                                <div className="text-blue-500 flex-shrink-0 mt-0.5">{I.info}</div>
                                 <div>
-                                    <h3 className="text-sm font-bold flex items-center gap-2">{I.zap} Violation Heatmap</h3>
-                                    <p className="text-xs text-slate-400 mt-0.5">Day of week × hour — where violations cluster</p>
-                                </div>
-                                <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-                                    <span>Low</span>
-                                    <div className="flex gap-0.5">
-                                        {['bg-slate-100 dark:bg-slate-700', 'bg-blue-200 dark:bg-blue-900/40', 'bg-blue-400', 'bg-blue-500', 'bg-blue-600'].map((c, i) => (
-                                            <span key={i} className={`w-3 h-3 rounded-sm ${c}`}></span>
-                                        ))}
-                                    </div>
-                                    <span>High</span>
+                                    <h4 className="text-sm font-bold mb-1">Export Tips</h4>
+                                    <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside">
+                                        <li>CSV files open in Excel, Google Sheets, or Numbers</li>
+                                        <li>Exports use ISO 8601 date format for compatibility</li>
+                                        <li>Files are timestamped for archival purposes</li>
+                                        <li>For large datasets, consider filtering on the source page before exporting</li>
+                                    </ul>
                                 </div>
                             </div>
-                            <div className="overflow-x-auto">
-                                <div className="min-w-[700px]">
-                                    <div className="flex gap-1 mb-1 pl-12">
-                                        {[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22].map(h => (
-                                            <span key={h} className="text-[9px] text-slate-400 flex-1 text-center">{h}:00</span>
-                                        ))}
-                                    </div>
-                                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, di) => (
-                                        <div key={day} className="flex gap-1 items-center mb-1">
-                                            <span className="text-[10px] text-slate-500 w-10 text-right font-semibold">{day}</span>
-                                            <div className="flex gap-1 flex-1">
-                                                {Array.from({ length: 12 }).map((_, hi) => {
-                                                    const hour = hi * 2;
-                                                    const count = penalties.filter(p => {
-                                                        const d = parseDbDate(p.created_at);
-                                                        if (!d) return false;
-                                                        return d.getDay() === di && d.getHours() >= hour && d.getHours() < hour + 2;
-                                                    }).length;
-                                                    const maxCount = Math.max(...Array.from({ length: 7 * 12 }).map((_, k) => {
-                                                        const d2 = Math.floor(k / 12);
-                                                        const h2 = (k % 12) * 2;
-                                                        return penalties.filter(p => {
-                                                            const pd = parseDbDate(p.created_at);
-                                                            if (!pd) return false;
-                                                            return pd.getDay() === d2 && pd.getHours() >= h2 && pd.getHours() < h2 + 2;
-                                                        }).length;
-                                                    }), 1);
-                                                    const intensity = count / maxCount;
-                                                    const bg = count === 0 ? 'bg-slate-100 dark:bg-slate-700' :
-                                                        intensity < 0.25 ? 'bg-blue-200 dark:bg-blue-900/40' :
-                                                            intensity < 0.5 ? 'bg-blue-300 dark:bg-blue-800' :
-                                                                intensity < 0.75 ? 'bg-blue-500' :
-                                                                    'bg-blue-600';
-                                                    return (
-                                                        <div key={hi}
-                                                            title={`${day} ${hour}:00–${hour + 2}:00 — ${count} violation${count !== 1 ? 's' : ''}`}
-                                                            className={`flex-1 h-6 rounded ${bg} hover:ring-2 hover:ring-blue-400 transition cursor-pointer`}
-                                                        />
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    ))}
+                        </div>
+                    </div>
+                )}
+
+                {/*SETTINGS — NEW*/}
+                {currentTab === 'settings' && (
+                    <div style={fadeInStyle} className="space-y-4">
+                        <div className="bg-gradient-to-br from-slate-600 to-slate-800 rounded-xl p-6 md:p-7 text-white">
+                            <h1 className="text-2xl font-bold">System Settings</h1>
+                            <p className="text-sm text-slate-300 mt-1">Configure system behavior and preferences</p>
+                        </div>
+
+                        <div className={`${cardCls} p-6`}>
+                            <h3 className="text-sm font-bold mb-4 flex items-center gap-2">{I.info} Department Info</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelCls}>Department Name</label>
+                                    <input
+                                        type="text"
+                                        value={settings.department}
+                                        onChange={(e) => setSettings({ ...settings, department: e.target.value })}
+                                        className={inputCls}
+                                    />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Program Code</label>
+                                    <input
+                                        type="text"
+                                        value={settings.program}
+                                        onChange={(e) => setSettings({ ...settings, program: e.target.value })}
+                                        className={inputCls}
+                                    />
                                 </div>
                             </div>
+                        </div>
+
+                        <div className={`${cardCls} p-6`}>
+                            <h3 className="text-sm font-bold mb-4 flex items-center gap-2">{I.calendar} Academic Period</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelCls}>Semester Start</label>
+                                    <input
+                                        type="date"
+                                        value={settings.semesterStart}
+                                        onChange={(e) => setSettings({ ...settings, semesterStart: e.target.value })}
+                                        className={inputCls}
+                                    />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Semester End</label>
+                                    <input
+                                        type="date"
+                                        value={settings.semesterEnd}
+                                        onChange={(e) => setSettings({ ...settings, semesterEnd: e.target.value })}
+                                        className={inputCls}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className={`${cardCls} p-6`}>
+                            <h3 className="text-sm font-bold mb-4 flex items-center gap-2">{I.refresh} Automation</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelCls}>Achievement Reset Window (months)</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="24"
+                                        value={settings.achievementResetMonths}
+                                        onChange={(e) => setSettings({ ...settings, achievementResetMonths: Number(e.target.value) })}
+                                        className={inputCls}
+                                    />
+                                    <p className="text-xs text-slate-400 mt-1.5">Badges reset every N months</p>
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Auto-Archive After (months)</label>
+                                    <input
+                                        type="number"
+                                        min="3"
+                                        max="60"
+                                        value={settings.autoArchiveMonths}
+                                        onChange={(e) => setSettings({ ...settings, autoArchiveMonths: Number(e.target.value) })}
+                                        className={inputCls}
+                                    />
+                                    <p className="text-xs text-slate-400 mt-1.5">Penalties older than N months move to archive</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end">
+                            <button onClick={handleSaveSettings} className={btnPrimary}>
+                                {I.check} Save Settings
+                            </button>
                         </div>
                     </div>
                 )}
@@ -2432,23 +3316,11 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                     <div>
                         <label className={labelCls}>Full Name</label>
-                        <input
-                            type="text"
-                            value={adminForm.name}
-                            onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })}
-                            className={inputCls}
-                            placeholder="Your full name"
-                        />
+                        <input type="text" value={adminForm.name} onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })} className={inputCls} placeholder="Your full name" />
                     </div>
                     <div>
                         <label className={labelCls}>Email</label>
-                        <input
-                            type="email"
-                            value={adminForm.email}
-                            onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
-                            className={inputCls}
-                            placeholder="you@example.com"
-                        />
+                        <input type="email" value={adminForm.email} onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })} className={inputCls} placeholder="you@example.com" />
                     </div>
                     <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700">
                         <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -2474,33 +3346,192 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                     <div>
                         <label className={labelCls}>Current Password</label>
-                        <input
-                            type="password"
-                            value={pwForm.current}
-                            onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })}
-                            className={inputCls}
-                            placeholder="Enter current password"
-                        />
+                        <input type="password" value={pwForm.current} onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })} className={inputCls} placeholder="Enter current password" />
                     </div>
                     <div>
                         <label className={labelCls}>New Password</label>
-                        <input
-                            type="password"
-                            value={pwForm.newPw}
-                            onChange={(e) => setPwForm({ ...pwForm, newPw: e.target.value })}
-                            className={inputCls}
-                            placeholder="Min 6 characters"
-                        />
+                        <input type="password" value={pwForm.newPw} onChange={(e) => setPwForm({ ...pwForm, newPw: e.target.value })} className={inputCls} placeholder="Min 6 characters" />
                     </div>
                     <div>
                         <label className={labelCls}>Confirm New Password</label>
-                        <input
-                            type="password"
-                            value={pwForm.confirm}
-                            onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
-                            className={inputCls}
-                            placeholder="Re-enter new password"
-                        />
+                        <input type="password" value={pwForm.confirm} onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })} className={inputCls} placeholder="Re-enter new password" />
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ============ SESSION MODAL — NEW ============ */}
+            <Modal
+                open={showSessionModal}
+                onClose={() => { setShowSessionModal(false); setSelectedSession(null); resetSessionForm(); }}
+                title={selectedSession ? 'Edit Session' : 'New Session'}
+                icon={I.calendar}
+                maxWidth="max-w-lg"
+                footer={
+                    <>
+                        <button onClick={() => { setShowSessionModal(false); setSelectedSession(null); resetSessionForm(); }} className={btnSecondary}>Cancel</button>
+                        <button onClick={handleSaveSession} className={btnPrimary}>{selectedSession ? 'Save Changes' : 'Schedule Session'}</button>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className={labelCls}>Student *</label>
+                        <select value={sessionForm.student_id} onChange={(e) => setSessionForm({ ...sessionForm, student_id: e.target.value })} className={inputCls}>
+                            <option value="">Select a student...</option>
+                            {students.map(s => {
+                                const sid = s.student_id_number || s.student_id || s.id;
+                                return <option key={s.id} value={sid}>{s.name} — {sid}</option>;
+                            })}
+                        </select>
+                    </div>
+                    <div>
+                        <label className={labelCls}>Title *</label>
+                        <input value={sessionForm.title} onChange={(e) => setSessionForm({ ...sessionForm, title: e.target.value })} className={inputCls} placeholder="e.g., Library clean-up" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className={labelCls}>Date *</label>
+                            <input type="date" value={sessionForm.scheduled_date} onChange={(e) => setSessionForm({ ...sessionForm, scheduled_date: e.target.value })} className={inputCls} />
+                        </div>
+                        <div>
+                            <label className={labelCls}>Hours *</label>
+                            <input type="number" min="0.5" step="0.5" value={sessionForm.hours} onChange={(e) => setSessionForm({ ...sessionForm, hours: e.target.value })} className={inputCls} />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className={labelCls}>Start Time</label>
+                            <input type="time" value={sessionForm.start_time} onChange={(e) => setSessionForm({ ...sessionForm, start_time: e.target.value })} className={inputCls} />
+                        </div>
+                        <div>
+                            <label className={labelCls}>End Time</label>
+                            <input type="time" value={sessionForm.end_time} onChange={(e) => setSessionForm({ ...sessionForm, end_time: e.target.value })} className={inputCls} />
+                        </div>
+                    </div>
+                    <div>
+                        <label className={labelCls}>Venue</label>
+                        <input value={sessionForm.venue} onChange={(e) => setSessionForm({ ...sessionForm, venue: e.target.value })} className={inputCls} placeholder="e.g., College Library" />
+                    </div>
+                    <div>
+                        <label className={labelCls}>Status</label>
+                        <select value={sessionForm.status} onChange={(e) => setSessionForm({ ...sessionForm, status: e.target.value })} className={inputCls}>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className={labelCls}>Notes</label>
+                        <textarea rows={3} value={sessionForm.notes} onChange={(e) => setSessionForm({ ...sessionForm, notes: e.target.value })} className={inputCls} placeholder="Optional notes..." />
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ============ VIOLATION TYPE MODAL — NEW ============ */}
+            <Modal
+                open={showViolationModal}
+                onClose={() => { setShowViolationModal(false); setSelectedViolation(null); resetViolationForm(); }}
+                title={selectedViolation ? 'Edit Violation Type' : 'Add Violation Type'}
+                icon={I.tag}
+                maxWidth="max-w-lg"
+                footer={
+                    <>
+                        <button onClick={() => { setShowViolationModal(false); setSelectedViolation(null); resetViolationForm(); }} className={btnSecondary}>Cancel</button>
+                        <button onClick={handleSaveViolation} className={btnPrimary}>{selectedViolation ? 'Save Changes' : 'Add Type'}</button>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className={labelCls}>Violation Name *</label>
+                        <input value={violationForm.name} onChange={(e) => setViolationForm({ ...violationForm, name: e.target.value })} className={inputCls} placeholder="e.g., Late Submission" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className={labelCls}>Category</label>
+                            <select value={violationForm.category} onChange={(e) => setViolationForm({ ...violationForm, category: e.target.value })} className={inputCls}>
+                                <option>Academic</option>
+                                <option>Behavior</option>
+                                <option>Attendance</option>
+                                <option>Uniform</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className={labelCls}>Default Level</label>
+                            <select value={violationForm.defaultLevel} onChange={(e) => setViolationForm({ ...violationForm, defaultLevel: e.target.value })} className={inputCls}>
+                                <option>1st Offense</option>
+                                <option>2nd Offense</option>
+                                <option>3rd Offense</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className={labelCls}>Default Hours</label>
+                        <input type="number" min="0" value={violationForm.defaultHours} onChange={(e) => setViolationForm({ ...violationForm, defaultHours: Number(e.target.value) })} className={inputCls} />
+                    </div>
+                    <div>
+                        <label className={labelCls}>Description</label>
+                        <textarea rows={3} value={violationForm.description} onChange={(e) => setViolationForm({ ...violationForm, description: e.target.value })} className={inputCls} placeholder="Optional description..." />
+                    </div>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" checked={violationForm.active} onChange={(e) => setViolationForm({ ...violationForm, active: e.target.checked })} className="w-4 h-4 accent-blue-600" />
+                        <span className="font-medium">Active (can be assigned to penalties)</span>
+                    </label>
+                </div>
+            </Modal>
+
+            {/* ============ ANNOUNCEMENT MODAL — NEW ============ */}
+            <Modal
+                open={showAnnouncementModal}
+                onClose={() => { setShowAnnouncementModal(false); setSelectedAnnouncement(null); resetAnnouncementForm(); }}
+                title={selectedAnnouncement ? 'Edit Announcement' : 'New Announcement'}
+                icon={I.megaphone}
+                maxWidth="max-w-lg"
+                footer={
+                    <>
+                        <button onClick={() => { setShowAnnouncementModal(false); setSelectedAnnouncement(null); resetAnnouncementForm(); }} className={btnSecondary}>Cancel</button>
+                        <button onClick={handleSaveAnnouncement} className={btnPrimary}>{selectedAnnouncement ? 'Save Changes' : 'Post Announcement'}</button>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className={labelCls}>Title *</label>
+                        <input value={announcementForm.title} onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })} className={inputCls} placeholder="Announcement title" />
+                    </div>
+                    <div>
+                        <label className={labelCls}>Message *</label>
+                        <textarea rows={5} value={announcementForm.message} onChange={(e) => setAnnouncementForm({ ...announcementForm, message: e.target.value })} className={inputCls} placeholder="Write your announcement..." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className={labelCls}>Type</label>
+                            <select value={announcementForm.type} onChange={(e) => setAnnouncementForm({ ...announcementForm, type: e.target.value })} className={inputCls}>
+                                <option value="info">Info</option>
+                                <option value="reminder">Reminder</option>
+                                <option value="penalty">Penalty</option>
+                                <option value="appeal">Appeal</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className={labelCls}>Priority</label>
+                            <select value={announcementForm.priority} onChange={(e) => setAnnouncementForm({ ...announcementForm, priority: e.target.value })} className={inputCls}>
+                                <option value="normal">Normal</option>
+                                <option value="high">High Priority</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className={labelCls}>Target (optional)</label>
+                        <select value={announcementForm.target} onChange={(e) => setAnnouncementForm({ ...announcementForm, target: e.target.value })} className={inputCls}>
+                            <option value="">Broadcast to all students</option>
+                            {students.map(s => {
+                                const sid = s.student_id_number || s.student_id || s.id;
+                                return <option key={s.id} value={sid}>{s.name}</option>;
+                            })}
+                        </select>
                     </div>
                 </div>
             </Modal>
@@ -2547,43 +3578,25 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                     <div>
                         <label className={labelCls}>Student *</label>
-                        <select
-                            value={penaltyForm.studentId}
-                            onChange={(e) => setPenaltyForm({ ...penaltyForm, studentId: e.target.value })}
-                            className={inputCls}
-                        >
+                        <select value={penaltyForm.studentId} onChange={(e) => setPenaltyForm({ ...penaltyForm, studentId: e.target.value })} className={inputCls}>
                             <option value="">Select a student...</option>
                             {students.map(s => {
                                 const sid = s.student_id_number || s.student_id || s.id;
-                                return (
-                                    <option key={s.id} value={sid}>
-                                        {s.name} — {sid}
-                                    </option>
-                                );
+                                return <option key={s.id} value={sid}>{s.name} — {sid}</option>;
                             })}
                         </select>
                     </div>
                     <div>
                         <label className={labelCls}>Violation Type *</label>
-                        <select
-                            value={penaltyForm.violation}
-                            onChange={(e) => setPenaltyForm({ ...penaltyForm, violation: e.target.value })}
-                            className={inputCls}
-                        >
+                        <select value={penaltyForm.violation} onChange={(e) => setPenaltyForm({ ...penaltyForm, violation: e.target.value })} className={inputCls}>
                             <option value="">Select violation...</option>
-                            {violationOptions.map(v => (
-                                <option key={v} value={v}>{v}</option>
-                            ))}
+                            {violationOptions.map(v => <option key={v} value={v}>{v}</option>)}
                         </select>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className={labelCls}>Offense Level</label>
-                            <select
-                                value={penaltyForm.offenseLevel}
-                                onChange={(e) => setPenaltyForm({ ...penaltyForm, offenseLevel: e.target.value })}
-                                className={inputCls}
-                            >
+                            <select value={penaltyForm.offenseLevel} onChange={(e) => setPenaltyForm({ ...penaltyForm, offenseLevel: e.target.value })} className={inputCls}>
                                 <option>1st Offense</option>
                                 <option>2nd Offense</option>
                                 <option>3rd Offense</option>
@@ -2591,12 +3604,7 @@ export default function AdminDashboard() {
                         </div>
                         <div>
                             <label className={labelCls}>Status</label>
-                            <select
-                                value={penaltyForm.status}
-                                onChange={(e) => setPenaltyForm({ ...penaltyForm, status: e.target.value })}
-                                className={inputCls}
-                                disabled={penaltyForm.offenseLevel === '1st Offense'}
-                            >
+                            <select value={penaltyForm.status} onChange={(e) => setPenaltyForm({ ...penaltyForm, status: e.target.value })} className={inputCls} disabled={penaltyForm.offenseLevel === '1st Offense'}>
                                 <option>Pending</option>
                                 <option>in-progress</option>
                                 <option>Completed</option>
@@ -2608,34 +3616,19 @@ export default function AdminDashboard() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className={labelCls}>Service Type</label>
-                                <input
-                                    type="text"
-                                    value={penaltyForm.serviceType}
-                                    onChange={(e) => setPenaltyForm({ ...penaltyForm, serviceType: e.target.value })}
-                                    className={inputCls}
-                                    placeholder="Community Service"
-                                />
+                                <select value={penaltyForm.serviceType} onChange={(e) => setPenaltyForm({ ...penaltyForm, serviceType: e.target.value })} className={inputCls}>
+                                    {serviceTypeOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
                             </div>
                             <div>
                                 <label className={labelCls}>Deadline</label>
-                                <input
-                                    type="date"
-                                    value={penaltyForm.deadline}
-                                    onChange={(e) => setPenaltyForm({ ...penaltyForm, deadline: e.target.value })}
-                                    className={inputCls}
-                                />
+                                <input type="date" value={penaltyForm.deadline} onChange={(e) => setPenaltyForm({ ...penaltyForm, deadline: e.target.value })} className={inputCls} />
                             </div>
                         </div>
                     )}
                     <div>
                         <label className={labelCls}>Description</label>
-                        <textarea
-                            rows={3}
-                            value={penaltyForm.description}
-                            onChange={(e) => setPenaltyForm({ ...penaltyForm, description: e.target.value })}
-                            className={inputCls}
-                            placeholder="Optional description..."
-                        />
+                        <textarea rows={3} value={penaltyForm.description} onChange={(e) => setPenaltyForm({ ...penaltyForm, description: e.target.value })} className={inputCls} placeholder="Optional description..." />
                     </div>
                     <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
                         <p className="text-xs text-blue-700 dark:text-blue-300">
@@ -2665,44 +3658,35 @@ export default function AdminDashboard() {
             >
                 <div className="space-y-4">
                     <div>
-                        <label className={labelCls}>Student *</label>
-                        <select
-                            value={penaltyForm.studentId}
-                            onChange={(e) => setPenaltyForm({ ...penaltyForm, studentId: e.target.value })}
-                            className={inputCls}
-                        >
-                            <option value="">Select a student...</option>
-                            {students.map(s => {
-                                const sid = s.student_id_number || s.student_id || s.id;
-                                return (
-                                    <option key={s.id} value={sid}>
-                                        {s.name} — {sid}
-                                    </option>
-                                );
-                            })}
-                        </select>
+                        <label className={labelCls}>Student</label>
+                        <input
+                            type="text"
+                            value={
+                                (() => {
+                                    const s = students.find(st =>
+                                        String(st.student_id_number || st.student_id || st.id) === String(penaltyForm.studentId)
+                                    );
+                                    return s ? `${s.name} — ${s.student_id_number || ''}` : (selectedPenalty?.student_name || 'Unknown Student');
+                                })()
+                            }
+                            readOnly
+                            disabled
+                            tabIndex={-1}
+                            className={inputCls + ' opacity-70 cursor-not-allowed select-none bg-slate-100 dark:bg-slate-900'}
+                        />
+                        <p className="text-xs text-slate-400 mt-1.5">Student cannot be changed after a penalty is created.</p>
                     </div>
                     <div>
                         <label className={labelCls}>Violation Type *</label>
-                        <select
-                            value={penaltyForm.violation}
-                            onChange={(e) => setPenaltyForm({ ...penaltyForm, violation: e.target.value })}
-                            className={inputCls}
-                        >
+                        <select value={penaltyForm.violation} onChange={(e) => setPenaltyForm({ ...penaltyForm, violation: e.target.value })} className={inputCls}>
                             <option value="">Select violation...</option>
-                            {violationOptions.map(v => (
-                                <option key={v} value={v}>{v}</option>
-                            ))}
+                            {violationOptions.map(v => <option key={v} value={v}>{v}</option>)}
                         </select>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className={labelCls}>Offense Level</label>
-                            <select
-                                value={penaltyForm.offenseLevel}
-                                onChange={(e) => setPenaltyForm({ ...penaltyForm, offenseLevel: e.target.value })}
-                                className={inputCls}
-                            >
+                            <select value={penaltyForm.offenseLevel} onChange={(e) => setPenaltyForm({ ...penaltyForm, offenseLevel: e.target.value })} className={inputCls}>
                                 <option>1st Offense</option>
                                 <option>2nd Offense</option>
                                 <option>3rd Offense</option>
@@ -2710,12 +3694,7 @@ export default function AdminDashboard() {
                         </div>
                         <div>
                             <label className={labelCls}>Status</label>
-                            <select
-                                value={penaltyForm.status}
-                                onChange={(e) => setPenaltyForm({ ...penaltyForm, status: e.target.value })}
-                                className={inputCls}
-                                disabled={penaltyForm.offenseLevel === '1st Offense'}
-                            >
+                            <select value={penaltyForm.status} onChange={(e) => setPenaltyForm({ ...penaltyForm, status: e.target.value })} className={inputCls} disabled={penaltyForm.offenseLevel === '1st Offense'}>
                                 <option>Pending</option>
                                 <option>in-progress</option>
                                 <option>Completed</option>
@@ -2727,32 +3706,19 @@ export default function AdminDashboard() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className={labelCls}>Service Type</label>
-                                <input
-                                    type="text"
-                                    value={penaltyForm.serviceType}
-                                    onChange={(e) => setPenaltyForm({ ...penaltyForm, serviceType: e.target.value })}
-                                    className={inputCls}
-                                />
+                                <select value={penaltyForm.serviceType} onChange={(e) => setPenaltyForm({ ...penaltyForm, serviceType: e.target.value })} className={inputCls}>
+                                    {serviceTypeOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
                             </div>
                             <div>
                                 <label className={labelCls}>Deadline</label>
-                                <input
-                                    type="date"
-                                    value={penaltyForm.deadline}
-                                    onChange={(e) => setPenaltyForm({ ...penaltyForm, deadline: e.target.value })}
-                                    className={inputCls}
-                                />
+                                <input type="date" value={penaltyForm.deadline} onChange={(e) => setPenaltyForm({ ...penaltyForm, deadline: e.target.value })} className={inputCls} />
                             </div>
                         </div>
                     )}
                     <div>
                         <label className={labelCls}>Description</label>
-                        <textarea
-                            rows={3}
-                            value={penaltyForm.description}
-                            onChange={(e) => setPenaltyForm({ ...penaltyForm, description: e.target.value })}
-                            className={inputCls}
-                        />
+                        <textarea rows={3} value={penaltyForm.description} onChange={(e) => setPenaltyForm({ ...penaltyForm, description: e.target.value })} className={inputCls} />
                     </div>
                 </div>
             </Modal>
@@ -2774,64 +3740,34 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                     <div>
                         <label className={labelCls}>Full Name *</label>
-                        <input
-                            type="text"
-                            value={studentForm.name}
-                            onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })}
-                            className={inputCls}
-                            placeholder="Juan Dela Cruz"
-                        />
+                        <input type="text" value={studentForm.name} onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })} className={inputCls} placeholder="Juan Dela Cruz" />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className={labelCls}>Student ID * (8 digits)</label>
-                            <input
-                                type="text"
-                                value={studentForm.studentId}
-                                onChange={(e) => setStudentForm({ ...studentForm, studentId: e.target.value.replace(/\D/g, '').slice(0, 8) })}
-                                className={inputCls}
-                                placeholder="24000001"
-                            />
+                            <input type="text" value={studentForm.studentId} onChange={(e) => setStudentForm({ ...studentForm, studentId: e.target.value.replace(/\D/g, '').slice(0, 8) })} className={inputCls} placeholder="24000001" />
                         </div>
                         <div>
                             <label className={labelCls}>Email *</label>
-                            <input
-                                type="email"
-                                value={studentForm.email}
-                                onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })}
-                                className={inputCls}
-                                placeholder="student@example.com"
-                            />
+                            <input type="email" value={studentForm.email} onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })} className={inputCls} placeholder="student@example.com" />
                         </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label className={labelCls}>Course</label>
-                            <select
-                                value={studentForm.course}
-                                onChange={(e) => setStudentForm({ ...studentForm, course: e.target.value })}
-                                className={inputCls}
-                            >
+                            <select value={studentForm.course} onChange={(e) => setStudentForm({ ...studentForm, course: e.target.value })} className={inputCls}>
                                 {courseOptions.map(c => <option key={c}>{c}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className={labelCls}>Year Level</label>
-                            <select
-                                value={studentForm.year}
-                                onChange={(e) => setStudentForm({ ...studentForm, year: e.target.value })}
-                                className={inputCls}
-                            >
+                            <select value={studentForm.year} onChange={(e) => setStudentForm({ ...studentForm, year: e.target.value })} className={inputCls}>
                                 {yearOptions.map(y => <option key={y}>{y}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className={labelCls}>Status</label>
-                            <select
-                                value={studentForm.status}
-                                onChange={(e) => setStudentForm({ ...studentForm, status: e.target.value })}
-                                className={inputCls}
-                            >
+                            <select value={studentForm.status} onChange={(e) => setStudentForm({ ...studentForm, status: e.target.value })} className={inputCls}>
                                 {statusOptions.map(s => <option key={s}>{s}</option>)}
                             </select>
                         </div>
@@ -2856,61 +3792,34 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                     <div>
                         <label className={labelCls}>Full Name *</label>
-                        <input
-                            type="text"
-                            value={studentForm.name}
-                            onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })}
-                            className={inputCls}
-                        />
+                        <input type="text" value={studentForm.name} onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })} className={inputCls} />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className={labelCls}>Student ID *</label>
-                            <input
-                                type="text"
-                                value={studentForm.studentId}
-                                onChange={(e) => setStudentForm({ ...studentForm, studentId: e.target.value.replace(/\D/g, '').slice(0, 8) })}
-                                className={inputCls}
-                            />
+                            <input type="text" value={studentForm.studentId} onChange={(e) => setStudentForm({ ...studentForm, studentId: e.target.value.replace(/\D/g, '').slice(0, 8) })} className={inputCls} />
                         </div>
                         <div>
                             <label className={labelCls}>Email *</label>
-                            <input
-                                type="email"
-                                value={studentForm.email}
-                                onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })}
-                                className={inputCls}
-                            />
+                            <input type="email" value={studentForm.email} onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })} className={inputCls} />
                         </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label className={labelCls}>Course</label>
-                            <select
-                                value={studentForm.course}
-                                onChange={(e) => setStudentForm({ ...studentForm, course: e.target.value })}
-                                className={inputCls}
-                            >
+                            <select value={studentForm.course} onChange={(e) => setStudentForm({ ...studentForm, course: e.target.value })} className={inputCls}>
                                 {courseOptions.map(c => <option key={c}>{c}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className={labelCls}>Year Level</label>
-                            <select
-                                value={studentForm.year}
-                                onChange={(e) => setStudentForm({ ...studentForm, year: e.target.value })}
-                                className={inputCls}
-                            >
+                            <select value={studentForm.year} onChange={(e) => setStudentForm({ ...studentForm, year: e.target.value })} className={inputCls}>
                                 {yearOptions.map(y => <option key={y}>{y}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className={labelCls}>Status</label>
-                            <select
-                                value={studentForm.status}
-                                onChange={(e) => setStudentForm({ ...studentForm, status: e.target.value })}
-                                className={inputCls}
-                            >
+                            <select value={studentForm.status} onChange={(e) => setStudentForm({ ...studentForm, status: e.target.value })} className={inputCls}>
                                 {statusOptions.map(s => <option key={s}>{s}</option>)}
                             </select>
                         </div>
@@ -3016,18 +3925,8 @@ export default function AdminDashboard() {
                         <button onClick={() => { setShowViewAppeal(false); setSelectedAppeal(null); }} className={btnSecondary}>Close</button>
                         {selectedAppeal && (selectedAppeal.status || 'pending').toLowerCase() === 'pending' && (
                             <>
-                                <button
-                                    onClick={() => { handleRejectAppeal(selectedAppeal.id); setShowViewAppeal(false); setSelectedAppeal(null); }}
-                                    className={btnDanger}
-                                >
-                                    Reject
-                                </button>
-                                <button
-                                    onClick={() => { handleApproveAppeal(selectedAppeal.id); setShowViewAppeal(false); setSelectedAppeal(null); }}
-                                    className={btnPrimary}
-                                >
-                                    Approve
-                                </button>
+                                <button onClick={() => { handleRejectAppeal(selectedAppeal.id); setShowViewAppeal(false); setSelectedAppeal(null); }} className={btnDanger}>Reject</button>
+                                <button onClick={() => { handleApproveAppeal(selectedAppeal.id); setShowViewAppeal(false); setSelectedAppeal(null); }} className={btnPrimary}>Approve</button>
                             </>
                         )}
                     </>
@@ -3113,7 +4012,7 @@ export default function AdminDashboard() {
                             <li><code className="font-mono">name</code> — Full name</li>
                             <li><code className="font-mono">student_id</code> — 8 digits</li>
                             <li><code className="font-mono">email</code> — (optional)</li>
-                            <li><code className="font-mono">course</code> — (optional, default BSIT)</li>
+                            <li><code className="font-mono">course</code> — (optional, default BSN)</li>
                             <li><code className="font-mono">year</code> — (optional, default 1st)</li>
                         </ul>
                     </div>
@@ -3137,32 +4036,16 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                     <div>
                         <label className={labelCls}>Title *</label>
-                        <input
-                            type="text"
-                            value={quickNote.title}
-                            onChange={(e) => setQuickNote({ ...quickNote, title: e.target.value })}
-                            className={inputCls}
-                            placeholder="Notification title"
-                        />
+                        <input type="text" value={quickNote.title} onChange={(e) => setQuickNote({ ...quickNote, title: e.target.value })} className={inputCls} placeholder="Notification title" />
                     </div>
                     <div>
                         <label className={labelCls}>Message *</label>
-                        <textarea
-                            rows={4}
-                            value={quickNote.message}
-                            onChange={(e) => setQuickNote({ ...quickNote, message: e.target.value })}
-                            className={inputCls}
-                            placeholder="Type your message..."
-                        />
+                        <textarea rows={4} value={quickNote.message} onChange={(e) => setQuickNote({ ...quickNote, message: e.target.value })} className={inputCls} placeholder="Type your message..." />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className={labelCls}>Type</label>
-                            <select
-                                value={quickNote.type}
-                                onChange={(e) => setQuickNote({ ...quickNote, type: e.target.value })}
-                                className={inputCls}
-                            >
+                            <select value={quickNote.type} onChange={(e) => setQuickNote({ ...quickNote, type: e.target.value })} className={inputCls}>
                                 <option value="info">Info</option>
                                 <option value="reminder">Reminder</option>
                                 <option value="penalty">Penalty</option>
@@ -3172,17 +4055,11 @@ export default function AdminDashboard() {
                         </div>
                         <div>
                             <label className={labelCls}>Target (optional)</label>
-                            <select
-                                value={quickNote.targetStudent}
-                                onChange={(e) => setQuickNote({ ...quickNote, targetStudent: e.target.value })}
-                                className={inputCls}
-                            >
+                            <select value={quickNote.targetStudent} onChange={(e) => setQuickNote({ ...quickNote, targetStudent: e.target.value })} className={inputCls}>
                                 <option value="">Broadcast to all</option>
                                 {students.map(s => {
                                     const sid = s.student_id_number || s.student_id || s.id;
-                                    return (
-                                        <option key={s.id} value={sid}>{s.name}</option>
-                                    );
+                                    return <option key={s.id} value={sid}>{s.name}</option>;
                                 })}
                             </select>
                         </div>
@@ -3191,7 +4068,7 @@ export default function AdminDashboard() {
             </Modal>
 
             {confirmDialog && (
-                <div className="fixed inset-0 z-[50000] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[50000] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4 select-none" style={{ pointerEvents: 'auto' }}>
                     <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${confirmDialog.tone === 'danger' ? 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-300'}`}>
                             {confirmDialog.tone === 'danger' ? I.close : I.check}
@@ -3207,7 +4084,7 @@ export default function AdminDashboard() {
             )}
 
             {completePenaltyId && (
-                <div className="fixed inset-0 z-[50000] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[50000] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4 select-none" style={{ pointerEvents: 'auto' }}>
                     <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
                         <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center mb-4">
                             {I.check}

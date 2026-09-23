@@ -22,8 +22,9 @@ const I = {
     info: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>,
     trash: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>,
     download: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>,
-    edit: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>,
+    eye: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>,
     lock: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>,
+    key: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" /></svg>,
     alert: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>,
     success: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="9 12 11 14 15 10" /></svg>,
     bellRing: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /><path d="M2 8a10 10 0 0 1 2-6" /><path d="M22 8a10 10 0 0 0-2-6" /></svg>,
@@ -42,6 +43,8 @@ const I = {
     book: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>,
     phone: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>,
     trendUp: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>,
+    userEdit: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /><path d="M18 11l3-3-1.5-1.5L16.5 9.5" /></svg>,
+    refresh: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>,
 };
 
 /* HELPERS */
@@ -50,6 +53,12 @@ const getGreeting = () => {
     return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 };
 const formatDate = (s) => (!s ? 'N/A' : new Date(s).toLocaleDateString());
+const formatDateTime = (s) => {
+    if (!s) return 'N/A';
+    const d = new Date(s);
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) + ' · ' +
+        d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+};
 const timeAgo = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -118,6 +127,19 @@ const formatCountdown = (t) => {
     return `${String(t.hours).padStart(2, '0')}:${String(t.minutes).padStart(2, '0')}:${String(t.seconds).padStart(2, '0')}`;
 };
 const fadeInStyle = { animation: 'fadeIn 0.3s ease-out' };
+
+/*ACHIEVEMENTS RESET WINDOW*/
+const RESET_WINDOW_MONTHS = 4;
+const windowStart = () => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - RESET_WINDOW_MONTHS);
+    return d;
+};
+const isWithinWindow = (dateStr) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    return d >= windowStart();
+};
 
 /* COUNTDOWN TIMER */
 function CountdownTimer({ penalty }) {
@@ -217,15 +239,31 @@ function NotificationItem({ notification: n, onMarkRead, onDelete, onAction }) {
     );
 }
 
-/* ACHIEVEMENT BADGES */
+/*ACHIEVEMENT BADGES*/
 const BADGE_DEFS = [
-    { key: 'first_step', name: 'First Step', desc: 'Complete your first hour', icon: 'award', color: 'from-emerald-400 to-emerald-600' },
-    { key: 'getting_started', name: 'Getting Started', desc: 'Complete 5 hours', icon: 'zap', color: 'from-blue-400 to-blue-600' },
-    { key: 'on_fire', name: 'On Fire', desc: 'Complete 10 hours', icon: 'flame', color: 'from-orange-400 to-red-600' },
-    { key: 'halfway_hero', name: 'Halfway Hero', desc: 'Reach 50% compliance', icon: 'shield', color: 'from-violet-400 to-violet-600' },
-    { key: 'compliance_pro', name: 'Compliance Pro', desc: 'Reach 75% compliance', icon: 'star', color: 'from-amber-400 to-amber-600' },
-    { key: 'perfect_record', name: 'Perfect Record', desc: 'Reach 100% compliance', icon: 'trophy', color: 'from-yellow-400 to-orange-600' },
-    { key: 'zero_pending', name: 'Zero Pending', desc: 'No pending penalties', icon: 'checkCircle', color: 'from-cyan-400 to-cyan-600' },
+    // Tier 1 — starter
+    { key: 'first_step', name: 'First Step', desc: 'Complete your first hour', icon: 'award', color: 'from-emerald-400 to-emerald-600', tier: 'starter' },
+    { key: 'getting_started', name: 'Getting Started', desc: 'Complete 5 hours', icon: 'zap', color: 'from-blue-400 to-blue-600', tier: 'starter' },
+    { key: 'on_fire', name: 'On Fire', desc: 'Complete 10 hours', icon: 'flame', color: 'from-orange-400 to-red-600', tier: 'starter' },
+    { key: 'marathon', name: 'Marathon', desc: 'Complete 20 hours', icon: 'trendUp', color: 'from-cyan-400 to-blue-600', tier: 'milestone' },
+
+    // Tier 2 — compliance
+    { key: 'halfway_hero', name: 'Halfway Hero', desc: 'Reach 50% compliance', icon: 'shield', color: 'from-violet-400 to-violet-600', tier: 'compliance' },
+    { key: 'compliance_pro', name: 'Compliance Pro', desc: 'Reach 75% compliance', icon: 'star', color: 'from-amber-400 to-amber-600', tier: 'compliance' },
+    { key: 'perfect_record', name: 'Perfect Record', desc: 'Reach 100% compliance', icon: 'trophy', color: 'from-yellow-400 to-orange-600', tier: 'compliance' },
+    { key: 'zero_pending', name: 'Zero Pending', desc: 'Clear all pending penalties', icon: 'checkCircle', color: 'from-cyan-400 to-cyan-600', tier: 'compliance' },
+
+    // Tier 3 — speed & streaks
+    { key: 'speed_demon', name: 'Speed Demon', desc: 'Finish a 5+ hr penalty in under 24h', icon: 'zap', color: 'from-pink-400 to-rose-600', tier: 'speed' },
+    { key: 'perfect_week', name: 'Perfect Week', desc: 'Log a service session 7 days in a row', icon: 'calendar', color: 'from-indigo-400 to-purple-600', tier: 'streak' },
+
+    // Tier 4 — comeback & resolve
+    { key: 'comeback_kid', name: 'Comeback Kid', desc: 'Go from 3+ pending to 0 pending', icon: 'refresh', color: 'from-teal-400 to-emerald-600', tier: 'comeback' },
+    { key: 'early_bird', name: 'Early Bird', desc: 'Complete every penalty before its deadline', icon: 'target', color: 'from-sky-400 to-blue-600', tier: 'resolve' },
+    { key: 'appeal_master', name: 'Appeal Master', desc: 'Win an appeal', icon: 'fileText', color: 'from-fuchsia-400 to-purple-600', tier: 'appeal' },
+
+    // Tier 5 — long game
+    { key: 'century', name: 'Century', desc: 'Complete 100 total hours', icon: 'award', color: 'from-amber-400 to-yellow-600', tier: 'legendary' },
 ];
 
 /* MAIN */
@@ -257,15 +295,14 @@ export default function StudentDashboard() {
 
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [showEditProfile, setShowEditProfile] = useState(false);
-    const [showChangePassword, setShowChangePassword] = useState(false);
     const [showIdleWarning, setShowIdleWarning] = useState(false);
     const [idleCountdown, setIdleCountdown] = useState(30);
 
+    /* NEW: View Violation Details modal */
+    const [selectedPenalty, setSelectedPenalty] = useState(null);
+
     const [editName, setEditName] = useState('');
     const [editEmail, setEditEmail] = useState('');
-    const [currentPw, setCurrentPw] = useState('');
-    const [newPw, setNewPw] = useState('');
-    const [confirmPw, setConfirmPw] = useState('');
 
     const [toast, setToast] = useState(null);
     const toastTimeoutRef = useRef(null);
@@ -281,7 +318,7 @@ export default function StudentDashboard() {
         setToast(null);
     };
 
-    /* DARK MODE — uses Tailwind 'dark' class */
+    /* DARK MODE */
     useEffect(() => {
         const saved = localStorage.getItem('docst_dark_mode');
         let initial;
@@ -354,7 +391,6 @@ export default function StudentDashboard() {
         }
     }, [student]);
 
-    /* NOTIFICATIONS — matches direct student_id or broadcast notifications. */
     const loadNotifications = useCallback(async () => {
         if (!student) return;
         const sid = student.student_id_number || student.studentId || student.id;
@@ -373,7 +409,6 @@ export default function StudentDashboard() {
                 return;
             }
 
-            console.log('[loadNotifications] fetched:', data?.length || 0, 'notifications');
             setNotifications(data || []);
         } catch (e) {
             console.error('loadNotifications:', e);
@@ -469,7 +504,6 @@ export default function StudentDashboard() {
         };
     }, [student, loadNotifications]);
 
-    /* Auto-refresh notifications every 60s */
     useEffect(() => {
         if (!student) return;
         const id = setInterval(() => {
@@ -497,27 +531,93 @@ export default function StudentDashboard() {
     const newNotifs = filteredNotifications.filter((n) => !n.is_read);
     const earlierNotifs = filteredNotifications.filter((n) => n.is_read);
 
+    /* ACHIEVEMENTS — time-windowed + expanded */
+    const activeAchievements = achievements.filter((a) => isWithinWindow(a.unlocked_at));
+    const unlockedKeys = new Set(activeAchievements.map((a) => a.badge_key));
+
+    /* Speed Demon: find any penalty completed in < 24h from creation */
+    const hasSpeedDemon = penalties.some((p) => {
+        const s = (p.status || '').toLowerCase();
+        if (s !== 'completed' && s !== 'resolved') return false;
+        const start = p.started_at || p.created_at;
+        const end = p.completed_at || p.updated_at;
+        if (!start || !end) return false;
+        const hrs = (new Date(end) - new Date(start)) / (1000 * 60 * 60);
+        const ph = parseInt(p.hours, 10) || 0;
+        return hrs > 0 && hrs < 24 && ph >= 5;
+    });
+
+    /* Perfect Week: 7 consecutive days with at least 1 completed session */
+    const hasPerfectWeek = (() => {
+        if (sessions.length === 0) return false;
+        const days = new Set(
+            sessions
+                .filter((s) => (s.status || '').toLowerCase() === 'completed')
+                .map((s) => {
+                    const d = parseDbDate(s.completed_at || s.scheduled_date);
+                    return d ? d.toISOString().slice(0, 10) : null;
+                })
+                .filter(Boolean)
+        );
+        if (days.size < 7) return false;
+        const sorted = [...days].sort();
+        let streak = 1;
+        for (let i = 1; i < sorted.length; i++) {
+            const prev = new Date(sorted[i - 1]);
+            const cur = new Date(sorted[i]);
+            const diff = (cur - prev) / (1000 * 60 * 60 * 24);
+            streak = diff === 1 ? streak + 1 : 1;
+            if (streak >= 7) return true;
+        }
+        return false;
+    })();
+
+    /* Comeback Kid: has resolved penalties AND currently no pending */
+    const hasComebackKid = penalties.length >= 3
+        && penalties.some((p) => ['completed', 'resolved'].includes((p.status || '').toLowerCase()))
+        && pendingCount === 0;
+
+    /* Early Bird: all penalties have completed_at before their deadline */
+    const hasEarlyBird = penalties.length > 0 && penalties.every((p) => {
+        const s = (p.status || '').toLowerCase();
+        if (s !== 'completed' && s !== 'resolved') return false;
+        if (!p.deadline || !p.completed_at) return false;
+        return new Date(p.completed_at) < new Date(p.deadline);
+    });
+
+    /* Appeal Master: any approved appeal within window */
+    const hasAppealMaster = appeals.some(
+        (a) => ['approved', 'accepted', 'granted'].includes((a.status || '').toLowerCase())
+            && isWithinWindow(a.created_at)
+    );
+
     /* AUTO-UNLOCK ACHIEVEMENTS */
     useEffect(() => {
         if (!student || loading) return;
         const sid = student.student_id_number || student.studentId || student.id;
-        const unlockedKeys = new Set(achievements.map(a => a.badge_key));
 
         const checkMap = {
             first_step: completedHours >= 1,
             getting_started: completedHours >= 5,
             on_fire: completedHours >= 10,
+            marathon: completedHours >= 20,
             halfway_hero: complianceRate >= 50,
             compliance_pro: complianceRate >= 75,
             perfect_record: complianceRate >= 100 && totalHours > 0,
             zero_pending: pendingCount === 0 && penalties.length > 0,
+            speed_demon: hasSpeedDemon,
+            perfect_week: hasPerfectWeek,
+            comeback_kid: hasComebackKid,
+            early_bird: hasEarlyBird,
+            appeal_master: hasAppealMaster,
+            century: completedHours >= 100,
         };
 
-        const newlyUnlocked = BADGE_DEFS.filter(b => !unlockedKeys.has(b.key) && checkMap[b.key]);
+        const newlyUnlocked = BADGE_DEFS.filter((b) => !unlockedKeys.has(b.key) && checkMap[b.key]);
         if (newlyUnlocked.length === 0) return;
 
         (async () => {
-            const rows = newlyUnlocked.map(b => ({
+            const rows = newlyUnlocked.map((b) => ({
                 student_id: sid,
                 badge_key: b.key,
                 badge_name: b.name,
@@ -530,11 +630,16 @@ export default function StudentDashboard() {
                 return;
             }
             await loadAchievements();
-            newlyUnlocked.forEach(b => {
+            newlyUnlocked.forEach((b) => {
                 showToast('success', `🏆 Badge unlocked: ${b.name}`, b.desc);
             });
         })();
-    }, [student, loading, completedHours, complianceRate, pendingCount, penalties.length, achievements, loadAchievements, showToast, totalHours]);
+    }, [
+        student, loading, completedHours, complianceRate, pendingCount,
+        penalties.length, activeAchievements.length,
+        hasSpeedDemon, hasPerfectWeek, hasComebackKid, hasEarlyBird, hasAppealMaster,
+        loadAchievements, showToast, totalHours,
+    ]);
 
     /* FILTER */
     let filteredPenalties = [...penalties];
@@ -671,32 +776,14 @@ export default function StudentDashboard() {
         const sid = student.student_id_number || student.studentId || student.id;
         const { error } = await supabase
             .from('students')
-            .update({ name: editName.trim(), email: editEmail.trim() })
+            .update({ name: editName.trim(), email: student.email })
             .eq('student_id_number', sid);
         if (error) return showToast('error', 'Update failed', error.message);
-        const updated = { ...student, name: editName.trim(), email: editEmail.trim() };
+        const updated = { ...student, name: editName.trim() };
         setStudent(updated);
         sessionStorage.setItem('currentStudent', JSON.stringify(updated));
         setShowEditProfile(false);
         showToast('success', 'Profile updated', 'Your info has been saved');
-    };
-
-    /* CHANGE PASSWORD */
-    const changePassword = async () => {
-        if (!currentPw || !newPw || !confirmPw) return showToast('error', 'Fill all fields', '');
-        if (newPw.length < 6) return showToast('error', 'Too short', 'Min 6 characters');
-        if (newPw !== confirmPw) return showToast('error', 'Mismatch', 'Passwords do not match');
-
-        const sid = student.student_id_number || student.studentId || student.id;
-        const { data } = await supabase.from('students').select('password').eq('student_id_number', sid).single();
-        if (!data || data.password !== currentPw) {
-            return showToast('error', 'Wrong password', 'Current password is incorrect');
-        }
-        const { error } = await supabase.from('students').update({ password: newPw }).eq('student_id_number', sid);
-        if (error) return showToast('error', 'Update failed', error.message);
-        setShowChangePassword(false);
-        setCurrentPw(''); setNewPw(''); setConfirmPw('');
-        showToast('success', 'Password updated', 'Use your new password next login');
     };
 
     /* NOTIFICATIONS */
@@ -760,7 +847,6 @@ export default function StudentDashboard() {
         };
     }, [student, resetIdleTimer]);
 
-    /* LOGOUT */
     const confirmLogout = () => {
         logout();
     };
@@ -803,24 +889,42 @@ export default function StudentDashboard() {
         .filter(s => new Date(s.scheduled_date) >= today && s.status !== 'cancelled')
         .slice(0, 10);
     const completedSessionHours = sessions
-        .filter(s => s.status === 'completed')
+        .filter(s => (s.status || '').toLowerCase() === 'completed')
         .reduce((sum, s) => sum + (parseInt(s.hours) || 0), 0);
     const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    /*FIXED WEEKLY ACTIVITY */
+    const toLocalDayKey = (dateInput) => {
+        const d = parseDbDate(dateInput);
+        if (!d) return null;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
+
+    const sessionDayKey = (s) =>
+        toLocalDayKey(s.completed_at || s.updated_at || s.scheduled_date);
 
     const weeklyActivity = dayLabels.map((_, i) => {
         const d = new Date(weekStart);
         d.setDate(weekStart.getDate() + i);
+        const key = toLocalDayKey(d);
         return sessions
-            .filter(s => s.status === 'completed' && new Date(s.scheduled_date).toDateString() === d.toDateString())
+            .filter((s) => (s.status || '').toLowerCase() === 'completed' && sessionDayKey(s) === key)
             .reduce((sum, s) => sum + (parseInt(s.hours) || 0), 0);
     });
     const weeklyMax = Math.max(...weeklyActivity, 1);
+    const weeklyTotal = weeklyActivity.reduce((a, b) => a + b, 0);
+    const hasWeeklyData = weeklyTotal > 0;
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans text-[15px] leading-relaxed">
             <style>{`
                 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
                 @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+                @keyframes modalPop { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+                .modal-pop { animation: modalPop 0.22s cubic-bezier(0.2, 0.9, 0.4, 1.1) both; }
                 html.dark { color-scheme: dark; }
                 html.dark body { background-color: #020617; }
             `}</style>
@@ -885,6 +989,15 @@ export default function StudentDashboard() {
 
                 <div className="border-t border-slate-200 dark:border-slate-800 flex-shrink-0">
                     <button
+                        onClick={() => setShowEditProfile(true)}
+                        className="relative flex items-center w-full h-12 text-slate-600 dark:text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 transition-colors duration-150"
+                    >
+                        <span className="w-[68px] flex-shrink-0 flex items-center justify-center">{I.userEdit}</span>
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm">
+                            Edit Profile
+                        </span>
+                    </button>
+                    <button
                         onClick={() => setShowLogoutConfirm(true)}
                         className="relative flex items-center w-full h-12 text-slate-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400 transition-colors duration-150"
                     >
@@ -946,10 +1059,7 @@ export default function StudentDashboard() {
 
             {/* NOTIFICATIONS MODAL */}
             {showNotifications && (
-                <div
-                    className="fixed inset-0 z-[20000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-                    onClick={(e) => e.target === e.currentTarget && setShowNotifications(false)}
-                >
+                <div className="fixed inset-0 z-[20000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
                         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
                             <div className="flex items-center gap-2">
@@ -1187,21 +1297,26 @@ export default function StudentDashboard() {
                                             <th className="px-5 py-3">Hours</th>
                                             <th className="px-5 py-3">Status</th>
                                             <th className="px-5 py-3">Progress</th>
+                                            <th className="px-5 py-3 text-right">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {loading ? (
-                                            <tr><td colSpan="5" className="text-center py-12 text-slate-400 text-sm">Loading...</td></tr>
+                                            <tr><td colSpan="6" className="text-center py-12 text-slate-400 text-sm">Loading...</td></tr>
                                         ) : penalties.length === 0 ? (
                                             <tr>
-                                                <td colSpan="5" className="text-center py-12">
+                                                <td colSpan="6" className="text-center py-12">
                                                     <div className="font-semibold text-slate-600 dark:text-slate-300">No Penalties</div>
                                                     <div className="text-xs text-slate-400 mt-1">You have no violations recorded. Great job!</div>
                                                 </td>
                                             </tr>
                                         ) : (
                                             penalties.slice(0, 5).map((p) => (
-                                                <tr key={p.id} className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                                                <tr
+                                                    key={p.id}
+                                                    className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer"
+                                                    onClick={() => setSelectedPenalty(p)}
+                                                >
                                                     <td className="px-5 py-3 whitespace-nowrap">{formatDate(p.created_at)}</td>
                                                     <td className="px-5 py-3 font-medium">{p.violation}</td>
                                                     <td className="px-5 py-3">{p.hours || 0} hrs</td>
@@ -1212,6 +1327,15 @@ export default function StudentDashboard() {
                                                     </td>
                                                     <td className="px-5 py-3">
                                                         <CountdownTimer penalty={p} />
+                                                    </td>
+                                                    <td className="px-5 py-3 text-right">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setSelectedPenalty(p); }}
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/60 transition"
+                                                            title="View details"
+                                                        >
+                                                            {I.eye} View
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             ))
@@ -1331,12 +1455,13 @@ export default function StudentDashboard() {
                                             <th className="px-5 py-3">Status</th>
                                             <th className="px-5 py-3">Progress</th>
                                             <th className="px-5 py-3">Deadline</th>
+                                            <th className="px-5 py-3 text-right">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filteredPenalties.length === 0 ? (
                                             <tr>
-                                                <td colSpan="7" className="text-center py-12">
+                                                <td colSpan="8" className="text-center py-12">
                                                     <div className="font-semibold text-slate-600 dark:text-slate-300">No Penalty Records</div>
                                                     <div className="text-xs text-slate-400 mt-1">
                                                         {penalties.length ? 'Try adjusting your filters' : 'You have no violations recorded'}
@@ -1345,7 +1470,11 @@ export default function StudentDashboard() {
                                             </tr>
                                         ) : (
                                             filteredPenalties.map((p) => (
-                                                <tr key={p.id} className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                                                <tr
+                                                    key={p.id}
+                                                    className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer"
+                                                    onClick={() => setSelectedPenalty(p)}
+                                                >
                                                     <td className="px-5 py-3">{formatDate(p.created_at)}</td>
                                                     <td className="px-5 py-3 font-medium">{p.violation}</td>
                                                     <td className="px-5 py-3">{p.service_type || 'Community Service'}</td>
@@ -1359,6 +1488,15 @@ export default function StudentDashboard() {
                                                         <CountdownTimer penalty={p} />
                                                     </td>
                                                     <td className="px-5 py-3">{formatDate(p.deadline)}</td>
+                                                    <td className="px-5 py-3 text-right">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setSelectedPenalty(p); }}
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/60 transition"
+                                                            title="View details"
+                                                        >
+                                                            {I.eye} View
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))
                                         )}
@@ -1405,10 +1543,10 @@ export default function StudentDashboard() {
                             <div className="grid grid-cols-7 divide-x divide-slate-100 dark:divide-slate-800">
                                 {weekDays.map((day, i) => {
                                     const daySessions = sessions.filter(s => {
-                                        const sd = new Date(s.scheduled_date);
-                                        return sd.toDateString() === day.toDateString() && s.status !== 'cancelled';
+                                        const sd = parseDbDate(s.scheduled_date);
+                                        return sd && toLocalDayKey(sd) === toLocalDayKey(day) && (s.status || '').toLowerCase() !== 'cancelled';
                                     });
-                                    const isToday = day.toDateString() === new Date().toDateString();
+                                    const isToday = toLocalDayKey(day) === toLocalDayKey(new Date());
                                     return (
                                         <div key={i} className={`p-2 text-center min-h-[120px] ${isToday ? 'bg-blue-50/50 dark:bg-blue-950/40' : ''}`}>
                                             <div className={`text-[10px] font-bold uppercase mb-1 ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
@@ -1460,7 +1598,7 @@ export default function StudentDashboard() {
                                             <div className="text-right flex-shrink-0">
                                                 <div className="text-sm font-bold text-blue-600 dark:text-blue-400">{s.hours || 0}h</div>
                                                 <div className="text-[10px] text-slate-400 uppercase">
-                                                    {s.status === 'completed' ? 'Done' : 'Hours'}
+                                                    {(s.status || '').toLowerCase() === 'completed' ? 'Done' : 'Hours'}
                                                 </div>
                                             </div>
                                         </div>
@@ -1545,20 +1683,44 @@ export default function StudentDashboard() {
                         </div>
 
                         <div className={`${cardCls} p-6`}>
-                            <h3 className="text-base font-semibold mb-5 flex items-center gap-2">{I.zap} Weekly Activity</h3>
-                            <div className="flex items-end justify-between gap-2 h-40">
-                                {weeklyActivity.map((v, i) => (
-                                    <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                                        <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-t-lg relative overflow-hidden" style={{ height: '100%' }}>
-                                            <div
-                                                className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-500 to-violet-500 rounded-t-lg transition-all duration-700"
-                                                style={{ height: `${(v / weeklyMax) * 100}%` }}
-                                            />
-                                        </div>
-                                        <span className="text-[10px] font-bold text-slate-400">{dayLabels[i].charAt(0)}</span>
-                                    </div>
-                                ))}
+                            <div className="flex items-center justify-between mb-5">
+                                <h3 className="text-base font-semibold flex items-center gap-2">{I.zap} Weekly Activity</h3>
+                                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                    {weeklyTotal} hr{weeklyTotal === 1 ? '' : 's'} this week
+                                </span>
                             </div>
+
+                            {!hasWeeklyData ? (
+                                <div className="flex flex-col items-center justify-center py-10 text-center">
+                                    <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mb-3">
+                                        {I.chart}
+                                    </div>
+                                    <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                                        No activity yet this week
+                                    </p>
+                                    <p className="text-xs text-slate-400 mt-1 max-w-[280px]">
+                                        Completed service sessions for this week will appear here.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="flex items-end justify-between gap-2 h-40">
+                                    {weeklyActivity.map((v, i) => (
+                                        <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                                {v > 0 ? `${v}h` : ''}
+                                            </span>
+                                            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-t-lg relative overflow-hidden" style={{ height: '100%' }}>
+                                                <div
+                                                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-500 to-violet-500 rounded-t-lg transition-all duration-700"
+                                                    style={{ height: `${(v / weeklyMax) * 100}%` }}
+                                                />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-slate-400">{dayLabels[i].charAt(0)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                             <p className="text-xs text-slate-400 dark:text-slate-500 mt-3 text-center">
                                 Completed service hours per day (this week)
                             </p>
@@ -1571,7 +1733,9 @@ export default function StudentDashboard() {
                     <div style={fadeInStyle}>
                         <div className="bg-gradient-to-br from-amber-500 to-orange-700 rounded-xl p-6 md:p-7 mb-6 text-white">
                             <h1 className="text-2xl font-bold">Achievements</h1>
-                            <p className="text-sm text-amber-100 mt-1">Unlock badges as you complete your service hours</p>
+                            <p className="text-sm text-amber-100 mt-1">
+                                Unlock badges as you complete your service hours · resets every {RESET_WINDOW_MONTHS} months
+                            </p>
                         </div>
 
                         <div className={`${cardCls} p-6 mb-6`}>
@@ -1594,7 +1758,7 @@ export default function StudentDashboard() {
 
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {BADGE_DEFS.map((b) => {
-                                const unlockedRecord = achievements.find(a => a.badge_key === b.key);
+                                const unlockedRecord = activeAchievements.find((a) => a.badge_key === b.key);
                                 const isUnlocked = !!unlockedRecord;
                                 return (
                                     <div
@@ -1636,7 +1800,7 @@ export default function StudentDashboard() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                             {[
-                                { value: penalties.filter((p) => p.status === 'Completed').length, label: 'Completed Penalties' },
+                                { value: penalties.filter((p) => (p.status || '').toLowerCase() === 'completed').length, label: 'Completed Penalties' },
                                 { value: totalHours, label: 'Total Hours' },
                                 { value: penalties.length, label: 'Total Violations' },
                                 { value: appeals.length, label: 'Reports Filed' },
@@ -1681,14 +1845,19 @@ export default function StudentDashboard() {
                                                 <th className="px-5 py-3">Hours</th>
                                                 <th className="px-5 py-3">Status</th>
                                                 <th className="px-5 py-3">Progress</th>
+                                                <th className="px-5 py-3 text-right">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {penalties.length === 0 ? (
-                                                <tr><td colSpan="6" className="text-center py-12 text-slate-400 text-sm">No penalties found</td></tr>
+                                                <tr><td colSpan="7" className="text-center py-12 text-slate-400 text-sm">No penalties found</td></tr>
                                             ) : (
                                                 penalties.map((p, i) => (
-                                                    <tr key={p.id} className="border-t border-slate-100 dark:border-slate-800">
+                                                    <tr
+                                                        key={p.id}
+                                                        className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer"
+                                                        onClick={() => setSelectedPenalty(p)}
+                                                    >
                                                         <td className="px-5 py-3">
                                                             <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400">
                                                                 {i + 1}
@@ -1708,6 +1877,15 @@ export default function StudentDashboard() {
                                                         </td>
                                                         <td className="px-5 py-3">
                                                             <CountdownTimer penalty={p} />
+                                                        </td>
+                                                        <td className="px-5 py-3 text-right">
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setSelectedPenalty(p); }}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/60 transition"
+                                                                title="View details"
+                                                            >
+                                                                {I.eye} View
+                                                            </button>
                                                         </td>
                                                     </tr>
                                                 ))
@@ -1977,12 +2155,169 @@ export default function StudentDashboard() {
                 )}
             </main>
 
+            {/* VIEW VIOLATION DETAILS MODAL*/}
+            {selectedPenalty && (
+                <div className="fixed inset-0 z-[35000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 select-none">
+                    <div className="modal-pop bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                        {/* Header */}
+                        <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-br from-blue-600 to-blue-800 text-white">
+                            <div className="flex items-start gap-3 min-w-0">
+                                <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                                    {I.rect}
+                                </div>
+                                <div className="min-w-0">
+                                    <h3 className="text-lg font-bold truncate">
+                                        {selectedPenalty.violation || 'Violation Details'}
+                                    </h3>
+                                    <p className="text-xs text-blue-100 mt-0.5">
+                                        Recorded on {formatDateTime(selectedPenalty.created_at)}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedPenalty(null)}
+                                className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition flex-shrink-0"
+                                title="Close"
+                            >
+                                {I.close}
+                            </button>
+                        </div>
+
+                        {/* Status strip */}
+                        <div className="flex flex-wrap items-center gap-2 px-6 py-3 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold ${badgeCls(statusClass(selectedPenalty))}`}>
+                                {statusLabel(selectedPenalty)}
+                            </span>
+                            {selectedPenalty.offense_level && (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                    {selectedPenalty.offense_level}
+                                </span>
+                            )}
+                            {selectedPenalty.service_type && (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
+                                    {selectedPenalty.service_type}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                            {/* Description */}
+                            {selectedPenalty.description && (
+                                <div>
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                                        Description
+                                    </h4>
+                                    <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed bg-slate-50 dark:bg-slate-950/60 rounded-lg p-4 border border-slate-200 dark:border-slate-800">
+                                        {selectedPenalty.description}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Key facts grid */}
+                            <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                                    Penalty Details
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {[
+                                        { label: 'Hours Required', value: `${selectedPenalty.hours || 0} hrs`, icon: I.clock },
+                                        { label: 'Deadline', value: formatDate(selectedPenalty.deadline), icon: I.calendar },
+                                        { label: 'Date Issued', value: formatDate(selectedPenalty.created_at), icon: I.calendar },
+                                        { label: 'Last Updated', value: formatDateTime(selectedPenalty.updated_at || selectedPenalty.created_at), icon: I.clock },
+                                        ...(selectedPenalty.started_at ? [{ label: 'Started On', value: formatDateTime(selectedPenalty.started_at), icon: I.clock }] : []),
+                                        ...(selectedPenalty.completed_at ? [{ label: 'Completed On', value: formatDateTime(selectedPenalty.completed_at), icon: I.checkCircle }] : []),
+                                    ].map((f) => (
+                                        <div key={f.label} className="flex items-center gap-3 p-3.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
+                                            <div className="w-9 h-9 rounded-lg bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0 border border-slate-200 dark:border-slate-800">
+                                                {f.icon}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                                    {f.label}
+                                                </div>
+                                                <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                                                    {f.value}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Progress */}
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                        Progress
+                                    </h4>
+                                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                        {calculateProgress(selectedPenalty)}%
+                                    </span>
+                                </div>
+                                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full transition-all duration-700"
+                                        style={{ width: `${calculateProgress(selectedPenalty)}%` }}
+                                    />
+                                </div>
+                                {calculateRemainingTime(selectedPenalty) && !calculateRemainingTime(selectedPenalty).completed && (
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                        Time remaining:{' '}
+                                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
+                                            {formatCountdown(calculateRemainingTime(selectedPenalty))}
+                                        </span>
+                                    </p>
+                                )}
+                                {calculateRemainingTime(selectedPenalty)?.completed && (
+                                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 font-semibold">
+                                        ✓ Completed
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Notes */}
+                            {(selectedPenalty.notes || selectedPenalty.admin_notes || selectedPenalty.remarks) && (
+                                <div>
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                                        Notes / Remarks
+                                    </h4>
+                                    <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed bg-amber-50 dark:bg-amber-950/40 rounded-lg p-4 border-l-4 border-amber-500">
+                                        {selectedPenalty.notes || selectedPenalty.admin_notes || selectedPenalty.remarks}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60">
+                            <button
+                                className={btnSecondary}
+                                onClick={() => setSelectedPenalty(null)}
+                            >
+                                Close
+                            </button>
+                            {['pending', 'in-progress', 'active'].includes((selectedPenalty.status || '').toLowerCase()) && (
+                                <button
+                                    className={btnPrimary}
+                                    onClick={() => {
+                                        const p = selectedPenalty;
+                                        setSelectedPenalty(null);
+                                        setCurrentTab('appeal');
+                                        setAppealPenaltyId(String(p.id));
+                                    }}
+                                >
+                                    Appeal This Penalty
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* LOGOUT MODAL */}
             {showLogoutConfirm && (
-                <div
-                    className="fixed inset-0 z-[30000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-                    onClick={(e) => e.target === e.currentTarget && setShowLogoutConfirm(false)}
-                >
+                <div className="fixed inset-0 z-[30000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-sm p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
                         <div className="flex items-start gap-3 mb-5">
                             <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
@@ -2008,60 +2343,66 @@ export default function StudentDashboard() {
 
             {/* EDIT PROFILE MODAL */}
             {showEditProfile && (
-                <div
-                    className="fixed inset-0 z-[30000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-                    onClick={(e) => e.target === e.currentTarget && setShowEditProfile(false)}
-                >
+                <div className="fixed inset-0 z-[30000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 select-none">
                     <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-sm p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
-                        <h3 className="text-lg font-bold mb-4">Edit Profile</h3>
+                        <div className="flex items-center justify-between mb-5">
+                            <h3 className="text-lg font-bold flex items-center gap-2">{I.userEdit} Edit Profile</h3>
+                            <button
+                                onClick={() => setShowEditProfile(false)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                title="Close"
+                            >
+                                {I.close}
+                            </button>
+                        </div>
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-semibold mb-1.5">Full Name</label>
                                 <input value={editName} onChange={(e) => setEditName(e.target.value)} className={inputCls} />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold mb-1.5">Email</label>
-                                <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className={inputCls} />
+                                <label className="block text-sm font-semibold mb-1.5 flex items-center gap-1.5">
+                                    Email
+                                    <span className="text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                    Locked
+                                    </span>
+                                </label>
+                                <input
+                                    value={editEmail}
+                                    readOnly
+                                    disabled
+                                    tabIndex={-1}
+                                    className={inputCls + ' opacity-70 cursor-not-allowed select-none bg-slate-100 dark:bg-slate-900'}
+                                />
+                                <p className="text-xs text-slate-400 mt-1.5">Contact admin to change your email.</p>
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold mb-1.5">Student ID</label>
-                                <input value={studentIdNum} disabled className={inputCls + ' opacity-60'} />
+                                <label className="block text-sm font-semibold mb-1.5 flex items-center gap-1.5">
+                                    Student ID
+                                    <span className="text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                    Locked
+                                    </span>
+                                </label>
+                                <input value={studentIdNum} disabled readOnly tabIndex={-1} className={inputCls + ' opacity-70 cursor-not-allowed select-none bg-slate-100 dark:bg-slate-900'} />
                                 <p className="text-xs text-slate-400 mt-1.5">Contact admin to change your Student ID.</p>
                             </div>
                         </div>
+
+                        {/* Change password link */}
+                        <button
+                            onClick={() => {
+                                setShowEditProfile(false);
+                                navigate('/student/change-password');
+                            }}
+                            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 transition"
+                        >
+                            {I.key}
+                            Change password?
+                        </button>
+
                         <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-slate-200 dark:border-slate-800">
                             <button className={btnSecondary} onClick={() => setShowEditProfile(false)}>Cancel</button>
                             <button className={btnPrimary} onClick={saveProfile}>Save Changes</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* CHANGE PASSWORD MODAL */}
-            {showChangePassword && (
-                <div
-                    className="fixed inset-0 z-[30000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-                    onClick={(e) => e.target === e.currentTarget && setShowChangePassword(false)}
-                >
-                    <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-sm p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">{I.lock} Change Password</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-semibold mb-1.5">Current Password</label>
-                                <input type="password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} className={inputCls} placeholder="Enter current password" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold mb-1.5">New Password</label>
-                                <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} className={inputCls} placeholder="Min 6 characters" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold mb-1.5">Confirm New Password</label>
-                                <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className={inputCls} placeholder="Repeat new password" />
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-slate-200 dark:border-slate-800">
-                            <button className={btnSecondary} onClick={() => setShowChangePassword(false)}>Cancel</button>
-                            <button className={btnPrimary} onClick={changePassword}>Update Password</button>
                         </div>
                     </div>
                 </div>

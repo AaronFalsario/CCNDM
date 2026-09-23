@@ -47,7 +47,23 @@ const Icon = {
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
     ),
+    book: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+    ),
+    calendar: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+    ),
 };
+
+const EMAIL_DOMAIN = '@columban.edu.ph';
 
 export default function StudentLogin() {
     const navigate = useNavigate();
@@ -62,6 +78,8 @@ export default function StudentLogin() {
     const [signupId, setSignupId] = useState('');
     const [signupName, setSignupName] = useState('');
     const [signupEmail, setSignupEmail] = useState('');
+    const [signupCourse, setSignupCourse] = useState('');
+    const [signupYearLevel, setSignupYearLevel] = useState('');
     const [signupPassword, setSignupPassword] = useState('');
     const [signupConfirm, setSignupConfirm] = useState('');
 
@@ -87,6 +105,22 @@ export default function StudentLogin() {
 
     const togglePassword = (key) => {
         setShowPassword((prev) => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    /* EMAIL HANDLER — strips any existing domain and locks in @columban.edu.ph */
+    const handleEmailChange = (e) => {
+        let value = e.target.value;
+
+        // Remove the domain if the user pastes or types it
+        const atIndex = value.indexOf('@');
+        if (atIndex !== -1) {
+            value = value.slice(0, atIndex);
+        }
+
+        // Only allow alphanumeric, dots, underscores, and hyphens in the local part
+        value = value.replace(/[^a-zA-Z0-9._-]/g, '');
+
+        setSignupEmail(value);
     };
 
     const handleLogin = async (e) => {
@@ -169,15 +203,20 @@ export default function StudentLogin() {
         e?.preventDefault();
         const studentId = signupId.trim();
         const name = signupName.trim();
-        const email = signupEmail.trim();
+        const emailLocalPart = signupEmail.trim();
+        const course = signupCourse.trim();
+        const yearLevel = signupYearLevel.trim();
 
-        if (!studentId || !name || !email || !signupPassword || !signupConfirm)
+        if (!studentId || !name || !emailLocalPart || !course || !yearLevel || !signupPassword || !signupConfirm)
             return alert('Please fill in all fields');
         if (signupPassword !== signupConfirm) return alert('Passwords do not match!');
         if (signupPassword.length < 6) return alert('Password must be at least 6 characters');
-        if (!email.includes('@')) return alert('Please enter a valid email address');
+        if (emailLocalPart.length < 2) return alert('Please enter a valid email username');
         if (name.length < 2) return alert('Please enter your full name');
         if (!/^\d{8}$/.test(studentId)) return alert('Student ID must be exactly 8 digits');
+
+        // Build the full email with the fixed domain
+        const email = `${emailLocalPart}${EMAIL_DOMAIN}`;
 
         try {
             setLoading(true);
@@ -202,6 +241,8 @@ export default function StudentLogin() {
                 student_id_number: studentId,
                 name,
                 email,
+                course,
+                year_level: yearLevel,
                 password: hashedPassword,
                 status: 'active',
                 created_at: new Date().toISOString(),
@@ -219,6 +260,7 @@ export default function StudentLogin() {
 
             alert('Account created successfully! You can now login with your Student ID.');
             setSignupId(''); setSignupName(''); setSignupEmail('');
+            setSignupCourse(''); setSignupYearLevel('');
             setSignupPassword(''); setSignupConfirm('');
             setPanel('login');
             setLoginId(studentId);
@@ -235,6 +277,8 @@ export default function StudentLogin() {
         'Track pending penalties',
         'Submit and monitor appeals',
     ];
+
+    const yearLevels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 
     return (
         <div className="min-h-screen w-full bg-[#EEF3FF] flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans overflow-hidden">
@@ -362,12 +406,56 @@ export default function StudentLogin() {
                                         </fieldset>
                                     </div>
 
+                                    {/* Email with fixed @columban.edu.ph domain */}
                                     <div className="relative mb-5">
                                         <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
                                             <legend className="text-[11px] text-slate-500 px-1 font-semibold">Email Address <span className="text-red-500">*</span></legend>
                                             <div className="flex items-center">
                                                 <span className="text-slate-400 mr-2.5 flex-shrink-0">{Icon.mail}</span>
-                                                <input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} placeholder="student@gmail.com" required className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5" />
+                                                <input
+                                                    type="text"
+                                                    value={signupEmail}
+                                                    onChange={handleEmailChange}
+                                                    placeholder="yourname"
+                                                    required
+                                                    className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5 min-w-0"
+                                                />
+                                                <span className="text-[15px] text-slate-500 font-medium flex-shrink-0 select-none">
+                                                    {EMAIL_DOMAIN}
+                                                </span>
+                                            </div>
+                                        </fieldset>
+                                    </div>
+                                    <p className="text-[10.5px] text-slate-400 mb-5 pl-1">
+                                        Your email will be: <span className="font-semibold text-blue-600">{signupEmail || 'yourname'}{EMAIL_DOMAIN}</span>
+                                    </p>
+
+                                    <div className="relative mb-5">
+                                        <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
+                                            <legend className="text-[11px] text-slate-500 px-1 font-semibold">Course <span className="text-red-500">*</span></legend>
+                                            <div className="flex items-center">
+                                                <span className="text-slate-400 mr-2.5 flex-shrink-0">{Icon.book}</span>
+                                                <input type="text" value={signupCourse} onChange={(e) => setSignupCourse(e.target.value)} placeholder="e.g., BS Nursing" required className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5" />
+                                            </div>
+                                        </fieldset>
+                                    </div>
+
+                                    <div className="relative mb-5">
+                                        <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
+                                            <legend className="text-[11px] text-slate-500 px-1 font-semibold">Year Level <span className="text-red-500">*</span></legend>
+                                            <div className="flex items-center">
+                                                <span className="text-slate-400 mr-2.5 flex-shrink-0">{Icon.calendar}</span>
+                                                <select value={signupYearLevel} onChange={(e) => setSignupYearLevel(e.target.value)} required className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none py-1.5 cursor-pointer appearance-none">
+                                                    <option value="" disabled>Select year level</option>
+                                                    {yearLevels.map((year) => (
+                                                        <option key={year} value={year}>{year}</option>
+                                                    ))}
+                                                </select>
+                                                <span className="text-slate-400 pointer-events-none flex-shrink-0">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                                                        <polyline points="6 9 12 15 18 9" />
+                                                    </svg>
+                                                </span>
                                             </div>
                                         </fieldset>
                                     </div>
