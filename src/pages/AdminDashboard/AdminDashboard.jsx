@@ -160,6 +160,8 @@ const notifMeta = (n) => {
         return { icon: 'doc', bg: 'bg-violet-100 dark:bg-violet-900/40', fg: 'text-violet-600 dark:text-violet-300' };
     if (t.includes('completed') || t.includes('approved') || t.includes('resolved'))
         return { icon: 'checkCircle', bg: 'bg-emerald-100 dark:bg-emerald-900/40', fg: 'text-emerald-600 dark:text-emerald-300' };
+    if (t.includes('rejected'))
+        return { icon: 'xCircle', bg: 'bg-red-100 dark:bg-red-900/40', fg: 'text-red-600 dark:text-red-300' };
     if (t.includes('reminder') || t.includes('deadline'))
         return { icon: 'clock', bg: 'bg-blue-100 dark:bg-blue-900/40', fg: 'text-blue-600 dark:text-blue-300' };
     return { icon: 'info', bg: 'bg-slate-100 dark:bg-slate-700', fg: 'text-slate-600 dark:text-slate-300' };
@@ -230,7 +232,7 @@ const badgeCls = (cls) => ({
     inactive: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
 }[cls] || 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300');
 
-//SHARED MODAL SHELL — background fully locked while open
+//SHARED MODAL SHELL
 function Modal({ open, onClose, title, icon, children, footer, maxWidth = 'max-w-lg' }) {
     useEffect(() => {
         if (!open) return;
@@ -322,7 +324,7 @@ export default function AdminDashboard() {
     const [sessionStatusFilter, setSessionStatusFilter] = useState('');
     const [announcementSearch, setAnnouncementSearch] = useState('');
 
-    //SELECTION (bulk actions)
+    //SELECTION
     const [selectedPenalties, setSelectedPenalties] = useState([]);
     const [selectedStudents, setSelectedStudents] = useState([]);
 
@@ -344,6 +346,12 @@ export default function AdminDashboard() {
     const [showViolationModal, setShowViolationModal] = useState(false);
     const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
 
+    // Appeal Action Modal
+    const [showAppealActionModal, setShowAppealActionModal] = useState(false);
+    const [appealActionType, setAppealActionType] = useState(null);
+    const [appealActionComment, setAppealActionComment] = useState('');
+    const [appealActionError, setAppealActionError] = useState('');
+
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [selectedPenalty, setSelectedPenalty] = useState(null);
     const [selectedAppeal, setSelectedAppeal] = useState(null);
@@ -364,24 +372,20 @@ export default function AdminDashboard() {
     const [importFile, setImportFile] = useState(null);
     const [quickNote, setQuickNote] = useState({ title: '', message: '', targetStudent: '', type: 'info' });
 
-    // New: Session form
     const [sessionForm, setSessionForm] = useState({
         student_id: '', title: '', scheduled_date: '', start_time: '',
         end_time: '', hours: 2, venue: '', status: 'scheduled', notes: '',
     });
 
-    // New: Violation type form
     const [violationForm, setViolationForm] = useState({
         name: '', category: 'Academic', defaultLevel: '1st Offense',
         defaultHours: 0, description: '', active: true,
     });
 
-    // New: Announcement form
     const [announcementForm, setAnnouncementForm] = useState({
         title: '', message: '', type: 'info', target: '', priority: 'normal',
     });
 
-    // New: Settings
     const [settings, setSettings] = useState(() => {
         try {
             const raw = localStorage.getItem('ccndm_settings');
@@ -487,7 +491,6 @@ export default function AdminDashboard() {
         setSessions(data || []);
     }, []);
     const loadAnnouncements = useCallback(async () => {
-        // Announcements = notifications with type in a specific set, or all broadcast notifications
         const { data, error } = await supabase
             .from('notifications')
             .select('*')
@@ -502,13 +505,11 @@ export default function AdminDashboard() {
         setAnnouncements(data || []);
     }, []);
     const loadViolationCatalog = useCallback(async () => {
-        // Try a dedicated table; if it doesn't exist, fall back to deriving from penalties
         const { data, error } = await supabase
             .from('violation_types')
             .select('*')
             .order('name', { ascending: true });
         if (error) {
-            // Fallback: derive from penalties with default hours
             const seen = new Map();
             penalties.forEach(p => {
                 const name = p.violation_type || p.violation;
@@ -540,7 +541,6 @@ export default function AdminDashboard() {
         ]).finally(() => setLoading(false));
     }, [admin, loadStudents, loadPenalties, loadAppeals, loadNotifications, loadActivity, loadSessions, loadAnnouncements]);
 
-    // Reload violation catalog when penalties change (for derived fallback)
     useEffect(() => {
         if (penalties.length > 0) loadViolationCatalog();
     }, [penalties, loadViolationCatalog]);
@@ -637,7 +637,7 @@ export default function AdminDashboard() {
         };
     }, [students, penalties, appeals]);
 
-    //ANALYTICS specific
+    //ANALYTICS
     const analytics = useMemo(() => {
         const months = Array.from({ length: 6 }).map((_, i) => {
             const d = new Date();
@@ -1006,48 +1006,83 @@ export default function AdminDashboard() {
         await loadActivity();
     };
 
-    const handleApproveAppeal = async (id) => {
-        setConfirmDialog({
-            title: 'Approve this appeal?',
-            message: 'The appeal will be marked as approved.',
-            tone: 'success',
-            confirmLabel: 'Approve Appeal',
-            onConfirm: async () => {
-                const { error } = await supabase.from('appeals')
-                    .update({ status: 'Approved', reviewed_at: new Date().toISOString() })
-                    .eq('id', id);
-                if (error) return showToast('error', 'Failed', error.message);
-                showToast('success', 'Approved', 'Appeal approved');
-                await logActivity('appeal', `Approved appeal #${id}`);
-                await loadAppeals();
-                await loadActivity();
-            },
-        });
+    // ==== APPEAL HANDLERS ====
+    const openAppealAction = (appeal, type) => {
+        setSelectedAppeal(appeal);
+        setAppealActionType(type);
+        setAppealActionComment('');
+        setAppealActionError('');
+        setShowAppealActionModal(true);
     };
 
-    const handleRejectAppeal = async (id) => {
-        setConfirmDialog({
-            title: 'Reject this appeal?',
-            message: 'The appeal will be marked as rejected.',
-            tone: 'danger',
-            confirmLabel: 'Reject Appeal',
-            onConfirm: async () => {
-                const { error } = await supabase.from('appeals')
-                    .update({ status: 'Rejected', reviewed_at: new Date().toISOString() })
-                    .eq('id', id);
-                if (error) return showToast('error', 'Failed', error.message);
-                showToast('success', 'Rejected', 'Appeal rejected');
-                await logActivity('appeal', `Rejected appeal #${id}`);
-                await loadAppeals();
-                await loadActivity();
-            },
-        });
+    const handleApproveAppeal = (id) => {
+        const appeal = appeals.find(a => String(a.id) === String(id));
+        if (!appeal) return showToast('error', 'Not found', 'Appeal not found');
+        openAppealAction(appeal, 'approve');
+    };
+
+    const handleRejectAppeal = (id) => {
+        const appeal = appeals.find(a => String(a.id) === String(id));
+        if (!appeal) return showToast('error', 'Not found', 'Appeal not found');
+        openAppealAction(appeal, 'reject');
     };
 
     const confirmAppealAction = async () => {
-        const action = confirmDialog?.onConfirm;
-        setConfirmDialog(null);
-        if (action) await action();
+        if (!selectedAppeal || !appealActionType) return;
+
+        const comment = appealActionComment.trim();
+        if (!comment) {
+            setAppealActionError('Please add a comment/remarks before confirming.');
+            return;
+        }
+        setAppealActionError('');
+
+        const isApprove = appealActionType === 'approve';
+        const nowIso = new Date().toISOString();
+
+        const update = {
+            status: isApprove ? 'Approved' : 'Rejected',
+            reviewed_at: nowIso,
+            reviewed_by: admin?.id || null,
+            reviewed_by_name: admin?.full_name || admin?.name || 'Admin',
+            admin_comment: comment,
+        };
+
+        const { error } = await supabase
+            .from('appeals')
+            .update(update)
+            .eq('id', selectedAppeal.id);
+
+        if (error) {
+            setAppealActionError(error.message);
+            return;
+        }
+
+        if (selectedAppeal.student_id) {
+            await supabase.from('notifications').insert([{
+                student_id: selectedAppeal.student_id,
+                title: isApprove ? 'Appeal approved' : 'Appeal rejected',
+                message: `Your appeal for "${selectedAppeal.penalty_violation || selectedAppeal.violation || 'violation'}" has been ${isApprove ? 'approved' : 'rejected'}.\n\nRemarks: ${comment}`,
+                type: isApprove ? 'approved' : 'rejected',
+                is_read: false,
+                created_at: nowIso,
+            }]);
+        }
+
+        showToast('success', isApprove ? 'Approved' : 'Rejected',
+            `Appeal #${selectedAppeal.id} has been ${isApprove ? 'approved' : 'rejected'}.`);
+
+        await logActivity('appeal',
+            `${isApprove ? 'Approved' : 'Rejected'} appeal #${selectedAppeal.id} — ${comment}`);
+
+        setShowAppealActionModal(false);
+        setSelectedAppeal(null);
+        setAppealActionType(null);
+        setAppealActionComment('');
+
+        await loadAppeals();
+        await loadActivity();
+        await loadNotifications();
     };
 
     const handleMarkPenaltyComplete = (id) => {
@@ -1268,7 +1303,6 @@ export default function AdminDashboard() {
             if (error) return showToast('error', 'Failed', error.message);
             showToast('success', 'Updated', 'Violation type saved');
         } else if (selectedViolation && String(selectedViolation.id).startsWith('derived-')) {
-            // Insert into violation_types table since it's currently derived
             payload.created_at = new Date().toISOString();
             const { error } = await supabase.from('violation_types').insert([payload]);
             if (error) return showToast('error', 'Failed', error.message);
@@ -1313,33 +1347,60 @@ export default function AdminDashboard() {
         setShowViolationModal(true);
     };
 
-    // ==== ANNOUNCEMENT HANDLERS ====
-    const resetAnnouncementForm = () => setAnnouncementForm({ title: '', message: '', type: 'info', target: '', priority: 'normal' });
+    // ==== ANNOUNCEMENT HANDLERS (FIXED) ====
+    const resetAnnouncementForm = () => setAnnouncementForm({
+        title: '', message: '', type: 'info', target: '', priority: 'normal'
+    });
 
     const handleSaveAnnouncement = async () => {
         if (!announcementForm.title.trim() || !announcementForm.message.trim()) {
             return showToast('error', 'Missing', 'Title and message are required');
         }
-        const payload = {
+
+        // Only send columns that exist on your notifications table:
+        // id, admin_id, student_id, title, message, type, is_read, created_at, read_at
+        const basePayload = {
             title: announcementForm.title.trim(),
             message: announcementForm.message.trim(),
             type: announcementForm.type,
-            priority: announcementForm.priority,
             is_read: false,
-            updated_at: new Date().toISOString(),
         };
-        if (announcementForm.target) payload.student_id = announcementForm.target;
+        if (announcementForm.target) basePayload.student_id = announcementForm.target;
 
-        if (selectedAnnouncement) {
-            const { error } = await supabase.from('notifications').update(payload).eq('id', selectedAnnouncement.id);
-            if (error) return showToast('error', 'Failed', error.message);
-            showToast('success', 'Updated', 'Announcement saved');
-        } else {
+        const tryWrite = async (includePriority) => {
+            const payload = { ...basePayload };
+            if (includePriority) payload.priority = announcementForm.priority;
+
+            if (selectedAnnouncement) {
+                return await supabase
+                    .from('notifications')
+                    .update(payload)
+                    .eq('id', selectedAnnouncement.id);
+            }
             payload.created_at = new Date().toISOString();
-            const { error } = await supabase.from('notifications').insert([payload]);
-            if (error) return showToast('error', 'Failed', error.message);
-            showToast('success', 'Posted', announcementForm.target ? 'Sent to selected student' : 'Broadcast to all students');
+            return await supabase.from('notifications').insert([payload]);
+        };
+
+        // 1st attempt: with priority (works if you add the column)
+        let result = await tryWrite(true);
+
+        // Retry without priority if the column doesn't exist
+        if (result.error && /priority/i.test(result.error.message || '')) {
+            result = await tryWrite(false);
         }
+
+        if (result.error) {
+            return showToast('error', 'Failed', result.error.message);
+        }
+
+        showToast(
+            'success',
+            selectedAnnouncement ? 'Updated' : 'Posted',
+            selectedAnnouncement
+                ? 'Announcement saved'
+                : (announcementForm.target ? 'Sent to selected student' : 'Broadcast to all students')
+        );
+
         await logActivity('system', `Announcement: ${announcementForm.title}`);
         setShowAnnouncementModal(false);
         setSelectedAnnouncement(null);
@@ -2340,7 +2401,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/*SESSIONS — NEW*/}
+                {/*SESSIONS*/}
                 {currentTab === 'sessions' && (
                     <div style={fadeInStyle}>
                         <div className="bg-gradient-to-br from-indigo-600 to-blue-800 rounded-xl p-6 md:p-7 mb-6 text-white flex items-center justify-between flex-wrap gap-4">
@@ -2548,7 +2609,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/*ANNOUNCEMENTS — NEW*/}
+                {/*ANNOUNCEMENTS*/}
                 {currentTab === 'announcements' && (
                     <div style={fadeInStyle}>
                         <div className="bg-gradient-to-br from-fuchsia-600 to-purple-800 rounded-xl p-6 md:p-7 mb-6 text-white flex items-center justify-between flex-wrap gap-4">
@@ -2624,7 +2685,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/*VIOLATION TYPES — NEW*/}
+                {/*VIOLATION TYPES*/}
                 {currentTab === 'violationTypes' && (
                     <div style={fadeInStyle}>
                         <div className="bg-gradient-to-br from-rose-600 to-pink-800 rounded-xl p-6 md:p-7 mb-6 text-white flex items-center justify-between flex-wrap gap-4">
@@ -2692,7 +2753,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/*ANALYTICS — NEW*/}
+                {/*ANALYTICS*/}
                 {currentTab === 'analytics' && (
                     <div style={fadeInStyle} className="space-y-4">
                         <div className="bg-gradient-to-br from-fuchsia-600 to-purple-800 rounded-xl p-6 md:p-7 text-white">
@@ -3147,7 +3208,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/*DATA EXPORT — NEW*/}
+                {/*DATA EXPORT*/}
                 {currentTab === 'dataExport' && (
                     <div style={fadeInStyle} className="space-y-4">
                         <div className="bg-gradient-to-br from-emerald-600 to-teal-800 rounded-xl p-6 md:p-7 text-white">
@@ -3159,7 +3220,7 @@ export default function AdminDashboard() {
                             {[
                                 { title: 'All Students', icon: I.users, color: 'from-blue-500 to-blue-600', count: students.length, rows: students.map(s => ({ ID: s.student_id_number, Name: s.name, Email: s.email, Course: s.course, Year: s.year_level, Status: s.status })) },
                                 { title: 'All Penalties', icon: I.rect, color: 'from-amber-500 to-orange-600', count: penalties.length, rows: penalties.map(p => ({ Date: formatDate(p.created_at), Student: p.student_name, Violation: p.violation_type, Level: p.offense_level, Hours: p.hours, Status: p.status, Deadline: formatDate(p.deadline) })) },
-                                { title: 'All Appeals', icon: I.doc, color: 'from-violet-500 to-purple-600', count: appeals.length, rows: appeals.map(a => ({ ID: a.id, Student: a.student_name, Violation: a.penalty_violation || a.violation, Status: a.status, Submitted: formatDate(a.created_at) })) },
+                                { title: 'All Appeals', icon: I.doc, color: 'from-violet-500 to-purple-600', count: appeals.length, rows: appeals.map(a => ({ ID: a.id, Student: a.student_name, Violation: a.penalty_violation || a.violation, Status: a.status, Submitted: formatDate(a.created_at), Comment: a.admin_comment || '' })) },
                                 { title: 'Service Sessions', icon: I.calendar, color: 'from-indigo-500 to-blue-600', count: sessions.length, rows: sessions.map(s => ({ Date: s.scheduled_date, Student: s.student_name, Title: s.title, Hours: s.hours, Venue: s.venue, Status: s.status })) },
                                 { title: 'Activity Log', icon: I.activity, color: 'from-slate-600 to-slate-800', count: activityLog.length, rows: activityLog.map(a => ({ Date: formatDate(a.created_at), Admin: a.admin_name, Type: a.type, Description: a.description })) },
                                 { title: 'Notifications', icon: I.bell, color: 'from-fuchsia-500 to-pink-600', count: notifications.length, rows: notifications.map(n => ({ Title: n.title, Message: n.message, Type: n.type, Read: n.is_read, Created: formatDate(n.created_at) })) },
@@ -3204,7 +3265,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/*SETTINGS — NEW*/}
+                {/*SETTINGS*/}
                 {currentTab === 'settings' && (
                     <div style={fadeInStyle} className="space-y-4">
                         <div className="bg-gradient-to-br from-slate-600 to-slate-800 rounded-xl p-6 md:p-7 text-white">
@@ -3359,7 +3420,7 @@ export default function AdminDashboard() {
                 </div>
             </Modal>
 
-            {/* ============ SESSION MODAL — NEW ============ */}
+            {/* ============ SESSION MODAL ============ */}
             <Modal
                 open={showSessionModal}
                 onClose={() => { setShowSessionModal(false); setSelectedSession(null); resetSessionForm(); }}
@@ -3427,7 +3488,7 @@ export default function AdminDashboard() {
                 </div>
             </Modal>
 
-            {/* ============ VIOLATION TYPE MODAL — NEW ============ */}
+            {/* ============ VIOLATION TYPE MODAL ============ */}
             <Modal
                 open={showViolationModal}
                 onClose={() => { setShowViolationModal(false); setSelectedViolation(null); resetViolationForm(); }}
@@ -3481,7 +3542,7 @@ export default function AdminDashboard() {
                 </div>
             </Modal>
 
-            {/* ============ ANNOUNCEMENT MODAL — NEW ============ */}
+            {/* ============ ANNOUNCEMENT MODAL ============ */}
             <Modal
                 open={showAnnouncementModal}
                 onClose={() => { setShowAnnouncementModal(false); setSelectedAnnouncement(null); resetAnnouncementForm(); }}
@@ -3521,6 +3582,9 @@ export default function AdminDashboard() {
                                 <option value="normal">Normal</option>
                                 <option value="high">High Priority</option>
                             </select>
+                            <p className="text-[10px] text-slate-400 mt-1">
+                                Requires a "priority" column on your notifications table — otherwise the app saves without it.
+                            </p>
                         </div>
                     </div>
                     <div>
@@ -3534,6 +3598,101 @@ export default function AdminDashboard() {
                         </select>
                     </div>
                 </div>
+            </Modal>
+
+            {/* ============ APPEAL ACTION MODAL ============ */}
+            <Modal
+                open={showAppealActionModal}
+                onClose={() => {
+                    setShowAppealActionModal(false);
+                    setSelectedAppeal(null);
+                    setAppealActionType(null);
+                    setAppealActionComment('');
+                    setAppealActionError('');
+                }}
+                title={appealActionType === 'approve' ? 'Approve Appeal' : 'Reject Appeal'}
+                icon={appealActionType === 'approve' ? I.check : I.close}
+                maxWidth="max-w-lg"
+                footer={
+                    <>
+                        <button
+                            onClick={() => {
+                                setShowAppealActionModal(false);
+                                setSelectedAppeal(null);
+                                setAppealActionType(null);
+                                setAppealActionComment('');
+                                setAppealActionError('');
+                            }}
+                            className={btnSecondary}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmAppealAction}
+                            className={appealActionType === 'approve' ? btnPrimary : btnDanger}
+                        >
+                            {appealActionType === 'approve' ? 'Approve Appeal' : 'Reject Appeal'}
+                        </button>
+                    </>
+                }
+            >
+                {selectedAppeal && (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700">
+                                <div className="text-[10px] uppercase font-bold text-slate-400">Student</div>
+                                <div className="text-sm font-semibold mt-0.5 truncate">
+                                    {selectedAppeal.student_name || 'Unknown'}
+                                </div>
+                            </div>
+                            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700">
+                                <div className="text-[10px] uppercase font-bold text-slate-400">Violation</div>
+                                <div className="text-sm font-semibold mt-0.5 truncate">
+                                    {selectedAppeal.penalty_violation || selectedAppeal.violation || selectedAppeal.violation_type || '—'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="text-[10px] uppercase font-bold text-slate-400 mb-1.5">
+                                Student's Reason
+                            </div>
+                            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm whitespace-pre-wrap max-h-32 overflow-y-auto">
+                                {selectedAppeal.appeal_reason || selectedAppeal.reason || selectedAppeal.supporting_statement || '—'}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className={labelCls}>
+                                {appealActionType === 'approve' ? 'Approval Remarks *' : 'Rejection Reason *'}
+                            </label>
+                            <textarea
+                                rows={4}
+                                value={appealActionComment}
+                                onChange={(e) => {
+                                    setAppealActionComment(e.target.value);
+                                    if (appealActionError) setAppealActionError('');
+                                }}
+                                className={inputCls}
+                                placeholder={
+                                    appealActionType === 'approve'
+                                        ? 'Explain why this appeal is approved (e.g., valid documentation provided)...'
+                                        : 'Explain why this appeal is rejected (e.g., insufficient evidence)...'
+                                }
+                            />
+                            <p className="text-[11px] text-slate-400 mt-1.5">
+                                This comment will be saved with the appeal and sent to the student.
+                            </p>
+                        </div>
+
+                        {appealActionError && (
+                            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800">
+                                <span className="text-red-500 flex-shrink-0 mt-0.5">{I.alert}</span>
+                                <p className="text-xs text-red-700 dark:text-red-300">{appealActionError}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
             </Modal>
 
             {/* ============ LOGOUT CONFIRM MODAL ============ */}
@@ -3925,8 +4084,26 @@ export default function AdminDashboard() {
                         <button onClick={() => { setShowViewAppeal(false); setSelectedAppeal(null); }} className={btnSecondary}>Close</button>
                         {selectedAppeal && (selectedAppeal.status || 'pending').toLowerCase() === 'pending' && (
                             <>
-                                <button onClick={() => { handleRejectAppeal(selectedAppeal.id); setShowViewAppeal(false); setSelectedAppeal(null); }} className={btnDanger}>Reject</button>
-                                <button onClick={() => { handleApproveAppeal(selectedAppeal.id); setShowViewAppeal(false); setSelectedAppeal(null); }} className={btnPrimary}>Approve</button>
+                                <button
+                                    onClick={() => {
+                                        const a = selectedAppeal;
+                                        setShowViewAppeal(false);
+                                        handleRejectAppeal(a.id);
+                                    }}
+                                    className={btnDanger}
+                                >
+                                    Reject
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const a = selectedAppeal;
+                                        setShowViewAppeal(false);
+                                        handleApproveAppeal(a.id);
+                                    }}
+                                    className={btnPrimary}
+                                >
+                                    Approve
+                                </button>
                             </>
                         )}
                     </>
@@ -3964,10 +4141,23 @@ export default function AdminDashboard() {
                                     {reason}
                                 </div>
                             </div>
+                            {selectedAppeal.admin_comment && (
+                                <div>
+                                    <div className="text-[10px] uppercase font-bold text-slate-400 mb-1.5">
+                                        Admin Comment
+                                    </div>
+                                    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-sm whitespace-pre-wrap">
+                                        {selectedAppeal.admin_comment}
+                                    </div>
+                                </div>
+                            )}
                             {selectedAppeal.reviewed_at && (
                                 <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
                                     <div className="text-[10px] uppercase font-bold text-blue-500">Reviewed</div>
-                                    <div className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">{formatDate(selectedAppeal.reviewed_at)}</div>
+                                    <div className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+                                        {formatDate(selectedAppeal.reviewed_at)}
+                                        {selectedAppeal.reviewed_by_name && ` by ${selectedAppeal.reviewed_by_name}`}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -4066,22 +4256,6 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             </Modal>
-
-            {confirmDialog && (
-                <div className="fixed inset-0 z-[50000] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4 select-none" style={{ pointerEvents: 'auto' }}>
-                    <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${confirmDialog.tone === 'danger' ? 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-300'}`}>
-                            {confirmDialog.tone === 'danger' ? I.close : I.check}
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{confirmDialog.title}</h3>
-                        <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{confirmDialog.message}</p>
-                        <div className="flex justify-end gap-2 mt-6">
-                            <button onClick={() => setConfirmDialog(null)} className={btnSecondary}>Cancel</button>
-                            <button onClick={confirmAppealAction} className={confirmDialog.tone === 'danger' ? btnDanger : 'px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition'}>{confirmDialog.confirmLabel}</button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {completePenaltyId && (
                 <div className="fixed inset-0 z-[50000] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4 select-none" style={{ pointerEvents: 'auto' }}>

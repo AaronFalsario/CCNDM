@@ -45,6 +45,7 @@ const I = {
     trendUp: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>,
     userEdit: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /><path d="M18 11l3-3-1.5-1.5L16.5 9.5" /></svg>,
     refresh: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>,
+    megaphone: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-5v12L3 14v-3z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></svg>,
 };
 
 /* HELPERS */
@@ -183,6 +184,8 @@ const notifMeta = (n) => {
         return { icon: 'fileText', bg: 'bg-violet-100 dark:bg-violet-900/40', fg: 'text-violet-600 dark:text-violet-300' };
     if (type.includes('completed') || type.includes('approved') || type.includes('resolved'))
         return { icon: 'checkCircle', bg: 'bg-emerald-100 dark:bg-emerald-900/40', fg: 'text-emerald-600 dark:text-emerald-300' };
+    if (type.includes('rejected'))
+        return { icon: 'warning', bg: 'bg-red-100 dark:bg-red-900/40', fg: 'text-red-600 dark:text-red-300' };
     if (type.includes('reminder') || type.includes('deadline'))
         return { icon: 'clock', bg: 'bg-blue-100 dark:bg-blue-900/40', fg: 'text-blue-600 dark:text-blue-300' };
     return { icon: 'info', bg: 'bg-slate-100 dark:bg-slate-700', fg: 'text-slate-600 dark:text-slate-300' };
@@ -271,12 +274,24 @@ export default function StudentDashboard() {
     const navigate = useNavigate();
     const { user: student, setUser: setStudent, logout } = useAuth('student');
 
-    const [currentTab, setCurrentTab] = useState('dashboard');
+    const [currentTab, setCurrentTab] = useState(() => {
+        return sessionStorage.getItem('student_current_tab') || 'dashboard';
+    });
+    
+    useEffect(() => {
+        sessionStorage.setItem('student_current_tab', currentTab);
+    }, [currentTab]);
     const [penalties, setPenalties] = useState([]);
     const [appeals, setAppeals] = useState([]);
     const [notifications, setNotifications] = useState([]);
     const [sessions, setSessions] = useState([]);
     const [achievements, setAchievements] = useState([]);
+    /* NEW: Announcements state */
+    const [announcements, setAnnouncements] = useState([]);
+    const [announcementFilter, setAnnouncementFilter] = useState('all');
+    const [announcementSearch, setAnnouncementSearch] = useState('');
+    const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+
     const [darkMode, setDarkMode] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
@@ -298,7 +313,7 @@ export default function StudentDashboard() {
     const [showIdleWarning, setShowIdleWarning] = useState(false);
     const [idleCountdown, setIdleCountdown] = useState(30);
 
-    /* NEW: View Violation Details modal */
+    /* View Violation Details modal */
     const [selectedPenalty, setSelectedPenalty] = useState(null);
 
     const [editName, setEditName] = useState('');
@@ -416,6 +431,29 @@ export default function StudentDashboard() {
         }
     }, [student]);
 
+    /* NEW: Load announcements (broadcast only — student_id IS NULL) */
+    const loadAnnouncements = useCallback(async () => {
+        if (!student) return;
+        try {
+            const { data, error } = await supabase
+                .from('notifications')
+                .select('*')
+                .is('student_id', null)
+                .order('created_at', { ascending: false })
+                .limit(100);
+
+            if (error) {
+                console.error('[loadAnnouncements] error:', error);
+                setAnnouncements([]);
+                return;
+            }
+            setAnnouncements(data || []);
+        } catch (e) {
+            console.error('loadAnnouncements:', e);
+            setAnnouncements([]);
+        }
+    }, [student]);
+
     const loadSessions = useCallback(async () => {
         if (!student) return;
         const sid = student.student_id_number || student.studentId || student.id;
@@ -456,8 +494,9 @@ export default function StudentDashboard() {
             loadNotifications(),
             loadSessions(),
             loadAchievements(),
+            loadAnnouncements(), /* NEW */
         ]).finally(() => setLoading(false));
-    }, [student, loadPenalties, loadAppeals, loadNotifications, loadSessions, loadAchievements]);
+    }, [student, loadPenalties, loadAppeals, loadNotifications, loadSessions, loadAchievements, loadAnnouncements]);
 
     useEffect(() => {
         if (!student) return undefined;
@@ -491,6 +530,7 @@ export default function StudentDashboard() {
                     const row = payload.new || payload.old;
                     if (!row || row.student_id === null || String(row.student_id) === String(sid)) {
                         loadNotifications();
+                        loadAnnouncements(); /* NEW: refresh announcements when broadcasts change */
                     }
                 }
             )
@@ -502,15 +542,16 @@ export default function StudentDashboard() {
             clearInterval(fallbackId);
             supabase.removeChannel(channel);
         };
-    }, [student, loadNotifications]);
+    }, [student, loadNotifications, loadAnnouncements]);
 
     useEffect(() => {
         if (!student) return;
         const id = setInterval(() => {
             loadNotifications();
+            loadAnnouncements(); /* NEW */
         }, 60000);
         return () => clearInterval(id);
-    }, [student, loadNotifications]);
+    }, [student, loadNotifications, loadAnnouncements]);
 
     /* DERIVED STATS */
     const pendingCount = penalties.filter((p) =>
@@ -530,6 +571,9 @@ export default function StudentDashboard() {
         : notifications;
     const newNotifs = filteredNotifications.filter((n) => !n.is_read);
     const earlierNotifs = filteredNotifications.filter((n) => n.is_read);
+
+    /* NEW: announcement counters */
+    const unreadAnnouncements = announcements.filter((a) => !a.is_read).length;
 
     /* ACHIEVEMENTS — time-windowed + expanded */
     const activeAchievements = achievements.filter((a) => isWithinWindow(a.unlocked_at));
@@ -673,6 +717,20 @@ export default function StudentDashboard() {
         return 0;
     });
 
+    /* NEW: filtered announcements */
+    const filteredAnnouncements = announcements.filter((a) => {
+        if (announcementFilter === 'unread' && a.is_read) return false;
+        if (announcementFilter === 'read' && !a.is_read) return false;
+        if (announcementSearch) {
+            const t = announcementSearch.toLowerCase();
+            return (
+                (a.title || '').toLowerCase().includes(t) ||
+                (a.message || '').toLowerCase().includes(t)
+            );
+        }
+        return true;
+    });
+
     /* STATUS HELPERS */
     const statusClass = (p) => {
         if (p.offense_level === '1st Offense' || p.is_warning === true) return 'warning';
@@ -801,11 +859,36 @@ export default function StudentDashboard() {
     const deleteNotif = async (id) => {
         await supabase.from('notifications').delete().eq('id', id);
         await loadNotifications();
+        await loadAnnouncements(); /* NEW */
     };
 
     const markNotifRead = async (id) => {
         await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', id);
         await loadNotifications();
+        await loadAnnouncements(); /* NEW */
+    };
+
+    /* NEW: mark a single announcement as read */
+    const markAnnouncementRead = async (id) => {
+        await supabase
+            .from('notifications')
+            .update({ is_read: true, read_at: new Date().toISOString() })
+            .eq('id', id);
+        await loadAnnouncements();
+        await loadNotifications();
+    };
+
+    /* NEW: mark all announcements read (broadcasts only) */
+    const markAllAnnouncementsRead = async () => {
+        const unreadIds = announcements.filter((a) => !a.is_read).map((a) => a.id);
+        if (!unreadIds.length) return;
+        await supabase
+            .from('notifications')
+            .update({ is_read: true, read_at: new Date().toISOString() })
+            .in('id', unreadIds);
+        await loadAnnouncements();
+        await loadNotifications();
+        showToast('info', 'All announcements marked as read', '');
     };
 
     /* IDLE TIMER */
@@ -872,8 +955,9 @@ export default function StudentDashboard() {
                     : currentTab === 'progress' ? 'My Progress'
                         : currentTab === 'achievements' ? 'Achievements'
                             : currentTab === 'history' ? 'History'
-                                : currentTab === 'appeal' ? 'Submit Appeal'
-                                    : currentTab === 'help' ? 'Help Center' : '';
+                                : currentTab === 'announcements' ? 'Announcements'
+                                    : currentTab === 'appeal' ? 'Submit Appeal'
+                                        : currentTab === 'help' ? 'Help Center' : '';
 
     /* SCHEDULE COMPUTED VALUES */
     const today = new Date();
@@ -965,6 +1049,8 @@ export default function StudentDashboard() {
                         { tab: 'progress', label: 'My Progress', icon: I.chart },
                         { tab: 'achievements', label: 'Achievements', icon: I.trophy },
                         { tab: 'history', label: 'History', icon: I.clock },
+                        /* NEW: Announcements nav entry */
+                        { tab: 'announcements', label: 'Announcements', icon: I.megaphone },
                         { tab: 'appeal', label: 'Appeal', icon: I.doc },
                         { tab: 'help', label: 'Help', icon: I.helpCircle },
                     ].map((item) => (
@@ -979,7 +1065,14 @@ export default function StudentDashboard() {
                             {currentTab === item.tab && (
                                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 dark:bg-blue-400 rounded-r" />
                             )}
-                            <span className="w-[68px] flex-shrink-0 flex items-center justify-center">{item.icon}</span>
+                            <span className="w-[68px] flex-shrink-0 flex items-center justify-center relative">
+                                {item.icon}
+                                {item.tab === 'announcements' && unreadAnnouncements > 0 && (
+                                    <span className="absolute top-2 right-3 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">
+                                        {unreadAnnouncements > 9 ? '9+' : unreadAnnouncements}
+                                    </span>
+                                )}
+                            </span>
                             <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm font-medium pr-4">
                                 {item.label}
                             </span>
@@ -1027,6 +1120,19 @@ export default function StudentDashboard() {
                 </div>
 
                 <div className="flex items-center gap-1.5">
+                    {/* NEW: quick jump to announcements */}
+                    <button
+                        className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-fuchsia-600 bg-fuchsia-50 hover:bg-fuchsia-100 dark:bg-fuchsia-950/40 dark:text-fuchsia-300 dark:hover:bg-fuchsia-950/60 transition relative"
+                        onClick={() => setCurrentTab('announcements')}
+                        title="Announcements"
+                    >
+                        {I.megaphone} Announcements
+                        {unreadAnnouncements > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                                {unreadAnnouncements > 9 ? '9+' : unreadAnnouncements}
+                            </span>
+                        )}
+                    </button>
                     <button
                         className="p-2.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                         onClick={toggleDarkMode}
@@ -1274,6 +1380,56 @@ export default function StudentDashboard() {
                                 </button>
                             ))}
                         </div>
+
+                        {/* NEW: Recent Announcements preview on dashboard */}
+                        {announcements.length > 0 && (
+                            <div className={`${cardCls} p-5 mb-6`}>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                                        {I.megaphone} Recent Announcements
+                                        {unreadAnnouncements > 0 && (
+                                            <span className="text-[10px] font-bold bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-full">
+                                                {unreadAnnouncements} new
+                                            </span>
+                                        )}
+                                    </h3>
+                                    <button
+                                        onClick={() => setCurrentTab('announcements')}
+                                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                                    >
+                                        View all →
+                                    </button>
+                                </div>
+                                <div className="space-y-2">
+                                    {announcements.slice(0, 3).map((a) => {
+                                        const meta = notifMeta(a);
+                                        const IconEl = I[meta.icon] || I.info;
+                                        return (
+                                            <button
+                                                key={a.id}
+                                                onClick={() => setCurrentTab('announcements')}
+                                                className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition text-left"
+                                            >
+                                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.fg}`}>
+                                                    {IconEl}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className={`text-sm truncate ${!a.is_read ? 'font-bold' : 'font-medium'}`}>
+                                                        {a.title}
+                                                    </p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                                                        {a.message}
+                                                    </p>
+                                                </div>
+                                                <span className="text-[10px] text-slate-400 flex-shrink-0">
+                                                    {timeAgo(a.created_at)}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         <div className={`${cardCls} overflow-hidden mb-6`}>
                             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
@@ -1936,6 +2092,176 @@ export default function StudentDashboard() {
                     </div>
                 )}
 
+                {/* NEW: ANNOUNCEMENTS */}
+                {currentTab === 'announcements' && (
+                    <div style={fadeInStyle}>
+                        {/* Header */}
+                        <div className="bg-gradient-to-br from-fuchsia-600 to-purple-800 rounded-xl p-6 md:p-7 mb-6 text-white flex items-center justify-between flex-wrap gap-4">
+                            <div>
+                                <h1 className="text-2xl font-bold flex items-center gap-2">
+                                    {I.megaphone} Announcements
+                                </h1>
+                                <p className="text-sm text-fuchsia-100 mt-1">
+                                    Updates and important notices from the Discipline Office
+                                </p>
+                            </div>
+                            {unreadAnnouncements > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-xs font-bold">
+                                        <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                                        {unreadAnnouncements} new
+                                    </span>
+                                    <button
+                                        onClick={markAllAnnouncementsRead}
+                                        className="px-3 py-1.5 rounded-full bg-white text-fuchsia-700 text-xs font-bold hover:bg-fuchsia-50 transition"
+                                    >
+                                        Mark all read
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Stat cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                            {[
+                                { icon: I.megaphone, value: announcements.length, label: 'Total Announcements', bg: 'bg-fuchsia-500' },
+                                { icon: I.alert, value: unreadAnnouncements, label: 'Unread', bg: 'bg-amber-500' },
+                                { icon: I.check, value: announcements.length - unreadAnnouncements, label: 'Read', bg: 'bg-emerald-500' },
+                            ].map((s, i) => (
+                                <div key={i} className={`${cardCls} p-5 flex items-center gap-4`}>
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0 ${s.bg}`}>
+                                        {s.icon}
+                                    </div>
+                                    <div>
+                                        <div className="text-2xl font-bold leading-tight">{s.value}</div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{s.label}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Filters */}
+                        <div className={`${cardCls} p-4 mb-6 flex flex-wrap items-center gap-3`}>
+                            <div className="flex items-center gap-2">
+                                {[
+                                    { key: 'all', label: 'All' },
+                                    { key: 'unread', label: 'Unread' },
+                                    { key: 'read', label: 'Read' },
+                                ].map((f) => (
+                                    <button
+                                        key={f.key}
+                                        onClick={() => setAnnouncementFilter(f.key)}
+                                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${announcementFilter === f.key
+                                            ? 'bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-950/60 dark:text-fuchsia-300'
+                                            : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400'
+                                            }`}
+                                    >
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="flex-1 min-w-[200px] relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{I.eye}</span>
+                                <input
+                                    type="text"
+                                    value={announcementSearch}
+                                    onChange={(e) => setAnnouncementSearch(e.target.value)}
+                                    placeholder="Search announcements..."
+                                    className={inputCls + ' pl-9'}
+                                />
+                            </div>
+                            {(announcementFilter !== 'all' || announcementSearch) && (
+                                <button
+                                    onClick={() => { setAnnouncementFilter('all'); setAnnouncementSearch(''); }}
+                                    className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white underline"
+                                >
+                                    Clear filters
+                                </button>
+                            )}
+                        </div>
+
+                        {/* List */}
+                        {filteredAnnouncements.length === 0 ? (
+                            <div className={`${cardCls} p-12 text-center`}>
+                                <div className="w-20 h-20 rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/60 text-fuchsia-500 flex items-center justify-center mx-auto mb-4">
+                                    {I.megaphone}
+                                </div>
+                                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                    {announcements.length === 0 ? 'No announcements yet' : 'No matching announcements'}
+                                </p>
+                                <p className="text-xs text-slate-400 mt-1 max-w-[280px] mx-auto">
+                                    {announcements.length === 0
+                                        ? "You'll see updates from the Discipline Office here."
+                                        : 'Try adjusting your filters or search term.'}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {filteredAnnouncements.map((a) => {
+                                    const meta = notifMeta(a);
+                                    const IconEl = I[meta.icon] || I.info;
+                                    const isHigh = (a.priority || '').toLowerCase() === 'high';
+                                    return (
+                                        <div
+                                            key={a.id}
+                                            onClick={() => {
+                                                if (!a.is_read) markAnnouncementRead(a.id);
+                                                setSelectedAnnouncement(a);
+                                            }}
+                                            className={`${cardCls} p-5 flex items-start gap-4 hover:shadow-md transition relative cursor-pointer ${!a.is_read ? 'border-l-4 border-l-fuchsia-500' : ''
+                                                }`}
+                                        >
+                                            {!a.is_read && (
+                                                <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-fuchsia-500 animate-pulse" />
+                                            )}
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.fg}`}>
+                                                {IconEl}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-start justify-between gap-3 flex-wrap">
+                                                    <h4 className={`text-base ${!a.is_read ? 'font-bold' : 'font-semibold'} text-slate-800 dark:text-slate-100`}>
+                                                        {a.title || 'Announcement'}
+                                                    </h4>
+                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                        {isHigh && (
+                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 uppercase">
+                                                                High Priority
+                                                            </span>
+                                                        )}
+                                                        <span className="text-[11px] text-slate-400">
+                                                            {timeAgo(a.created_at)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <p className="text-sm text-slate-600 dark:text-slate-300 mt-1.5 whitespace-pre-wrap line-clamp-3">
+                                                    {a.message}
+                                                </p>
+                                                <div className="flex items-center gap-3 mt-3">
+                                                    <span className="text-[11px] text-slate-400">
+                                                        📢 Broadcast
+                                                    </span>
+                                                    {!a.is_read && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); markAnnouncementRead(a.id); }}
+                                                            className="text-[11px] font-semibold text-fuchsia-600 dark:text-fuchsia-400 hover:underline"
+                                                        >
+                                                            Mark as read
+                                                        </button>
+                                                    )}
+                                                    <div className="flex-1" />
+                                                    <span className="text-[11px] font-semibold text-fuchsia-600 dark:text-fuchsia-400">
+                                                        Read more →
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* APPEAL */}
                 {currentTab === 'appeal' && (
                     <div style={fadeInStyle}>
@@ -2202,7 +2528,6 @@ export default function StudentDashboard() {
 
                         {/* Body */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-5">
-                            {/* Description */}
                             {selectedPenalty.description && (
                                 <div>
                                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
@@ -2214,7 +2539,6 @@ export default function StudentDashboard() {
                                 </div>
                             )}
 
-                            {/* Key facts grid */}
                             <div>
                                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
                                     Penalty Details
@@ -2245,7 +2569,6 @@ export default function StudentDashboard() {
                                 </div>
                             </div>
 
-                            {/* Progress */}
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -2276,7 +2599,6 @@ export default function StudentDashboard() {
                                 )}
                             </div>
 
-                            {/* Notes */}
                             {(selectedPenalty.notes || selectedPenalty.admin_notes || selectedPenalty.remarks) && (
                                 <div>
                                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
@@ -2308,6 +2630,79 @@ export default function StudentDashboard() {
                                     }}
                                 >
                                     Appeal This Penalty
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* NEW: ANNOUNCEMENT DETAIL MODAL */}
+            {selectedAnnouncement && (
+                <div className="fixed inset-0 z-[36000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 select-none">
+                    <div className="modal-pop bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                        {/* Header */}
+                        <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-br from-fuchsia-600 to-purple-800 text-white">
+                            <div className="flex items-start gap-3 min-w-0">
+                                <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                                    {I.megaphone}
+                                </div>
+                                <div className="min-w-0">
+                                    <h3 className="text-lg font-bold truncate">
+                                        {selectedAnnouncement.title || 'Announcement'}
+                                    </h3>
+                                    <p className="text-xs text-fuchsia-100 mt-0.5">
+                                        {formatDateTime(selectedAnnouncement.created_at)}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedAnnouncement(null)}
+                                className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition flex-shrink-0"
+                                title="Close"
+                            >
+                                {I.close}
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {(selectedAnnouncement.priority || '').toLowerCase() === 'high' && (
+                                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border-l-4 border-red-500">
+                                    <span className="text-red-500 flex-shrink-0">{I.alert}</span>
+                                    <span className="text-xs font-bold text-red-700 dark:text-red-300 uppercase tracking-wider">
+                                        High Priority
+                                    </span>
+                                </div>
+                            )}
+
+                            <div>
+                                <div className="text-[10px] uppercase font-bold text-slate-400 mb-2">
+                                    Message
+                                </div>
+                                <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed bg-slate-50 dark:bg-slate-950/60 rounded-lg p-4 border border-slate-200 dark:border-slate-800 whitespace-pre-wrap">
+                                    {selectedAnnouncement.message}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60">
+                            <button
+                                className={btnSecondary}
+                                onClick={() => setSelectedAnnouncement(null)}
+                            >
+                                Close
+                            </button>
+                            {!selectedAnnouncement.is_read && (
+                                <button
+                                    className={btnPrimary}
+                                    onClick={() => {
+                                        markAnnouncementRead(selectedAnnouncement.id);
+                                        setSelectedAnnouncement(null);
+                                    }}
+                                >
+                                    Mark as Read
                                 </button>
                             )}
                         </div>
@@ -2364,7 +2759,7 @@ export default function StudentDashboard() {
                                 <label className="block text-sm font-semibold mb-1.5 flex items-center gap-1.5">
                                     Email
                                     <span className="text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                                    Locked
+                                        Locked
                                     </span>
                                 </label>
                                 <input
@@ -2380,7 +2775,7 @@ export default function StudentDashboard() {
                                 <label className="block text-sm font-semibold mb-1.5 flex items-center gap-1.5">
                                     Student ID
                                     <span className="text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                                    Locked
+                                        Locked
                                     </span>
                                 </label>
                                 <input value={studentIdNum} disabled readOnly tabIndex={-1} className={inputCls + ' opacity-70 cursor-not-allowed select-none bg-slate-100 dark:bg-slate-900'} />
@@ -2388,7 +2783,6 @@ export default function StudentDashboard() {
                             </div>
                         </div>
 
-                        {/* Change password link */}
                         <button
                             onClick={() => {
                                 setShowEditProfile(false);
