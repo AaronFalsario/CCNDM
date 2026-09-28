@@ -46,6 +46,7 @@ const I = {
     userEdit: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /><path d="M18 11l3-3-1.5-1.5L16.5 9.5" /></svg>,
     refresh: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>,
     megaphone: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-5v12L3 14v-3z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></svg>,
+    image: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>,
 };
 
 /* HELPERS */
@@ -59,6 +60,11 @@ const formatDateTime = (s) => {
     const d = new Date(s);
     return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) + ' · ' +
         d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+};
+const formatPostedDate = (s) => {
+    if (!s) return 'N/A';
+    const d = new Date(s);
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 };
 const timeAgo = (dateStr) => {
     if (!dateStr) return '';
@@ -277,7 +283,7 @@ export default function StudentDashboard() {
     const [currentTab, setCurrentTab] = useState(() => {
         return sessionStorage.getItem('student_current_tab') || 'dashboard';
     });
-    
+
     useEffect(() => {
         sessionStorage.setItem('student_current_tab', currentTab);
     }, [currentTab]);
@@ -286,7 +292,7 @@ export default function StudentDashboard() {
     const [notifications, setNotifications] = useState([]);
     const [sessions, setSessions] = useState([]);
     const [achievements, setAchievements] = useState([]);
-    /* NEW: Announcements state */
+    /* Announcements state */
     const [announcements, setAnnouncements] = useState([]);
     const [announcementFilter, setAnnouncementFilter] = useState('all');
     const [announcementSearch, setAnnouncementSearch] = useState('');
@@ -414,7 +420,7 @@ export default function StudentDashboard() {
             const { data, error } = await supabase
                 .from('notifications')
                 .select('*')
-                .or(`student_id.eq.${sid},student_id.is.null`)
+                .eq('student_id', sid)
                 .order('created_at', { ascending: false })
                 .limit(50);
 
@@ -431,7 +437,6 @@ export default function StudentDashboard() {
         }
     }, [student]);
 
-    /* NEW: Load announcements (broadcast only — student_id IS NULL) */
     const loadAnnouncements = useCallback(async () => {
         if (!student) return;
         try {
@@ -447,7 +452,13 @@ export default function StudentDashboard() {
                 setAnnouncements([]);
                 return;
             }
-            setAnnouncements(data || []);
+            const list = data || [];
+            setAnnouncements(list);
+            setSelectedAnnouncement(prev => {
+                if (!prev) return list[0] || null;
+                const stillThere = list.find(x => x.id === prev.id);
+                return stillThere || list[0] || null;
+            });
         } catch (e) {
             console.error('loadAnnouncements:', e);
             setAnnouncements([]);
@@ -494,7 +505,7 @@ export default function StudentDashboard() {
             loadNotifications(),
             loadSessions(),
             loadAchievements(),
-            loadAnnouncements(), /* NEW */
+            loadAnnouncements(),
         ]).finally(() => setLoading(false));
     }, [student, loadPenalties, loadAppeals, loadNotifications, loadSessions, loadAchievements, loadAnnouncements]);
 
@@ -530,7 +541,7 @@ export default function StudentDashboard() {
                     const row = payload.new || payload.old;
                     if (!row || row.student_id === null || String(row.student_id) === String(sid)) {
                         loadNotifications();
-                        loadAnnouncements(); /* NEW: refresh announcements when broadcasts change */
+                        loadAnnouncements();
                     }
                 }
             )
@@ -548,7 +559,7 @@ export default function StudentDashboard() {
         if (!student) return;
         const id = setInterval(() => {
             loadNotifications();
-            loadAnnouncements(); /* NEW */
+            loadAnnouncements();
         }, 60000);
         return () => clearInterval(id);
     }, [student, loadNotifications, loadAnnouncements]);
@@ -572,7 +583,7 @@ export default function StudentDashboard() {
     const newNotifs = filteredNotifications.filter((n) => !n.is_read);
     const earlierNotifs = filteredNotifications.filter((n) => n.is_read);
 
-    /* NEW: announcement counters */
+    /* announcement counters */
     const unreadAnnouncements = announcements.filter((a) => !a.is_read).length;
 
     /* ACHIEVEMENTS — time-windowed + expanded */
@@ -717,7 +728,7 @@ export default function StudentDashboard() {
         return 0;
     });
 
-    /* NEW: filtered announcements */
+    /* filtered announcements */
     const filteredAnnouncements = announcements.filter((a) => {
         if (announcementFilter === 'unread' && a.is_read) return false;
         if (announcementFilter === 'read' && !a.is_read) return false;
@@ -859,16 +870,16 @@ export default function StudentDashboard() {
     const deleteNotif = async (id) => {
         await supabase.from('notifications').delete().eq('id', id);
         await loadNotifications();
-        await loadAnnouncements(); /* NEW */
+        await loadAnnouncements();
     };
 
     const markNotifRead = async (id) => {
         await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', id);
         await loadNotifications();
-        await loadAnnouncements(); /* NEW */
+        await loadAnnouncements();
     };
 
-    /* NEW: mark a single announcement as read */
+    /* mark a single announcement as read */
     const markAnnouncementRead = async (id) => {
         await supabase
             .from('notifications')
@@ -878,7 +889,7 @@ export default function StudentDashboard() {
         await loadNotifications();
     };
 
-    /* NEW: mark all announcements read (broadcasts only) */
+    /* mark all announcements read (broadcasts only) */
     const markAllAnnouncementsRead = async () => {
         const unreadIds = announcements.filter((a) => !a.is_read).map((a) => a.id);
         if (!unreadIds.length) return;
@@ -1049,7 +1060,6 @@ export default function StudentDashboard() {
                         { tab: 'progress', label: 'My Progress', icon: I.chart },
                         { tab: 'achievements', label: 'Achievements', icon: I.trophy },
                         { tab: 'history', label: 'History', icon: I.clock },
-                        /* NEW: Announcements nav entry */
                         { tab: 'announcements', label: 'Announcements', icon: I.megaphone },
                         { tab: 'appeal', label: 'Appeal', icon: I.doc },
                         { tab: 'help', label: 'Help', icon: I.helpCircle },
@@ -1120,7 +1130,6 @@ export default function StudentDashboard() {
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                    {/* NEW: quick jump to announcements */}
                     <button
                         className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-fuchsia-600 bg-fuchsia-50 hover:bg-fuchsia-100 dark:bg-fuchsia-950/40 dark:text-fuchsia-300 dark:hover:bg-fuchsia-950/60 transition relative"
                         onClick={() => setCurrentTab('announcements')}
@@ -1381,7 +1390,7 @@ export default function StudentDashboard() {
                             ))}
                         </div>
 
-                        {/* NEW: Recent Announcements preview on dashboard */}
+                        {/* Recent Announcements preview on dashboard */}
                         {announcements.length > 0 && (
                             <div className={`${cardCls} p-5 mb-6`}>
                                 <div className="flex items-center justify-between mb-4">
@@ -1410,9 +1419,13 @@ export default function StudentDashboard() {
                                                 onClick={() => setCurrentTab('announcements')}
                                                 className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition text-left"
                                             >
-                                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.fg}`}>
-                                                    {IconEl}
-                                                </div>
+                                                {a.image_url ? (
+                                                    <img src={a.image_url} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                                                ) : (
+                                                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.fg}`}>
+                                                        {IconEl}
+                                                    </div>
+                                                )}
                                                 <div className="flex-1 min-w-0">
                                                     <p className={`text-sm truncate ${!a.is_read ? 'font-bold' : 'font-medium'}`}>
                                                         {a.title}
@@ -2092,16 +2105,16 @@ export default function StudentDashboard() {
                     </div>
                 )}
 
-                {/* NEW: ANNOUNCEMENTS */}
+                {/* ANNOUNCEMENTS — NEW FULL-CARD LAYOUT (no modal) */}
                 {currentTab === 'announcements' && (
                     <div style={fadeInStyle}>
                         {/* Header */}
                         <div className="bg-gradient-to-br from-fuchsia-600 to-purple-800 rounded-xl p-6 md:p-7 mb-6 text-white flex items-center justify-between flex-wrap gap-4">
                             <div>
-                                <h1 className="text-2xl font-bold flex items-center gap-2">
+                                <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
                                     {I.megaphone} Announcements
                                 </h1>
-                                <p className="text-sm text-fuchsia-100 mt-1">
+                                <p className="text-sm md:text-base text-fuchsia-100 mt-1">
                                     Updates and important notices from the Discipline Office
                                 </p>
                             </div>
@@ -2129,12 +2142,12 @@ export default function StudentDashboard() {
                                 { icon: I.check, value: announcements.length - unreadAnnouncements, label: 'Read', bg: 'bg-emerald-500' },
                             ].map((s, i) => (
                                 <div key={i} className={`${cardCls} p-5 flex items-center gap-4`}>
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0 ${s.bg}`}>
+                                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white flex-shrink-0 ${s.bg}`}>
                                         {s.icon}
                                     </div>
                                     <div>
-                                        <div className="text-2xl font-bold leading-tight">{s.value}</div>
-                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{s.label}</div>
+                                        <div className="text-3xl font-bold leading-tight">{s.value}</div>
+                                        <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{s.label}</div>
                                     </div>
                                 </div>
                             ))}
@@ -2151,9 +2164,9 @@ export default function StudentDashboard() {
                                     <button
                                         key={f.key}
                                         onClick={() => setAnnouncementFilter(f.key)}
-                                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${announcementFilter === f.key
-                                            ? 'bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-950/60 dark:text-fuchsia-300'
-                                            : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400'
+                                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${announcementFilter === f.key
+                                                ? 'bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-950/60 dark:text-fuchsia-300'
+                                                : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400'
                                             }`}
                                     >
                                         {f.label}
@@ -2161,103 +2174,178 @@ export default function StudentDashboard() {
                                 ))}
                             </div>
                             <div className="flex-1 min-w-[200px] relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{I.eye}</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{I.search}</span>
                                 <input
                                     type="text"
                                     value={announcementSearch}
                                     onChange={(e) => setAnnouncementSearch(e.target.value)}
                                     placeholder="Search announcements..."
-                                    className={inputCls + ' pl-9'}
+                                    className={inputCls + ' pl-10'}
                                 />
                             </div>
                             {(announcementFilter !== 'all' || announcementSearch) && (
                                 <button
                                     onClick={() => { setAnnouncementFilter('all'); setAnnouncementSearch(''); }}
-                                    className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white underline"
+                                    className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white underline"
                                 >
                                     Clear filters
                                 </button>
                             )}
                         </div>
 
-                        {/* List */}
+                        {/* Master-detail: big image left, list right */}
                         {filteredAnnouncements.length === 0 ? (
                             <div className={`${cardCls} p-12 text-center`}>
                                 <div className="w-20 h-20 rounded-full bg-fuchsia-50 dark:bg-fuchsia-950/60 text-fuchsia-500 flex items-center justify-center mx-auto mb-4">
                                     {I.megaphone}
                                 </div>
-                                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                <p className="text-base font-bold text-slate-700 dark:text-slate-200">
                                     {announcements.length === 0 ? 'No announcements yet' : 'No matching announcements'}
                                 </p>
-                                <p className="text-xs text-slate-400 mt-1 max-w-[280px] mx-auto">
+                                <p className="text-sm text-slate-400 mt-1 max-w-[320px] mx-auto">
                                     {announcements.length === 0
                                         ? "You'll see updates from the Discipline Office here."
                                         : 'Try adjusting your filters or search term.'}
                                 </p>
                             </div>
                         ) : (
-                            <div className="space-y-3">
-                                {filteredAnnouncements.map((a) => {
-                                    const meta = notifMeta(a);
-                                    const IconEl = I[meta.icon] || I.info;
-                                    const isHigh = (a.priority || '').toLowerCase() === 'high';
-                                    return (
-                                        <div
-                                            key={a.id}
-                                            onClick={() => {
-                                                if (!a.is_read) markAnnouncementRead(a.id);
-                                                setSelectedAnnouncement(a);
-                                            }}
-                                            className={`${cardCls} p-5 flex items-start gap-4 hover:shadow-md transition relative cursor-pointer ${!a.is_read ? 'border-l-4 border-l-fuchsia-500' : ''
-                                                }`}
+                            (() => {
+                                // Ensure we always have a valid selection from the filtered list
+                                const current =
+                                    filteredAnnouncements.find(x => x.id === selectedAnnouncement?.id) ||
+                                    filteredAnnouncements[0];
+                                const currentMeta = notifMeta(current);
+                                const CurrentIcon = I[currentMeta.icon] || I.info;
+                                const currentIsHigh = (current.priority || '').toLowerCase() === 'high';
+
+                                return (
+                                    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] gap-5 lg:gap-6 items-start">
+                                        {/* LEFT: big image + details of selected announcement */}
+                                        <article
+                                            className={`${cardCls} p-4 md:p-5 flex flex-col gap-4`}
                                         >
-                                            {!a.is_read && (
-                                                <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-fuchsia-500 animate-pulse" />
+                                            {current.image_url ? (
+                                                <img
+                                                    src={current.image_url}
+                                                    alt={current.title || 'Announcement image'}
+                                                    className="w-full rounded-xl object-contain bg-slate-50 border border-slate-200 dark:border-slate-700"
+                                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                                />
+                                            ) : (
+                                                <div className={`w-full aspect-square rounded-xl flex items-center justify-center ${currentMeta.bg} ${currentMeta.fg}`}>
+                                                    <span className="scale-[3]">{CurrentIcon}</span>
+                                                </div>
                                             )}
-                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.fg}`}>
-                                                {IconEl}
+
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-base md:text-lg font-semibold text-slate-700 dark:text-slate-200">
+                                                    Date Posted: {formatPostedDate(current.created_at)}
+                                                </span>
+                                                {currentIsHigh && (
+                                                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 uppercase tracking-wide">
+                                                        High Priority
+                                                    </span>
+                                                )}
+                                                {!current.is_read && (
+                                                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-300 uppercase tracking-wide">
+                                                        New
+                                                    </span>
+                                                )}
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-start justify-between gap-3 flex-wrap">
-                                                    <h4 className={`text-base ${!a.is_read ? 'font-bold' : 'font-semibold'} text-slate-800 dark:text-slate-100`}>
-                                                        {a.title || 'Announcement'}
-                                                    </h4>
-                                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                                        {isHigh && (
-                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 uppercase">
-                                                                High Priority
-                                                            </span>
-                                                        )}
-                                                        <span className="text-[11px] text-slate-400">
-                                                            {timeAgo(a.created_at)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <p className="text-sm text-slate-600 dark:text-slate-300 mt-1.5 whitespace-pre-wrap line-clamp-3">
-                                                    {a.message}
+
+                                            <h3 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white leading-snug">
+                                                {current.title || 'Untitled Announcement'}
+                                            </h3>
+
+                                            <p className="text-lg md:text-xl text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                                                {current.message}
+                                            </p>
+
+                                            <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                <span className="text-sm text-slate-400">
+                                                    📢 Broadcast from Discipline Office
+                                                </span>
+                                                {!current.is_read && (
+                                                    <button
+                                                        onClick={() => markAnnouncementRead(current.id)}
+                                                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-fuchsia-600 dark:text-fuchsia-400 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/40 transition"
+                                                    >
+                                                        {I.check} Mark as read
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </article>
+
+                                        {/* RIGHT: list of all announcements */}
+                                        <div className={`${cardCls} overflow-hidden`}>
+                                            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex items-center justify-between">
+                                                <p className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                                    All Announcements
                                                 </p>
-                                                <div className="flex items-center gap-3 mt-3">
-                                                    <span className="text-[11px] text-slate-400">
-                                                        📢 Broadcast
-                                                    </span>
-                                                    {!a.is_read && (
+                                                <span className="text-xs text-slate-400">
+                                                    {filteredAnnouncements.length}
+                                                </span>
+                                            </div>
+                                            <div className="max-h-[70vh] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                                                {filteredAnnouncements.map((a) => {
+                                                    const meta = notifMeta(a);
+                                                    const IconEl = I[meta.icon] || I.info;
+                                                    const isActive = a.id === current.id;
+                                                    return (
                                                         <button
-                                                            onClick={(e) => { e.stopPropagation(); markAnnouncementRead(a.id); }}
-                                                            className="text-[11px] font-semibold text-fuchsia-600 dark:text-fuchsia-400 hover:underline"
+                                                            key={a.id}
+                                                            onClick={() => setSelectedAnnouncement(a)}
+                                                            className={`w-full flex items-start gap-3 p-4 text-left transition ${isActive
+                                                                    ? 'bg-fuchsia-50/70 dark:bg-fuchsia-950/40 border-l-4 border-l-fuchsia-500'
+                                                                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/40 border-l-4 border-l-transparent'
+                                                                }`}
                                                         >
-                                                            Mark as read
+                                                            {a.image_url ? (
+                                                                <img
+                                                                    src={a.image_url}
+                                                                    alt=""
+                                                                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-slate-200 dark:border-slate-700 bg-slate-50"
+                                                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                                                />
+                                                            ) : (
+                                                                <div className={`w-16 h-16 rounded-lg flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.fg}`}>
+                                                                    {IconEl}
+                                                                </div>
+                                                            )}
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                                    <span className="text-xs md:text-sm font-semibold text-slate-600 dark:text-slate-300">
+                                                                        Date Posted: {formatPostedDate(a.created_at)}
+                                                                    </span>
+                                                                    {!a.is_read && (
+                                                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-300 uppercase tracking-wide">
+                                                                            New
+                                                                        </span>
+                                                                    )}
+                                                                    {(a.priority || '').toLowerCase() === 'high' && (
+                                                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 uppercase tracking-wide">
+                                                                            High
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <h4 className={`text-sm md:text-base leading-snug line-clamp-2 ${isActive
+                                                                        ? 'font-bold text-slate-900 dark:text-white'
+                                                                        : 'font-semibold text-slate-700 dark:text-slate-200'
+                                                                    }`}>
+                                                                    {a.title || 'Untitled Announcement'}
+                                                                </h4>
+                                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                                                                    {a.message}
+                                                                </p>
+                                                            </div>
                                                         </button>
-                                                    )}
-                                                    <div className="flex-1" />
-                                                    <span className="text-[11px] font-semibold text-fuchsia-600 dark:text-fuchsia-400">
-                                                        Read more →
-                                                    </span>
-                                                </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
+                                    </div>
+                                );
+                            })()
                         )}
                     </div>
                 )}
@@ -2481,11 +2569,10 @@ export default function StudentDashboard() {
                 )}
             </main>
 
-            {/* VIEW VIOLATION DETAILS MODAL*/}
+            {/* VIEW VIOLATION DETAILS MODAL (kept) */}
             {selectedPenalty && (
                 <div className="fixed inset-0 z-[35000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 select-none">
                     <div className="modal-pop bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
-                        {/* Header */}
                         <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-br from-blue-600 to-blue-800 text-white">
                             <div className="flex items-start gap-3 min-w-0">
                                 <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
@@ -2509,7 +2596,6 @@ export default function StudentDashboard() {
                             </button>
                         </div>
 
-                        {/* Status strip */}
                         <div className="flex flex-wrap items-center gap-2 px-6 py-3 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold ${badgeCls(statusClass(selectedPenalty))}`}>
                                 {statusLabel(selectedPenalty)}
@@ -2526,7 +2612,6 @@ export default function StudentDashboard() {
                             )}
                         </div>
 
-                        {/* Body */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-5">
                             {selectedPenalty.description && (
                                 <div>
@@ -2536,6 +2621,19 @@ export default function StudentDashboard() {
                                     <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed bg-slate-50 dark:bg-slate-950/60 rounded-lg p-4 border border-slate-200 dark:border-slate-800">
                                         {selectedPenalty.description}
                                     </p>
+                                </div>
+                            )}
+
+                            {selectedPenalty.image_url && (
+                                <div>
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                                        Evidence Image
+                                    </h4>
+                                    <img
+                                        src={selectedPenalty.image_url}
+                                        alt="Evidence"
+                                        className="w-full rounded-lg border border-slate-200 dark:border-slate-800"
+                                    />
                                 </div>
                             )}
 
@@ -2598,20 +2696,8 @@ export default function StudentDashboard() {
                                     </p>
                                 )}
                             </div>
-
-                            {(selectedPenalty.notes || selectedPenalty.admin_notes || selectedPenalty.remarks) && (
-                                <div>
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                                        Notes / Remarks
-                                    </h4>
-                                    <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed bg-amber-50 dark:bg-amber-950/40 rounded-lg p-4 border-l-4 border-amber-500">
-                                        {selectedPenalty.notes || selectedPenalty.admin_notes || selectedPenalty.remarks}
-                                    </p>
-                                </div>
-                            )}
                         </div>
 
-                        {/* Footer */}
                         <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60">
                             <button
                                 className={btnSecondary}
@@ -2630,79 +2716,6 @@ export default function StudentDashboard() {
                                     }}
                                 >
                                     Appeal This Penalty
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* NEW: ANNOUNCEMENT DETAIL MODAL */}
-            {selectedAnnouncement && (
-                <div className="fixed inset-0 z-[36000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 select-none">
-                    <div className="modal-pop bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
-                        {/* Header */}
-                        <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-br from-fuchsia-600 to-purple-800 text-white">
-                            <div className="flex items-start gap-3 min-w-0">
-                                <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
-                                    {I.megaphone}
-                                </div>
-                                <div className="min-w-0">
-                                    <h3 className="text-lg font-bold truncate">
-                                        {selectedAnnouncement.title || 'Announcement'}
-                                    </h3>
-                                    <p className="text-xs text-fuchsia-100 mt-0.5">
-                                        {formatDateTime(selectedAnnouncement.created_at)}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setSelectedAnnouncement(null)}
-                                className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition flex-shrink-0"
-                                title="Close"
-                            >
-                                {I.close}
-                            </button>
-                        </div>
-
-                        {/* Body */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                            {(selectedAnnouncement.priority || '').toLowerCase() === 'high' && (
-                                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border-l-4 border-red-500">
-                                    <span className="text-red-500 flex-shrink-0">{I.alert}</span>
-                                    <span className="text-xs font-bold text-red-700 dark:text-red-300 uppercase tracking-wider">
-                                        High Priority
-                                    </span>
-                                </div>
-                            )}
-
-                            <div>
-                                <div className="text-[10px] uppercase font-bold text-slate-400 mb-2">
-                                    Message
-                                </div>
-                                <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed bg-slate-50 dark:bg-slate-950/60 rounded-lg p-4 border border-slate-200 dark:border-slate-800 whitespace-pre-wrap">
-                                    {selectedAnnouncement.message}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60">
-                            <button
-                                className={btnSecondary}
-                                onClick={() => setSelectedAnnouncement(null)}
-                            >
-                                Close
-                            </button>
-                            {!selectedAnnouncement.is_read && (
-                                <button
-                                    className={btnPrimary}
-                                    onClick={() => {
-                                        markAnnouncementRead(selectedAnnouncement.id);
-                                        setSelectedAnnouncement(null);
-                                    }}
-                                >
-                                    Mark as Read
                                 </button>
                             )}
                         </div>
