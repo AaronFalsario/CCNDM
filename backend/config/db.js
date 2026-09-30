@@ -16,8 +16,8 @@ const cleanKey = supabaseKey?.trim();
 export const supabase =
   cleanUrl && cleanKey
     ? createClient(cleanUrl, cleanKey, {
-        auth: { persistSession: false },
-      })
+      auth: { persistSession: false },
+    })
     : null;
 
 export const isSupabaseConfigured = Boolean(supabase);
