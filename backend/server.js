@@ -96,6 +96,12 @@ app.get('/', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`CCNDM backend running at http://localhost:${PORT}`);
-});
+// Vercel serverless export
+export default app;
+
+// Local dev only — Vercel runs the app directly, no listen needed
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`CCNDM backend running at http://localhost:${PORT}`);
+  });
+}
