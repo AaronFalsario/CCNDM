@@ -1,7 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import dns from 'node:dns';
 import { getDbStatus, supabase } from './config/db.js';
+
+dns.setDefaultResultOrder('ipv4first');
 
 dotenv.config();
 
