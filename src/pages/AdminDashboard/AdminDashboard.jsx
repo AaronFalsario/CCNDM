@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import api from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import Toast from '../../components/Toast';
+import DashboardSkeleton from '../../components/DashboardSkeleton';
 import { useAuth } from '../../hooks/useAuth';
 
 //ICONS
@@ -300,6 +301,7 @@ const notifMeta = (n) => {
 function NotificationItem({ notification: n, onMarkRead, onDelete }) {
     const meta = notifMeta(n);
     const IconEl = I[meta.icon] || I.info;
+
     return (
         <div
             onClick={() => !n.is_read && onMarkRead(n.id)}
@@ -1572,6 +1574,8 @@ export default function AdminDashboard() {
     const courseOptions = ['BSN'];
     const yearOptions = ['1st', '2nd', '3rd', '4th'];
     const statusOptions = ['Good', 'Probation', 'Warning', 'Suspended'];
+
+    if (loading) return <DashboardSkeleton variant="admin" isDark={darkMode} />;
 
     return (
         <div className={darkMode ? 'dashboard-dark' : ''}>

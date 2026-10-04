@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { hashPassword, verifyPassword, isBcryptHash } from '../../lib/password';
+import DashboardSkeleton from '../../components/DashboardSkeleton';
 
 /*SVG ICONS*/
 const Icon = {
@@ -70,6 +71,7 @@ export default function StudentLogin() {
     const [panel, setPanel] = useState('login');
     const [showPassword, setShowPassword] = useState({});
     const [loading, setLoading] = useState(false);
+    const [redirecting, setRedirecting] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
 
     const [loginId, setLoginId] = useState('');
@@ -191,7 +193,8 @@ export default function StudentLogin() {
             if (rememberMe) localStorage.setItem('rememberedStudentId', studentId);
             else localStorage.removeItem('rememberedStudentId');
 
-            navigate('/student/dashboard');
+            setRedirecting(true);
+            setTimeout(() => navigate('/student/dashboard'), 600);
         } catch (error) {
             alert(error.message);
         } finally {
@@ -279,6 +282,8 @@ export default function StudentLogin() {
     ];
 
     const yearLevels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+
+    if (redirecting) return <DashboardSkeleton />;
 
     return (
         <div className="min-h-screen w-full bg-[#EEF3FF] flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans overflow-hidden">

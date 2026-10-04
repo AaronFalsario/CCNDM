@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import Toast from '../../components/Toast';
+import DashboardSkeleton from '../../components/DashboardSkeleton';
 
 //SVG ICONS
 const Icon = {
@@ -75,6 +76,7 @@ export default function AdminLogin() {
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [redirecting, setRedirecting] = useState(false);
 
     //FORGOT PASSWORD MODAL STATE
     const [showForgot, setShowForgot] = useState(false);
@@ -209,6 +211,7 @@ export default function AdminLogin() {
                 'Login Successful'
             );
 
+            setRedirecting(true);
             setTimeout(() => navigate('/admin/dashboard'), 1200);
         } catch (err) {
             console.error(err);
@@ -271,6 +274,8 @@ export default function AdminLogin() {
         'Track violations and penalties',
         'Generate reports and analytics',
     ];
+
+    if (redirecting) return <DashboardSkeleton variant="admin" />;
 
     return (
         <div className="min-h-screen w-full bg-[#EEF3FF] flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans overflow-hidden">

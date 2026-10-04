@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import Toast from '../../components/Toast';
+import DashboardSkeleton from '../../components/DashboardSkeleton';
 import { useAuth } from '../../hooks/useAuth';
 
 /* ICONS */
@@ -978,6 +979,8 @@ export default function StudentDashboard() {
     const weeklyMax = Math.max(...weeklyActivity, 1);
     const weeklyTotal = weeklyActivity.reduce((a, b) => a + b, 0);
     const hasWeeklyData = weeklyTotal > 0;
+
+    if (loading) return <DashboardSkeleton isDark={darkMode} />;
 
     return (
         <div className={darkMode ? 'dashboard-dark' : ''}>
