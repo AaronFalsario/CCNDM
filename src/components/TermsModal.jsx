@@ -61,7 +61,7 @@ export default function TermsModal({ isOpen, onClose, onAccept }) {
                     <div className="terms-section">
                         <h3><span className="section-num">2</span> Purpose of the System</h3>
                         <p>
-                            SAOCST is a centralized, data-driven tracking platform that records and
+                            CCNDM is a centralized, data-driven tracking platform that records and
                             monitors student community service hours, deadlines, and disciplinary
                             status. All data entered into the system is used solely for tracking,
                             verification, and reporting of community service compliance. The system is
@@ -93,7 +93,7 @@ export default function TermsModal({ isOpen, onClose, onAccept }) {
                         <p>
                             Your personal information and service records will be stored and processed
                             in accordance with applicable data privacy laws and the institution's
-                            privacy policy. As a tracking system, SAOCST maintains historical records
+                            privacy policy. As a tracking system, CCNDM maintains historical records
                             of your service activity. We implement reasonable security measures to
                             protect your data; however, we cannot guarantee absolute security.
                         </p>
@@ -103,7 +103,7 @@ export default function TermsModal({ isOpen, onClose, onAccept }) {
                         <h3><span className="section-num">6</span> Service Verification</h3>
                         <p>
                             All community service submissions are subject to verification by authorized
-                            personnel. SAOCST reserves the right to reject or revoke credit for any
+                            personnel. CCNDM reserves the right to reject or revoke credit for any
                             service activity that does not meet institutional guidelines or that is
                             found to be falsified.
                         </p>
