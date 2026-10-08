@@ -219,8 +219,8 @@ export default function Landing() {
                 <div className="max-w-7xl mx-auto flex items-center justify-between px-5 sm:px-8">
                     {/* Logo */}
                     <a href="/" className="flex items-center gap-3 no-underline group">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-shadow">
-                            <img src="/CC.png" alt="CCNDM logo" className="w-7 h-7 object-contain" />
+                        <div>
+                            <img src="/CC.png" alt="CCNDM logo" className="w-10 h-10 object-contain" />
                         </div>
                         <div className="leading-none hidden sm:block">
                             <div className="text-base font-bold text-slate-900 tracking-tight">CCNDM</div>

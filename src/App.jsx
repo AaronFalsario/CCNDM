@@ -6,6 +6,7 @@ import AdminLogin from './pages/AdminLogin/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard/AdminDashboard';
 import ForgotPassword from './pages/ForgotPassword/ForgotPassword';
 import ResetPassword from './pages/ForgotPassword/ResetPassword';
+import ChangePassword from './pages/student/change-password';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
       <Route path="/student/dashboard" element={<StudentDashboard />} />
       <Route path="/student/ForgotPassword" element={<ForgotPassword />} />
       <Route path="/student/ResetPassword" element={<ResetPassword />} />
+      <Route path="/student/change-password" element={<ChangePassword />} />
 
       {/* Admin */}
       <Route path="/admin/login" element={<AdminLogin />} />
