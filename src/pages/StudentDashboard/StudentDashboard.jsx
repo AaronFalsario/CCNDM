@@ -323,6 +323,7 @@ export default function StudentDashboard() {
 
     /* View Violation Details modal */
     const [selectedPenalty, setSelectedPenalty] = useState(null);
+    const [selectedAppealDetail, setSelectedAppealDetail] = useState(null);
 
     const [editName, setEditName] = useState('');
     const [editEmail, setEditEmail] = useState('');
@@ -341,23 +342,7 @@ export default function StudentDashboard() {
         setToast(null);
     };
 
-    // DARK MODE 
-    useEffect(() => {
-        const saved = localStorage.getItem('student_dark_mode');
-        let initial;
-        if (saved === 'true') initial = true;
-        else if (saved === 'false') initial = false;
-        else initial = window.matchMedia?.('(prefers-color-scheme: dark)').matches || false;
-        setDarkMode(initial);
-    }, []);
-
-    const toggleDarkMode = () => {
-        setDarkMode(v => {
-            const next = !v;
-            localStorage.setItem('student_dark_mode', String(next));
-            return next;
-        });
-    };
+    const toggleDarkMode = () => setDarkMode((current) => !current);
 
     /* CLOCK */
     useEffect(() => {
@@ -984,7 +969,7 @@ export default function StudentDashboard() {
 
     return (
         <div className={darkMode ? 'dashboard-dark' : ''}>
-            <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans text-[15px] leading-relaxed">
+            <div className="dashboard-canvas min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans text-[15px] leading-relaxed">
                 <style>{`
                 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
                 @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
@@ -2044,11 +2029,13 @@ export default function StudentDashboard() {
                                                     <th className="px-5 py-3">Date</th>
                                                     <th className="px-5 py-3">Penalty</th>
                                                     <th className="px-5 py-3">Status</th>
+                                                    <th className="px-5 py-3">Admin Comment</th>
+                                                    <th className="px-5 py-3 text-right">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {appeals.length === 0 ? (
-                                                    <tr><td colSpan="4" className="text-center py-12 text-slate-400 text-sm">No appeals found</td></tr>
+                                                    <tr><td colSpan="6" className="text-center py-12 text-slate-400 text-sm">No appeals found</td></tr>
                                                 ) : (
                                                     appeals.map((a, i) => {
                                                         const s = (a.status || 'pending').toLowerCase();
@@ -2061,6 +2048,20 @@ export default function StudentDashboard() {
                                                                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold ${badgeCls(s)}`}>
                                                                         {s.charAt(0).toUpperCase() + s.slice(1)}
                                                                     </span>
+                                                                </td>
+                                                                <td className="px-5 py-3 min-w-56 max-w-md whitespace-pre-wrap break-words text-slate-600 dark:text-slate-300">
+                                                                    {a.admin_comment || 'No comment yet'}
+                                                                </td>
+                                                                <td className="px-5 py-3 text-right">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setSelectedAppealDetail(a)}
+                                                                        className="inline-flex items-center justify-center p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/60 transition"
+                                                                        title="View appeal details"
+                                                                        aria-label={`View appeal details for ${a.penalty_violation || a.violation || 'appeal'}`}
+                                                                    >
+                                                                        {I.eye}
+                                                                    </button>
                                                                 </td>
                                                             </tr>
                                                         );
@@ -2442,11 +2443,13 @@ export default function StudentDashboard() {
                                                 <th className="px-5 py-3">Date</th>
                                                 <th className="px-5 py-3">Violation</th>
                                                 <th className="px-5 py-3">Status</th>
+                                                <th className="px-5 py-3">Admin Comment</th>
+                                                <th className="px-5 py-3 text-right">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {appeals.length === 0 ? (
-                                                <tr><td colSpan="3" className="text-center py-12 text-slate-400 text-sm">No appeals found</td></tr>
+                                                <tr><td colSpan="5" className="text-center py-12 text-slate-400 text-sm">No appeals found</td></tr>
                                             ) : (
                                                 appeals.slice(0, 5).map((a) => {
                                                     const s = (a.status || 'pending').toLowerCase();
@@ -2458,6 +2461,20 @@ export default function StudentDashboard() {
                                                                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold ${badgeCls(s)}`}>
                                                                     {s.charAt(0).toUpperCase() + s.slice(1)}
                                                                 </span>
+                                                            </td>
+                                                            <td className="px-5 py-3 min-w-56 max-w-md whitespace-pre-wrap break-words text-slate-600 dark:text-slate-300">
+                                                                {a.admin_comment || 'No comment yet'}
+                                                            </td>
+                                                            <td className="px-5 py-3 text-right">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setSelectedAppealDetail(a)}
+                                                                    className="inline-flex items-center justify-center p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/60 transition"
+                                                                    title="View appeal details"
+                                                                    aria-label={`View appeal details for ${a.penalty_violation || a.violation || 'appeal'}`}
+                                                                >
+                                                                    {I.eye}
+                                                                </button>
                                                             </td>
                                                         </tr>
                                                     );
@@ -2537,6 +2554,89 @@ export default function StudentDashboard() {
                         </div>
                     )}
                 </main>
+
+                {selectedAppealDetail && (
+                    <div
+                        className="fixed inset-0 z-[35000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={() => setSelectedAppealDetail(null)}
+                    >
+                        <section
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="appeal-detail-title"
+                            className="modal-pop bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800"
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-br from-blue-600 to-blue-800 text-white">
+                                <div>
+                                    <h2 id="appeal-detail-title" className="text-lg font-bold">Appeal Details</h2>
+                                    <p className="text-xs text-blue-100 mt-1">
+                                        Submitted {formatDateTime(selectedAppealDetail.created_at)}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedAppealDetail(null)}
+                                    className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition"
+                                    title="Close"
+                                    aria-label="Close appeal details"
+                                >
+                                    {I.close}
+                                </button>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2 px-6 py-3 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold ${badgeCls((selectedAppealDetail.status || 'pending').toLowerCase())}`}>
+                                    {(selectedAppealDetail.status || 'Pending').toString().replace(/^\w/, (letter) => letter.toUpperCase())}
+                                </span>
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                                    {selectedAppealDetail.penalty_violation || selectedAppealDetail.violation || 'N/A'}
+                                </span>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                                <div>
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Appeal information</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {[
+                                            { label: 'Penalty Hours', value: selectedAppealDetail.penalty_hours != null ? `${selectedAppealDetail.penalty_hours} hours` : 'N/A' },
+                                            { label: 'Penalty Deadline', value: formatDate(selectedAppealDetail.penalty_deadline) },
+                                            { label: 'Submitted', value: formatDateTime(selectedAppealDetail.created_at) },
+                                            { label: 'Reviewed', value: formatDateTime(selectedAppealDetail.reviewed_at) },
+                                            { label: 'Reviewed By', value: selectedAppealDetail.reviewed_by_name || 'N/A' },
+                                        ].map((field) => (
+                                            <div key={field.label} className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
+                                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{field.label}</div>
+                                                <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100 whitespace-pre-wrap break-words">{field.value}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Appeal Reason</h3>
+                                    <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed bg-slate-50 dark:bg-slate-950/60 rounded-lg p-4 border border-slate-200 dark:border-slate-800 whitespace-pre-wrap break-words">
+                                        {selectedAppealDetail.appeal_reason || 'No reason provided.'}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Supporting Statement</h3>
+                                    <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed bg-slate-50 dark:bg-slate-950/60 rounded-lg p-4 border border-slate-200 dark:border-slate-800 whitespace-pre-wrap break-words">
+                                        {selectedAppealDetail.supporting_statement || 'No supporting statement provided.'}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Admin Comment</h3>
+                                    <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed bg-blue-50 dark:bg-blue-950/40 rounded-lg p-4 border border-blue-100 dark:border-blue-900 whitespace-pre-wrap break-words">
+                                        {selectedAppealDetail.admin_comment || 'No comment yet.'}
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                )}
 
                 {/* VIEW VIOLATION DETAILS MODAL (kept) */}
                 {selectedPenalty && (

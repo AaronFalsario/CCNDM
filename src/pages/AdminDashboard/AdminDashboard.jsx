@@ -1579,7 +1579,7 @@ export default function AdminDashboard() {
 
     return (
         <div className={darkMode ? 'dashboard-dark' : ''}>
-            <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans text-[16px] leading-relaxed">
+            <div className="dashboard-canvas min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans text-[16px] leading-relaxed">
                 <style>{`
             @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
             @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
