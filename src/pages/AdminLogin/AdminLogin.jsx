@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import Toast from '../../components/Toast';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
+import { verifyPassword, isBcryptHash } from '../../lib/password';
 
 //SVG ICONS
 const Icon = {
@@ -165,7 +166,16 @@ export default function AdminLogin() {
                 return;
             }
 
-            if (admin.password_hash !== p) {
+            let passwordMatches = false;
+
+            if (isBcryptHash(admin.password_hash)) {
+                passwordMatches = await verifyPassword(p, admin.password_hash);
+            } else {
+                // Legacy plaintext — compare directly
+                passwordMatches = admin.password_hash === p;
+            }
+
+            if (!passwordMatches) {
                 showToast('Wrong password. Please try again.', 'error', 'Authentication Failed');
                 setLoading(false);
                 return;

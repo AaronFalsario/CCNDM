@@ -7,12 +7,16 @@ export default function useNotifications(pollMs = 60000) {
 
     const load = useCallback(async () => {
         if (!supabase) return;
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('notifications')
             .select('*')
             .order('created_at', { ascending: false })
             .limit(20);
-        const list = data || [];
+        if (error) {
+            console.error('Unable to load notifications:', error);
+            return;
+        }
+        const list = data;
         setNotifications(list);
         setUnreadCount(list.filter((n) => !n.is_read).length);
     }, []);
@@ -25,10 +29,14 @@ export default function useNotifications(pollMs = 60000) {
 
     const markAsRead = async (id) => {
         if (!supabase) return;
-        await supabase
-            .from('notifications')
-            .update({ is_read: true, read_at: new Date().toISOString() })
-            .eq('id', id);
+        const { error } = await supabase.rpc('set_my_notification_read', {
+            p_notification_id: id,
+            p_include_broadcast: true,
+        });
+        if (error) {
+            console.error('Unable to mark notification as read:', error);
+            return;
+        }
         setNotifications((prev) =>
             prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
         );
@@ -37,17 +45,27 @@ export default function useNotifications(pollMs = 60000) {
 
     const markAllAsRead = async () => {
         if (!supabase) return;
-        await supabase
-            .from('notifications')
-            .update({ is_read: true, read_at: new Date().toISOString() })
-            .eq('is_read', false);
+        const { error } = await supabase.rpc('set_my_notification_read', {
+            p_notification_id: null,
+            p_include_broadcast: true,
+        });
+        if (error) {
+            console.error('Unable to mark notifications as read:', error);
+            return;
+        }
         setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
         setUnreadCount(0);
     };
 
     const deleteOne = async (id) => {
         if (!supabase) return;
-        await supabase.from('notifications').delete().eq('id', id);
+        const { error } = await supabase.rpc('delete_my_notifications', {
+            p_notification_ids: [id],
+        });
+        if (error) {
+            console.error('Unable to delete notification:', error);
+            return;
+        }
         setNotifications((prev) => prev.filter((n) => n.id !== id));
         setUnreadCount((c) => Math.max(0, c - 1));
     };
@@ -56,7 +74,13 @@ export default function useNotifications(pollMs = 60000) {
         if (!supabase) return;
         const ids = notifications.map((n) => n.id).filter(Boolean);
         if (!ids.length) return;
-        await supabase.from('notifications').delete().in('id', ids);
+        const { error } = await supabase.rpc('delete_my_notifications', {
+            p_notification_ids: ids,
+        });
+        if (error) {
+            console.error('Unable to delete notifications:', error);
+            return;
+        }
         setNotifications([]);
         setUnreadCount(0);
     };

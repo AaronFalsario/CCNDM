@@ -280,7 +280,7 @@ const BADGE_DEFS = [
 /* MAIN */
 export default function StudentDashboard() {
     const navigate = useNavigate();
-    const { user: student, setUser: setStudent, logout } = useAuth('student');
+    const { user: student, setUser: setStudent, logout, loading: authLoading } = useAuth('student');
 
     const [currentTab, setCurrentTab] = useState(() => {
         return sessionStorage.getItem('student_current_tab') || 'dashboard';
@@ -809,34 +809,53 @@ export default function StudentDashboard() {
 
     /* NOTIFICATIONS */
     const markAllRead = async () => {
-        const sid = student.student_id_number || student.studentId || student.id;
-        await supabase
-            .from('notifications')
-            .update({ is_read: true, read_at: new Date().toISOString() })
-            .eq('student_id', sid)
-            .eq('is_read', false);
+        const { error } = await supabase.rpc('set_my_notification_read', {
+            p_notification_id: null,
+            p_include_broadcast: false,
+        });
+        if (error) {
+            console.error('Unable to mark notifications as read:', error);
+            return;
+        }
         await loadNotifications();
         showToast('info', 'All marked as read', '');
     };
 
     const deleteNotif = async (id) => {
-        await supabase.from('notifications').delete().eq('id', id);
+        const { error } = await supabase.rpc('delete_my_notifications', {
+            p_notification_ids: [id],
+        });
+        if (error) {
+            console.error('Unable to delete notification:', error);
+            return;
+        }
         await loadNotifications();
         await loadAnnouncements();
     };
 
     const markNotifRead = async (id) => {
-        await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', id);
+        const { error } = await supabase.rpc('set_my_notification_read', {
+            p_notification_id: id,
+            p_include_broadcast: true,
+        });
+        if (error) {
+            console.error('Unable to mark notification as read:', error);
+            return;
+        }
         await loadNotifications();
         await loadAnnouncements();
     };
 
     /* mark a single announcement as read */
     const markAnnouncementRead = async (id) => {
-        await supabase
-            .from('notifications')
-            .update({ is_read: true, read_at: new Date().toISOString() })
-            .eq('id', id);
+        const { error } = await supabase.rpc('set_my_notification_read', {
+            p_notification_id: id,
+            p_include_broadcast: true,
+        });
+        if (error) {
+            console.error('Unable to mark announcement as read:', error);
+            return;
+        }
         await loadAnnouncements();
         await loadNotifications();
     };
@@ -845,10 +864,16 @@ export default function StudentDashboard() {
     const markAllAnnouncementsRead = async () => {
         const unreadIds = announcements.filter((a) => !a.is_read).map((a) => a.id);
         if (!unreadIds.length) return;
-        await supabase
-            .from('notifications')
-            .update({ is_read: true, read_at: new Date().toISOString() })
-            .in('id', unreadIds);
+        for (const id of unreadIds) {
+            const { error } = await supabase.rpc('set_my_notification_read', {
+                p_notification_id: id,
+                p_include_broadcast: true,
+            });
+            if (error) {
+                console.error('Unable to mark announcement as read:', error);
+                return;
+            }
+        }
         await loadAnnouncements();
         await loadNotifications();
         showToast('info', 'All announcements marked as read', '');
@@ -871,15 +896,14 @@ export default function StudentDashboard() {
                 setIdleCountdown((s) => {
                     if (s <= 1) {
                         clearInterval(idleCountdownTimer.current);
-                        sessionStorage.clear();
-                        navigate('/student/login', { replace: true });
+                        void logout();
                         return 0;
                     }
                     return s - 1;
                 });
             }, 1000);
         }, 5 * 60 * 1000);
-    }, [navigate]);
+    }, [logout]);
 
     useEffect(() => {
         if (!student) return;
@@ -897,6 +921,7 @@ export default function StudentDashboard() {
         logout();
     };
 
+    if (authLoading) return <DashboardSkeleton isDark={darkMode} />;
     if (!student) return null;
 
     const studentName = student.name || 'Student';
