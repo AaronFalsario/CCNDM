@@ -1,64 +1,55 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../lib/api';
 
-const authConfig = {
-	student: {
-		storage: sessionStorage,
-		key: 'currentStudent',
-		loginPath: '/student/login',
-	},
-	admin: {
-		storage: localStorage,
-		key: 'currentAdmin',
-		loginPath: '/admin/login',
-	},
+const loginPaths = {
+  student: '/student/login',
+  admin: '/admin/login',
 };
 
-function readUser(config, role) {
-	if (!config) return null;
-
-	const stored = config.storage.getItem(config.key);
-	if (!stored) return null;
-
-	try {
-		const parsed = JSON.parse(stored);
-		const expired = role === 'admin' && parsed.expires && new Date(parsed.expires) < new Date();
-
-		if (!parsed || parsed.id === undefined || parsed.id === null || expired) {
-			throw new Error('Invalid session');
-		}
-
-		return parsed;
-	} catch {
-		config.storage.removeItem(config.key);
-		if (role === 'admin') config.storage.removeItem('adminSessionExpiry');
-		return null;
-	}
-}
-
 export function useAuth(role) {
-	const navigate = useNavigate();
-	const config = authConfig[role];
-	const [user, setUser] = useState(() => readUser(config, role));
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-	useEffect(() => {
-		if (!config || !user) {
-			if (!config) return;
-			navigate(config.loginPath, { replace: true });
-		}
-	}, [config, navigate, user]);
+  useEffect(() => {
+    let active = true;
 
-	const logout = () => {
-		if (!config) return;
+    api.get('/api/auth/me')
+      .then(({ user: currentUser }) => {
+        if (!active) return;
+        if (!currentUser || currentUser.account_type !== role) {
+          setUser(null);
+          navigate(loginPaths[role] || '/', { replace: true });
+          return;
+        }
+        setUser(currentUser);
+      })
+      .catch((error) => {
+        if (!active) return;
+        if (error.status !== 401) console.error('[load session]', error);
+        setUser(null);
+        navigate(loginPaths[role] || '/', { replace: true });
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
-		config.storage.removeItem(config.key);
-		if (role === 'admin') {
-			config.storage.removeItem('adminSessionExpiry');
-			localStorage.removeItem('adminCurrentPage');
-		}
-		sessionStorage.clear();
-		navigate(config.loginPath, { replace: true });
-	};
+    return () => {
+      active = false;
+    };
+  }, [navigate, role]);
 
-	return { user, setUser, logout };
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/api/auth/logout');
+    } catch (error) {
+      console.error('[logout]', error);
+    } finally {
+      setUser(null);
+      navigate(loginPaths[role] || '/', { replace: true });
+    }
+  }, [navigate, role]);
+
+  return { user, setUser, logout, loading };
 }

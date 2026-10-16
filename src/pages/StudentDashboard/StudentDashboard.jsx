@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
-import { supabase } from '../../lib/supabase';
 import Toast from '../../components/Toast';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
 import { useAuth } from '../../hooks/useAuth';
@@ -421,12 +420,10 @@ export default function StudentDashboard() {
         if (!student) return;
         const sid = student.student_id_number || student.studentId || student.id;
         try {
-            const { data, error } = await supabase
-                .from('service_sessions')
-                .select('*')
-                .eq('student_id', sid)
-                .order('scheduled_date', { ascending: true });
-            if (error) console.error(error);
+            const data = await api.data.list('service_sessions', {
+                filters: { student_id: sid },
+                order: 'scheduled_date',
+            });
             setSessions(data || []);
         } catch (e) {
             console.error('loadSessions:', e);
@@ -437,11 +434,7 @@ export default function StudentDashboard() {
         if (!student) return;
         const sid = student.student_id_number || student.studentId || student.id;
         try {
-            const { data, error } = await supabase
-                .from('achievements')
-                .select('*')
-                .eq('student_id', sid);
-            if (error) console.error(error);
+            const data = await api.data.list('achievements', { filters: { student_id: sid } });
             setAchievements(data || []);
         } catch (e) {
             console.error('loadAchievements:', e);
@@ -463,48 +456,14 @@ export default function StudentDashboard() {
 
     useEffect(() => {
         if (!student) return undefined;
-        const sid = student.student_id_number || student.studentId || student.id;
-        const channel = supabase
-            .channel(`student-penalties-${sid}`)
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'penalties', filter: `student_id=eq.${sid}` },
-                () => loadPenalties()
-            )
-            .subscribe();
-
         const fallbackId = setInterval(loadPenalties, 15000);
-
-        return () => {
-            clearInterval(fallbackId);
-            supabase.removeChannel(channel);
-        };
+        return () => clearInterval(fallbackId);
     }, [student, loadPenalties]);
 
     useEffect(() => {
         if (!student) return undefined;
-        const sid = student.student_id_number || student.studentId || student.id;
-        const channel = supabase
-            .channel(`student-notifications-${sid}`)
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'notifications' },
-                (payload) => {
-                    const row = payload.new || payload.old;
-                    if (!row || row.student_id === null || String(row.student_id) === String(sid)) {
-                        loadNotifications();
-                        loadAnnouncements();
-                    }
-                }
-            )
-            .subscribe();
-
         const fallbackId = setInterval(loadNotifications, 15000);
-
-        return () => {
-            clearInterval(fallbackId);
-            supabase.removeChannel(channel);
-        };
+        return () => clearInterval(fallbackId);
     }, [student, loadNotifications, loadAnnouncements]);
 
     useEffect(() => {
@@ -601,7 +560,6 @@ export default function StudentDashboard() {
     /* AUTO-UNLOCK ACHIEVEMENTS */
     useEffect(() => {
         if (!student || loading) return;
-        const sid = student.student_id_number || student.studentId || student.id;
 
         const checkMap = {
             first_step: completedHours >= 1,
@@ -624,22 +582,21 @@ export default function StudentDashboard() {
         if (newlyUnlocked.length === 0) return;
 
         (async () => {
-            const rows = newlyUnlocked.map((b) => ({
-                student_id: sid,
-                badge_key: b.key,
-                badge_name: b.name,
-                badge_desc: b.desc,
-                unlocked_at: new Date().toISOString(),
-            }));
-            const { error } = await supabase.from('achievements').insert(rows);
-            if (error) {
+            try {
+                const { unlocked = [] } = await api.post('/api/data/achievements/unlock', {
+                    keys: newlyUnlocked.map((badge) => badge.key),
+                });
+                if (!unlocked.length) return;
+                const unlockedKeys = new Set(unlocked.map((achievement) => achievement.badge_key));
+                await loadAchievements();
+                newlyUnlocked
+                    .filter((badge) => unlockedKeys.has(badge.key))
+                    .forEach((badge) => {
+                        showToast('success', `🏆 Badge unlocked: ${badge.name}`, badge.desc);
+                    });
+            } catch (error) {
                 console.error('Failed to unlock achievements:', error);
-                return;
             }
-            await loadAchievements();
-            newlyUnlocked.forEach((b) => {
-                showToast('success', `🏆 Badge unlocked: ${b.name}`, b.desc);
-            });
         })();
     }, [
         student, loading, completedHours, complianceRate, pendingCount,
@@ -725,23 +682,17 @@ export default function StudentDashboard() {
         }
         const penalty = penalties.find((p) => String(p.id) === String(appealPenaltyId));
         if (!penalty) return;
-        const sid = student.student_id_number || student.studentId || student.id;
-        const { error } = await supabase.from('appeals').insert([
-            {
-                student_id: sid,
-                student_name: student.name,
-                student_email: student.email || '',
+        try {
+            await api.data.insert('appeals', [{
                 penalty_id: penalty.id,
                 penalty_violation: penalty.violation,
                 penalty_hours: penalty.hours,
                 penalty_deadline: penalty.deadline,
                 appeal_reason: appealReason.trim(),
                 supporting_statement: appealStatement.trim() || null,
-                status: 'pending',
                 created_at: new Date().toISOString(),
-            },
-        ]);
-        if (error) {
+            }]);
+        } catch (error) {
             showToast('error', 'Submission failed', error.message);
             return;
         }
@@ -795,52 +746,52 @@ export default function StudentDashboard() {
     const saveProfile = async () => {
         if (!editName.trim()) return showToast('error', 'Name required', 'Please enter your name');
         const sid = student.student_id_number || student.studentId || student.id;
-        const { error } = await supabase
-            .from('students')
-            .update({ name: editName.trim(), email: student.email })
-            .eq('student_id_number', sid);
-        if (error) return showToast('error', 'Update failed', error.message);
+        try {
+            await api.data.update('students', { student_id_number: sid }, { name: editName.trim() });
+        } catch (error) {
+            return showToast('error', 'Update failed', error.message);
+        }
         const updated = { ...student, name: editName.trim() };
         setStudent(updated);
-        sessionStorage.setItem('currentStudent', JSON.stringify(updated));
         setShowEditProfile(false);
         showToast('success', 'Profile updated', 'Your info has been saved');
     };
 
     /* NOTIFICATIONS */
     const markAllRead = async () => {
-        const { error } = await supabase.rpc('set_my_notification_read', {
-            p_notification_id: null,
-            p_include_broadcast: false,
-        });
-        if (error) {
+        try {
+            await api.data.update('notifications', { is_read: false }, {
+                is_read: true,
+                read_at: new Date().toISOString(),
+            });
+        } catch (error) {
             console.error('Unable to mark notifications as read:', error);
-            return;
+            return showToast('error', 'Unable to update notifications', error.message);
         }
         await loadNotifications();
         showToast('info', 'All marked as read', '');
     };
 
     const deleteNotif = async (id) => {
-        const { error } = await supabase.rpc('delete_my_notifications', {
-            p_notification_ids: [id],
-        });
-        if (error) {
+        try {
+            await api.data.remove('notifications', { id });
+        } catch (error) {
             console.error('Unable to delete notification:', error);
-            return;
+            return showToast('error', 'Unable to delete notification', error.message);
         }
         await loadNotifications();
         await loadAnnouncements();
     };
 
     const markNotifRead = async (id) => {
-        const { error } = await supabase.rpc('set_my_notification_read', {
-            p_notification_id: id,
-            p_include_broadcast: true,
-        });
-        if (error) {
+        try {
+            await api.data.update('notifications', { id }, {
+                is_read: true,
+                read_at: new Date().toISOString(),
+            });
+        } catch (error) {
             console.error('Unable to mark notification as read:', error);
-            return;
+            return showToast('error', 'Unable to update notification', error.message);
         }
         await loadNotifications();
         await loadAnnouncements();
@@ -848,13 +799,11 @@ export default function StudentDashboard() {
 
     /* mark a single announcement as read */
     const markAnnouncementRead = async (id) => {
-        const { error } = await supabase.rpc('set_my_notification_read', {
-            p_notification_id: id,
-            p_include_broadcast: true,
-        });
-        if (error) {
+        try {
+            await api.post('/api/data/notifications/read', { id });
+        } catch (error) {
             console.error('Unable to mark announcement as read:', error);
-            return;
+            return showToast('error', 'Unable to update announcement', error.message);
         }
         await loadAnnouncements();
         await loadNotifications();
@@ -864,15 +813,11 @@ export default function StudentDashboard() {
     const markAllAnnouncementsRead = async () => {
         const unreadIds = announcements.filter((a) => !a.is_read).map((a) => a.id);
         if (!unreadIds.length) return;
-        for (const id of unreadIds) {
-            const { error } = await supabase.rpc('set_my_notification_read', {
-                p_notification_id: id,
-                p_include_broadcast: true,
-            });
-            if (error) {
-                console.error('Unable to mark announcement as read:', error);
-                return;
-            }
+        try {
+            await api.post('/api/data/notifications/read', { ids: unreadIds });
+        } catch (error) {
+            console.error('Unable to mark announcement as read:', error);
+            return showToast('error', 'Unable to update announcements', error.message);
         }
         await loadAnnouncements();
         await loadNotifications();

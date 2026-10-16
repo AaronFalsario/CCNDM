@@ -1,38 +1,53 @@
 # CCNDM — Columban College Nursing Discipline Monitoring
 
-A React + Vite web app for tracking student disciplinary records and community service hours.
+CCNDM is a React + Vite student discipline portal with a Node.js + Express API and Supabase Postgres storage.
 
-## Features
+## Security model
 
-- **Student portal** — login, view penalties, submit appeals, service schedule, progress tracking, achievements
-- **Admin dashboard** — manage students, penalties, appeals, announcements, activity log, analytics, and reports
-- **AI-assisted announcements** — auto-generated captions via Supabase Edge Function
-- **Dark mode** with independent preferences for student and admin portals
-- **Responsive layout** — works on desktop, tablet, and mobile
-
-## Tech Stack
-
-**Frontend**
-- React 18 + Vite
-- Tailwind CSS
-- React Router
-- Supabase (auth + database + storage)
-
-**Backend**
-- Node.js + Express (see [`/backend`](./backend))
-- Supabase (Postgres)
-- Supabase Edge Functions (AI captioning)
+- Login, password verification, reset, and role checks run on the backend.
+- Sessions use an `HttpOnly` cookie; the frontend does not treat browser storage as proof of authentication.
+- Frontend database reads and writes go through authenticated backend APIs.
+- Broadcast announcement read state is stored per student, so one student cannot mark an announcement read for everyone.
+- Student achievement awards are validated against the student's server-side records before they are stored.
+- The backend uses the Supabase service-role key. Keep it in `backend/.env` or the backend host's secret store only; never use a `VITE_` prefix for it.
+- Student registration is limited to existing profiles provisioned by an administrator. The registering student must provide the provisioned Student ID, name, and email.
+- Password reset emails require SMTP settings in the backend environment.
 
 ## Prerequisites
 
-- Node.js **18 or newer**
-- A Supabase project ([create one free](https://supabase.com))
-- npm or yarn
+- Node.js 20.19+ or 22.12+
+- npm
+- A Supabase project
 
-## Setup
+## Local setup
 
-### 1. Clone the repo
+1. Install dependencies:
+
+   ```bash
+   npm install
+   npm install --prefix backend
+   ```
+
+2. Configure the backend by copying `backend/.env.example` to `backend/.env`. Set the Supabase URL and **service-role key**, generate a strong `AUTH_JWT_SECRET` (at least 32 bytes), and set `FRONTEND_URL` and `CORS_ORIGINS` to the frontend origin. Configure all `SMTP_*` values to enable password recovery.
+
+3. In development, the Vite server proxies `/api` requests to `http://localhost:5000`. Keep the frontend and backend running on localhost; no `VITE_API_URL` is needed for local development. This keeps the HttpOnly session cookie on the frontend's origin and allows it to survive page reloads.
+
+4. Apply every SQL migration in `supabase/migrations` to the project, in filename order, before starting or publishing the backend. `202610160002_backend_only_database_access.sql` removes direct table/function access from browser roles, so apply it before exposing the backend APIs. The migrations are not run automatically by the app.
+
+   The connected Supabase project was inspected before implementation. Row-level security was disabled on the core `students`, `admins`, `penalties`, and `notifications` tables at that time. The migrations have only been added to this repository; they have not been applied to the live database. Until they are applied, the database is not yet protected by the new backend-only access policy.
+
+5. Start the frontend and backend in separate terminals:
+
+   ```bash
+   npm run dev
+   npm run dev:backend
+   ```
+
+For production, set `VITE_API_URL` to the deployed backend URL, configure the exact frontend origin in the backend's `FRONTEND_URL`/`CORS_ORIGINS`, and serve both over HTTPS so the session cookie is secure.
+
+## Build and lint
 
 ```bash
-git clone https://github.com/AaronFalsario/CCNDM.git
-cd CCNDM
+npm run lint
+npm run build
+```

@@ -310,6 +310,3 @@ create policy admin_logs_admin_only
   on public.admin_logs for all to authenticated
   using ((select public.is_active_admin()))
   with check ((select public.is_active_admin()));
-
-alter table public.students drop column if exists password;
-alter table public.admins drop column if exists password_hash;

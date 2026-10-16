@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import api from '../../lib/api';
 
 const I = {
     mail: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22,6 12,13 2,6" /></svg>,
@@ -24,17 +24,13 @@ export default function ForgotPassword() {
 
         setLoading(true);
         try {
-            const { error: sbError } = await supabase.auth.resetPasswordForEmail(trimmed, {
-                redirectTo: `${window.location.origin}/student/ResetPassword`,
-            });
-            if (sbError) throw sbError;
+            await api.post('/api/auth/forgot-password', { role: 'student', email: trimmed });
             setSent(true);
         } catch (err) {
-            const msg = err?.message || 'Something went wrong. Please try again.';
-            if (/rate|too many/i.test(msg)) {
-                setError('Too many requests. Please wait a moment and try again.');
-            } else {
+            if (err.status !== 429 && err.status !== 503) {
                 setSent(true);
+            } else {
+                setError(err.message || 'Unable to request a password reset.');
             }
         } finally {
             setLoading(false);

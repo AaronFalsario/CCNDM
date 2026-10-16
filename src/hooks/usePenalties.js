@@ -1,22 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import api from '../lib/api';
 
 export default function usePenalties() {
     const [penalties, setPenalties] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const refresh = useCallback(async () => {
-        if (!supabase) return;
         setLoading(true);
-        const { data } = await supabase
-            .from('penalties')
-            .select('*')
-            .order('created_at', { ascending: false });
-        setPenalties(data || []);
-        setLoading(false);
+        try {
+            const data = await api.data.list('penalties', { order: 'created_at', ascending: false });
+            setPenalties(data || []);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    useEffect(() => { refresh(); }, [refresh]);
+    useEffect(() => {
+        const id = setTimeout(() => {
+            refresh().catch((error) => console.error('Unable to load penalties:', error));
+        }, 0);
+        return () => clearTimeout(id);
+    }, [refresh]);
 
     return { penalties, setPenalties, loading, refresh };
 }

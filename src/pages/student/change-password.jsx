@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { isBcryptHash, hashPassword, verifyPassword } from '../../lib/password';
-import { supabase } from '../../lib/supabase';
+import api from '../../lib/api';
 
 const LockIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -25,7 +24,7 @@ const EyeIcon = ({ hidden }) => hidden ? (
 
 export default function ChangePassword() {
     const navigate = useNavigate();
-    const { user } = useAuth('student');
+    useAuth('student');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -43,8 +42,8 @@ export default function ChangePassword() {
             setError('Please complete all password fields.');
             return;
         }
-        if (newPassword.length < 6) {
-            setError('Your new password must be at least 6 characters.');
+        if (newPassword.length < 8) {
+            setError('Your new password must be at least 8 characters.');
             return;
         }
         if (newPassword !== confirmPassword) {
@@ -55,47 +54,9 @@ export default function ChangePassword() {
             setError('Choose a new password that is different from your current one.');
             return;
         }
-        if (!supabase) {
-            setError('The student database is not configured. Please contact your administrator.');
-            return;
-        }
-        if (!user?.student_id_number) {
-            setError('Your student session is missing an ID. Sign in again and retry.');
-            return;
-        }
-
         setLoading(true);
         try {
-            const { data: student, error: lookupError } = await supabase
-                .from('students')
-                .select('password')
-                .eq('student_id_number', user.student_id_number)
-                .maybeSingle();
-
-            if (lookupError) throw lookupError;
-            if (!student) throw new Error('Could not find your student account. Please sign in again.');
-
-            const passwordMatches = isBcryptHash(student.password)
-                ? await verifyPassword(currentPassword, student.password)
-                : student.password === currentPassword;
-
-            if (!passwordMatches) {
-                setError('Your current password is incorrect.');
-                return;
-            }
-
-            const passwordHash = await hashPassword(newPassword);
-            const { data: updatedStudent, error: updateError } = await supabase
-                .from('students')
-                .update({ password: passwordHash })
-                .eq('student_id_number', user.student_id_number)
-                .select('id')
-                .maybeSingle();
-
-            if (updateError) throw updateError;
-            if (!updatedStudent) {
-                throw new Error('Your password was not updated. Check your database permissions and try again.');
-            }
+            await api.post('/api/auth/change-password', { currentPassword, newPassword });
 
             setCurrentPassword('');
             setNewPassword('');
@@ -170,7 +131,7 @@ export default function ChangePassword() {
                                     )}
                                 </div>
                                 {index === 1 && (
-                                    <p className="mt-2 text-xs text-slate-500">Use at least 6 characters.</p>
+                                    <p className="mt-2 text-xs text-slate-500">Use at least 8 characters.</p>
                                 )}
                             </div>
                         ))}

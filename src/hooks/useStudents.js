@@ -1,22 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import api from '../lib/api';
 
 export default function useStudents() {
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const refresh = useCallback(async () => {
-        if (!supabase) return;
         setLoading(true);
-        const { data, error } = await supabase
-            .from('students')
-            .select('*')
-            .order('name', { ascending: true });
-        if (!error) setStudents(data || []);
-        setLoading(false);
+        try {
+            const data = await api.data.list('students', { order: 'name' });
+            setStudents(data || []);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    useEffect(() => { refresh(); }, [refresh]);
+    useEffect(() => {
+        const id = setTimeout(() => {
+            refresh().catch((error) => console.error('Unable to load students:', error));
+        }, 0);
+        return () => clearTimeout(id);
+    }, [refresh]);
 
     return { students, setStudents, loading, refresh };
 }

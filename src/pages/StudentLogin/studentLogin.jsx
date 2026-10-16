@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
-import { hashPassword, verifyPassword, isBcryptHash } from '../../lib/password';
+import api from '../../lib/api';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
 
 /*SVG ICONS*/
@@ -72,9 +71,13 @@ export default function StudentLogin() {
     const [showPassword, setShowPassword] = useState({});
     const [loading, setLoading] = useState(false);
     const [redirecting, setRedirecting] = useState(false);
-    const [rememberMe, setRememberMe] = useState(false);
+    const [rememberMe, setRememberMe] = useState(
+        () => Boolean(localStorage.getItem('rememberedStudentId'))
+    );
 
-    const [loginId, setLoginId] = useState('');
+    const [loginId, setLoginId] = useState(
+        () => localStorage.getItem('rememberedStudentId') || ''
+    );
     const [loginPassword, setLoginPassword] = useState('');
 
     const [signupId, setSignupId] = useState('');
@@ -92,17 +95,13 @@ export default function StudentLogin() {
     }, []);
 
     useEffect(() => {
-        const remembered = localStorage.getItem('rememberedStudentId');
-        if (remembered) {
-            setLoginId(remembered);
-            setRememberMe(true);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (sessionStorage.getItem('currentStudent')) {
-            navigate('/student/dashboard', { replace: true });
-        }
+        api.get('/api/auth/me')
+            .then(({ user }) => {
+                if (user?.account_type === 'student') navigate('/student/dashboard', { replace: true });
+            })
+            .catch((error) => {
+                if (error.status !== 401) console.error('[check student session]', error);
+            });
     }, [navigate]);
 
     const togglePassword = (key) => {
@@ -135,60 +134,11 @@ export default function StudentLogin() {
 
         try {
             setLoading(true);
-
-            const { data: studentData, error: studentError } = await supabase
-                .from('students').select('*').eq('student_id_number', studentId).maybeSingle();
-
-            if (studentError) throw new Error('Database error: ' + studentError.message);
-            if (!studentData) throw new Error('Invalid Student ID or password');
-
-            console.log('=== LOGIN DEBUG ===');
-            console.log('Stored password:', studentData.password);
-            console.log('Is bcrypt hash?', isBcryptHash(studentData.password));
-
-            let passwordMatches = false;
-
-            if (isBcryptHash(studentData.password)) {
-                passwordMatches = await verifyPassword(password, studentData.password);
-                console.log('bcrypt compare result:', passwordMatches);
-            } else {
-                passwordMatches = studentData.password === password;
-                console.log('Plaintext compare result:', passwordMatches);
-                if (passwordMatches) {
-                    try {
-                        const newHash = await hashPassword(password);
-                        await supabase
-                            .from('students')
-                            .update({ password: newHash })
-                            .eq('student_id_number', studentId);
-                        console.log('[LOGIN] Auto-upgraded password to hash');
-                    } catch (e) {
-                        console.warn('[LOGIN] Auto-upgrade failed:', e);
-                    }
-                }
-            }
-
-            if (!passwordMatches) throw new Error('Invalid Student ID or password');
-
-            if (studentData.status === 'inactive' || studentData.status === 'suspended')
-                throw new Error('Your account is inactive. Please contact the administrator.');
-
-            await supabase.from('students')
-                .update({ last_login: new Date().toISOString() })
-                .eq('student_id_number', studentId);
-
-            const studentInfo = {
-                id: studentData.id,
-                student_id_number: studentData.student_id_number,
-                email: studentData.email,
-                name: studentData.name,
-                course: studentData.course || '',
-                year_level: studentData.year_level || '',
-                status: studentData.status || 'active',
-                role: 'student',
-            };
-
-            sessionStorage.setItem('currentStudent', JSON.stringify(studentInfo));
+            await api.post('/api/auth/student/login', {
+                studentId,
+                password,
+                remember: rememberMe,
+            });
 
             if (rememberMe) localStorage.setItem('rememberedStudentId', studentId);
             else localStorage.removeItem('rememberedStudentId');
@@ -213,7 +163,7 @@ export default function StudentLogin() {
         if (!studentId || !name || !emailLocalPart || !course || !yearLevel || !signupPassword || !signupConfirm)
             return alert('Please fill in all fields');
         if (signupPassword !== signupConfirm) return alert('Passwords do not match!');
-        if (signupPassword.length < 6) return alert('Password must be at least 6 characters');
+        if (signupPassword.length < 8) return alert('Password must be at least 8 characters');
         if (emailLocalPart.length < 2) return alert('Please enter a valid email username');
         if (name.length < 2) return alert('Please enter your full name');
         if (!/^\d{8}$/.test(studentId)) return alert('Student ID must be exactly 8 digits');
@@ -224,42 +174,14 @@ export default function StudentLogin() {
         try {
             setLoading(true);
 
-            console.log('=== SIGNUP START ===');
-            console.log('hashPassword type:', typeof hashPassword);
-
-            const { data: existingId } = await supabase
-                .from('students').select('student_id_number').eq('student_id_number', studentId).maybeSingle();
-            if (existingId) throw new Error('Student ID already registered');
-
-            const { data: existingEmail } = await supabase
-                .from('students').select('email').eq('email', email).maybeSingle();
-            if (existingEmail) throw new Error('Email already registered');
-
-            console.log('[SIGNUP] Plain:', signupPassword);
-            const hashedPassword = await hashPassword(signupPassword);
-            console.log('[SIGNUP] Hashed:', hashedPassword);
-            console.log('[SIGNUP] Hash length:', hashedPassword.length);
-
-            const { error: insertError } = await supabase.from('students').insert([{
-                student_id_number: studentId,
+            await api.post('/api/auth/student/register', {
+                studentId,
                 name,
                 email,
                 course,
-                year_level: yearLevel,
-                password: hashedPassword,
-                status: 'active',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            }]);
-
-            if (insertError) {
-                console.error('=== SIGNUP ERROR ===');
-                console.error('Message:', insertError.message);
-                console.error('Code:', insertError.code);
-                console.error('Details:', insertError.details);
-                console.error('Hint:', insertError.hint);
-                throw new Error('Failed to create account: ' + insertError.message);
-            }
+                yearLevel,
+                password: signupPassword,
+            });
 
             alert('Account created successfully! You can now login with your Student ID.');
             setSignupId(''); setSignupName(''); setSignupEmail('');
@@ -387,6 +309,9 @@ export default function StudentLogin() {
 
                             {panel === 'signup' && (
                                 <form onSubmit={handleSignup} className="anim-panel">
+                                    <p className="mb-5 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                                        Your administrator must add your student profile first. Enter the same Student ID, name, and email on that profile.
+                                    </p>
                                     <h1 className="text-2xl sm:text-[28px] font-extrabold text-slate-800 text-center mb-2">Student Sign Up</h1>
                                     <p className="text-sm text-slate-500 text-center mb-9">Create your account to get started</p>
 
@@ -470,7 +395,7 @@ export default function StudentLogin() {
                                             <legend className="text-[11px] text-slate-500 px-1 font-semibold">Password <span className="text-red-500">*</span></legend>
                                             <div className="flex items-center">
                                                 <span className="text-slate-400 mr-2.5 flex-shrink-0">{Icon.lock}</span>
-                                                <input type={showPassword.signup ? 'text' : 'password'} value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} placeholder="Create a password (min. 6 chars)" required className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5" />
+                                                <input type={showPassword.signup ? 'text' : 'password'} value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} placeholder="Create a password (min. 8 chars)" required className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5" />
                                                 <button type="button" onClick={() => togglePassword('signup')} className="text-slate-400 hover:text-blue-500 p-1 flex items-center transition-colors">
                                                     {showPassword.signup ? Icon.eyeOff : Icon.eye}
                                                 </button>

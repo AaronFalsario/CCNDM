@@ -2,7 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import dns from 'node:dns';
+import helmet from 'helmet';
 import { getDbStatus, supabase } from './config/db.js';
+import authRoutes from './routes/authRoutes.js';
+import dataRoutes from './routes/dataRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import { applyStudentReadState } from './lib/notifications.js';
+import { requireAuth, requireRole } from './middleware/authMiddleware.js';
 
 // Force IPv4 — fixes "fetch failed" on Vercel when Supabase DNS doesn't respond to IPv6
 dns.setDefaultResultOrder('ipv4first');
@@ -11,14 +17,62 @@ dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
+if (!process.env.AUTH_JWT_SECRET || Buffer.byteLength(process.env.AUTH_JWT_SECRET) < 32) {
+  throw new Error('AUTH_JWT_SECRET must be configured with at least 32 bytes.');
+}
+if (!supabase) {
+  throw new Error('Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before starting the backend.');
+}
+const allowedOrigins = new Set(
+  [process.env.FRONTEND_URL, ...(process.env.CORS_ORIGINS || '').split(',')]
+    .map((origin) => origin?.trim())
+    .filter(Boolean)
+);
+const isAllowedOrigin = (origin) => {
+  if (!origin || allowedOrigins.has(origin)) return true;
+  if (process.env.NODE_ENV === 'production') return false;
 
+  try {
+    const parsed = new URL(origin);
+    return parsed.protocol === 'http:'
+      && ['localhost', '127.0.0.1'].includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+};
+
+if (process.env.NODE_ENV !== 'production') {
+  allowedOrigins.add('http://localhost:5173');
+  allowedOrigins.add('http://127.0.0.1:5173');
+} else if (allowedOrigins.size === 0) {
+  throw new Error('Configure FRONTEND_URL or CORS_ORIGINS before starting the production backend.');
+}
+
+app.set('trust proxy', 1);
+app.use(helmet());
 app.use(
   cors({
-    origin: true,
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) return callback(null, true);
+      return callback(new Error('Origin is not allowed by CORS.'));
+    },
     credentials: true,
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
+
+app.use((req, res, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  const origin = req.get('origin');
+  if (!isAllowedOrigin(origin)) {
+    return res.status(403).json({ message: 'Request origin is not allowed.' });
+  }
+  return next();
+});
+
+app.use('/api/auth', authRoutes);
+app.use('/api/data', dataRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({
@@ -28,134 +82,95 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ─── DEBUG ENDPOINT — remove after fixing ─────────────────────────────
-app.get('/api/debug-supabase', async (req, res) => {
-  const info = {
-    url: process.env.SUPABASE_URL,
-    urlLength: process.env.SUPABASE_URL?.length,
-    urlHasTrailingSlash: process.env.SUPABASE_URL?.endsWith('/'),
-    urlHasWhitespace: /\s/.test(process.env.SUPABASE_URL || ''),
-    urlHasRestPath: process.env.SUPABASE_URL?.includes('/rest/'),
-    keyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length,
-    keyStartsWith: process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 12),
-    hasSupabaseClient: !!supabase,
-    nodeVersion: process.version,
-    vercelRegion: process.env.VERCEL_REGION || 'unknown',
-  };
-
-  // Raw fetch to isolate networking issues
-  try {
-    const r = await fetch(`${process.env.SUPABASE_URL}/rest/v1/`, {
-      method: 'HEAD',
-      headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY || '' },
-    });
-    info.rawFetchStatus = r.status;
-    info.rawFetchOk = r.ok;
-  } catch (err) {
-    info.rawFetchError = err.message;
-    info.rawFetchCause = err.cause?.message || err.cause?.code || String(err.cause);
-    if (err.cause) {
-      info.rawFetchCauseFull = JSON.stringify(
-        err.cause,
-        Object.getOwnPropertyNames(err.cause)
-      );
-    }
-  }
-
-  // Supabase client query
-  try {
-    const { data, error } = await supabase.from('students').select('*').limit(1);
-    if (error) {
-      info.queryError = error.message;
-      info.queryErrorCause = error.cause?.message || String(error.cause);
-      info.queryErrorDetails = JSON.stringify(error, Object.getOwnPropertyNames(error));
-    } else {
-      info.querySuccess = true;
-      info.queryRowCount = data?.length ?? 0;
-    }
-  } catch (err) {
-    info.queryThrew = err.message;
-    info.queryThrewCause = err.cause?.message || String(err.cause);
-  }
-
-  res.json(info);
-});
-// ──────────────────────────────────────────────────────────────────────
-
-app.get('/api/students', async (req, res) => {
-  if (!supabase) {
-    return res.status(500).json({ message: 'Supabase is not configured.' });
-  }
-
-  const { data, error } = await supabase.from('students').select('*').order('name', { ascending: true });
-
-  if (error) {
-    return res.status(400).json({
-      message: error.message,
-      cause: error.cause?.message,
-    });
-  }
-
-  return res.json(data || []);
-});
-
-app.get('/api/penalties', async (req, res) => {
+app.get('/api/students', requireAuth, requireRole('admin'), async (req, res, next) => {
   if (!supabase) {
     return res.status(500).json({ message: 'Supabase is not configured.' });
   }
 
   const { data, error } = await supabase
+    .from('students')
+    .select('id, student_id_number, name, email, course, year_level, status, created_at, updated_at')
+    .order('name', { ascending: true });
+
+  if (error) {
+    return next(error);
+  }
+
+  return res.json(data || []);
+});
+
+app.get('/api/penalties', requireAuth, async (req, res, next) => {
+  if (!supabase) {
+    return res.status(500).json({ message: 'Supabase is not configured.' });
+  }
+
+  let query = supabase
     .from('penalties')
     .select('*')
     .order('created_at', { ascending: false });
+  if (req.user.role === 'student') {
+    query = query.eq('student_id', req.user.student_id_number);
+  }
+  const { data, error } = await query;
 
   if (error) {
-    return res.status(400).json({
-      message: error.message,
-      cause: error.cause?.message,
-    });
+    return next(error);
   }
 
   return res.json(data || []);
 });
 
-app.get('/api/appeals', async (req, res) => {
+app.get('/api/appeals', requireAuth, async (req, res, next) => {
   if (!supabase) {
     return res.status(500).json({ message: 'Supabase is not configured.' });
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('appeals')
     .select('*')
     .order('created_at', { ascending: false });
+  if (req.user.role === 'student') {
+    query = query.eq('student_id', req.user.student_id_number);
+  }
+  const { data, error } = await query;
 
   if (error) {
-    return res.status(400).json({
-      message: error.message,
-      cause: error.cause?.message,
-    });
+    return next(error);
   }
 
   return res.json(data || []);
 });
 
-app.get('/api/notifications', async (req, res) => {
+app.get('/api/notifications', requireAuth, async (req, res, next) => {
   if (!supabase) {
     return res.status(500).json({ message: 'Supabase is not configured.' });
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('notifications')
     .select('*')
     .order('created_at', { ascending: false });
+  if (req.user.role === 'student') {
+    const studentId = String(req.user.student_id_number || '');
+    if (!/^\d{8}$/.test(studentId)) {
+      return res.status(403).json({ message: 'The student profile is not valid.' });
+    }
+    query = query.or(`student_id.is.null,student_id.eq.${studentId}`);
+  }
+  const { data, error } = await query;
 
   if (error) {
-    return res.status(400).json({
-      message: error.message,
-      cause: error.cause?.message,
-    });
+    return next(error);
   }
 
+  if (req.user.role === 'student') {
+    try {
+      const notifications = await applyStudentReadState(supabase, data || [], req.user.id);
+      return res.json(notifications);
+    } catch (readError) {
+      return next(readError);
+    }
+  }
   return res.json(data || []);
 });
 
@@ -164,6 +179,12 @@ app.get('/', (req, res) => {
     app: 'CCNDM backend',
     endpoints: ['/api/health', '/api/students', '/api/penalties', '/api/appeals', '/api/notifications'],
   });
+});
+
+app.use((error, req, res, next) => {
+  console.error(`[${req.method} ${req.originalUrl}]`, error);
+  if (res.headersSent) return next(error);
+  return res.status(500).json({ message: 'An unexpected server error occurred.' });
 });
 
 // Vercel serverless export

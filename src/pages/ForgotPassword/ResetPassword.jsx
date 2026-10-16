@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import { useState } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import api from '../../lib/api';
 
 const I = {
     lock: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>,
@@ -12,51 +12,34 @@ const I = {
 
 export default function ResetPassword() {
     const navigate = useNavigate();
-    const [ready, setReady] = useState(false);
-    const [checking, setChecking] = useState(true);
+    const [searchParams] = useSearchParams();
     const [password, setPassword] = useState('');
     const [confirm, setConfirm] = useState('');
     const [showPw, setShowPw] = useState(false);
     const [loading, setLoading] = useState(false);
     const [done, setDone] = useState(false);
     const [error, setError] = useState('');
-
-    useEffect(() => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'PASSWORD_RECOVERY' && session) {
-                setReady(true);
-                setChecking(false);
-            }
-        });
-
-        (async () => {
-            const { data } = await supabase.auth.getSession();
-            const hash = window.location.hash || '';
-            const isRecoveryLink = hash.includes('type=recovery') || hash.includes('access_token');
-            if (data?.session && isRecoveryLink) {
-                setReady(true);
-            }
-            setChecking(false);
-        })();
-
-        return () => subscription.unsubscribe();
-    }, []);
+    const token = searchParams.get('token') || '';
+    const role = searchParams.get('role') || 'student';
+    const ready = Boolean(token) && ['student', 'admin'].includes(role);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        if (password.length < 6) return setError('Password must be at least 6 characters.');
+        if (password.length < 8) return setError('Password must be at least 8 characters.');
         if (password !== confirm) return setError('Passwords do not match.');
 
         setLoading(true);
         try {
-            const { error: sbError } = await supabase.auth.updateUser({ password });
-            if (sbError) throw sbError;
+            await api.post('/api/auth/reset-password', {
+                role,
+                token,
+                newPassword: password,
+            });
             setDone(true);
-            setTimeout(async () => {
-                await supabase.auth.signOut();
-                navigate('/student/login', { replace: true });
+            setTimeout(() => {
+                navigate(role === 'admin' ? '/admin/login' : '/student/login', { replace: true });
             }, 2500);
         } catch (err) {
             setError(err?.message || 'Could not update password. Please try again.');
@@ -81,12 +64,7 @@ export default function ResetPassword() {
                         </p>
                     </div>
 
-                    {checking ? (
-                        <div className="py-10 flex flex-col items-center gap-3">
-                            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                            <p className="text-xs text-slate-500">Verifying reset link...</p>
-                        </div>
-                    ) : done ? (
+                    {done ? (
                         <div className="flex flex-col items-center gap-4 py-4">
                             <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
                                 {I.checkCircle}
@@ -128,7 +106,7 @@ export default function ResetPassword() {
                                         type={showPw ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        placeholder="Min 6 characters"
+                                        placeholder="Min 8 characters"
                                         autoComplete="new-password"
                                         className={inputWrap}
                                     />

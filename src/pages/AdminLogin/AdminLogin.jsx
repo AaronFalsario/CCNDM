@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import api from '../../lib/api';
 import Toast from '../../components/Toast';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
-import { verifyPassword, isBcryptHash } from '../../lib/password';
 
 //SVG ICONS
 const Icon = {
@@ -91,6 +90,16 @@ export default function AdminLogin() {
         setToast({ message, type, title });
     };
 
+    const checkExistingSession = async () => {
+        try {
+            const { user } = await api.get('/api/auth/me');
+            return user?.account_type === 'admin';
+        } catch (error) {
+            if (error.status !== 401) console.error('[check admin session]', error);
+            return false;
+        }
+    };
+
     //SESSION CHECK ON MOUNT
     useEffect(() => {
         const init = async () => {
@@ -109,38 +118,6 @@ export default function AdminLogin() {
         init();
     }, [navigate]);
 
-    const checkExistingSession = async () => {
-        const storedAdmin = localStorage.getItem('currentAdmin');
-        if (!storedAdmin) return false;
-
-        try {
-            const expiry = localStorage.getItem('adminSessionExpiry');
-            if (expiry && new Date(expiry) < new Date()) {
-                localStorage.removeItem('currentAdmin');
-                localStorage.removeItem('adminSessionExpiry');
-                return false;
-            }
-
-            const admin = JSON.parse(storedAdmin);
-            const { data, error } = await supabase
-                .from('admins')
-                .select('id, status, role, full_name')
-                .eq('id', admin.id)
-                .single();
-
-            if (error || !data || data.status !== 'active') {
-                localStorage.removeItem('currentAdmin');
-                localStorage.removeItem('adminSessionExpiry');
-                return false;
-            }
-            return true;
-        } catch {
-            localStorage.removeItem('currentAdmin');
-            localStorage.removeItem('adminSessionExpiry');
-            return false;
-        }
-    };
-
     //LOGIN
     const handleLogin = async (e) => {
         e?.preventDefault();
@@ -154,60 +131,11 @@ export default function AdminLogin() {
         setLoading(true);
 
         try {
-            const { data: admin, error } = await supabase
-                .from('admins')
-                .select('*')
-                .or(`admin_id.ilike.${u},email.ilike.${u}`)
-                .maybeSingle();
-
-            if (error || !admin) {
-                showToast('Admin not found. Please check your credentials.', 'error', 'Login Failed');
-                setLoading(false);
-                return;
-            }
-
-            let passwordMatches = false;
-
-            if (isBcryptHash(admin.password_hash)) {
-                passwordMatches = await verifyPassword(p, admin.password_hash);
-            } else {
-                // Legacy plaintext — compare directly
-                passwordMatches = admin.password_hash === p;
-            }
-
-            if (!passwordMatches) {
-                showToast('Wrong password. Please try again.', 'error', 'Authentication Failed');
-                setLoading(false);
-                return;
-            }
-
-            if (admin.status !== 'active') {
-                showToast('Your account is inactive. Please contact support.', 'error', 'Account Inactive');
-                setLoading(false);
-                return;
-            }
-
-            await supabase
-                .from('admins')
-                .update({ last_login: new Date().toISOString() })
-                .eq('id', admin.id);
-
-            const sessionExpiry = new Date();
-            sessionExpiry.setHours(sessionExpiry.getHours() + 24);
-
-            const adminSession = {
-                id: admin.id,
-                admin_id: admin.admin_id,
-                full_name: admin.full_name,
-                email: admin.email,
-                role: admin.role,
-                status: admin.status,
-                login_time: new Date().toISOString(),
-                expires: sessionExpiry.toISOString(),
-            };
-
-            localStorage.setItem('currentAdmin', JSON.stringify(adminSession));
-            localStorage.setItem('adminSessionExpiry', sessionExpiry.toISOString());
+            const { user: admin } = await api.post('/api/auth/admin/login', {
+                username: u,
+                password: p,
+                remember: rememberMe,
+            });
 
             if (rememberMe) {
                 localStorage.setItem('rememberedAdmin', admin.admin_id);
@@ -224,8 +152,7 @@ export default function AdminLogin() {
             setRedirecting(true);
             setTimeout(() => navigate('/admin/dashboard'), 1200);
         } catch (err) {
-            console.error(err);
-            showToast('Login failed. Please try again.', 'error', 'Error');
+            showToast(err.message || 'Login failed. Please try again.', 'error', 'Error');
             setLoading(false);
         }
     };
@@ -245,34 +172,12 @@ export default function AdminLogin() {
         setForgotLoading(true);
 
         try {
-            const { data: admin, error: adminError } = await supabase
-                .from('admins')
-                .select('email, full_name')
-                .eq('email', email)
-                .maybeSingle();
-
-            if (adminError || !admin) {
-                showToast('No admin account found with this email', 'error', 'Account Not Found');
-                setForgotLoading(false);
-                return;
-            }
-
-            const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/Assets/Admin_dashboard/password/password.html`,
-            });
-
-            if (resetError) {
-                showToast('Failed to send reset email. Please try again.', 'error', 'Reset Failed');
-                setForgotLoading(false);
-                return;
-            }
-
-            showToast(`Password reset link sent to ${email}. Check your inbox!`, 'success', 'Email Sent');
+            await api.post('/api/auth/forgot-password', { role: 'admin', email });
+            showToast('If that administrator account exists, reset instructions have been sent.', 'success', 'Check Your Email');
             setForgotEmail('');
             setShowForgot(false);
         } catch (err) {
-            console.error(err);
-            showToast('An error occurred. Please try again.', 'error', 'Error');
+            showToast(err.message || 'Unable to request a password reset.', 'error', 'Reset Failed');
         } finally {
             setForgotLoading(false);
         }

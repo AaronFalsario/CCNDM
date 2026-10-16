@@ -1,42 +1,39 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import api from '../lib/api';
 
 export default function useNotifications(pollMs = 60000) {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
 
     const load = useCallback(async () => {
-        if (!supabase) return;
-        const { data, error } = await supabase
-            .from('notifications')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(20);
-        if (error) {
-            console.error('Unable to load notifications:', error);
-            return;
-        }
+        const data = await api.data.list('notifications', {
+            order: 'created_at',
+            ascending: false,
+            limit: 20,
+        });
         const list = data;
         setNotifications(list);
         setUnreadCount(list.filter((n) => !n.is_read).length);
     }, []);
 
     useEffect(() => {
-        load();
-        const id = setInterval(load, pollMs);
-        return () => clearInterval(id);
+        const initialLoad = setTimeout(() => {
+            load().catch((error) => console.error('Unable to load notifications:', error));
+        }, 0);
+        const id = setInterval(() => {
+            load().catch((error) => console.error('Unable to refresh notifications:', error));
+        }, pollMs);
+        return () => {
+            clearTimeout(initialLoad);
+            clearInterval(id);
+        };
     }, [load, pollMs]);
 
     const markAsRead = async (id) => {
-        if (!supabase) return;
-        const { error } = await supabase.rpc('set_my_notification_read', {
-            p_notification_id: id,
-            p_include_broadcast: true,
+        await api.data.update('notifications', { id }, {
+            is_read: true,
+            read_at: new Date().toISOString(),
         });
-        if (error) {
-            console.error('Unable to mark notification as read:', error);
-            return;
-        }
         setNotifications((prev) =>
             prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
         );
@@ -44,43 +41,24 @@ export default function useNotifications(pollMs = 60000) {
     };
 
     const markAllAsRead = async () => {
-        if (!supabase) return;
-        const { error } = await supabase.rpc('set_my_notification_read', {
-            p_notification_id: null,
-            p_include_broadcast: true,
+        await api.data.update('notifications', { is_read: false }, {
+            is_read: true,
+            read_at: new Date().toISOString(),
         });
-        if (error) {
-            console.error('Unable to mark notifications as read:', error);
-            return;
-        }
         setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
         setUnreadCount(0);
     };
 
     const deleteOne = async (id) => {
-        if (!supabase) return;
-        const { error } = await supabase.rpc('delete_my_notifications', {
-            p_notification_ids: [id],
-        });
-        if (error) {
-            console.error('Unable to delete notification:', error);
-            return;
-        }
+        await api.data.remove('notifications', { id });
         setNotifications((prev) => prev.filter((n) => n.id !== id));
         setUnreadCount((c) => Math.max(0, c - 1));
     };
 
     const clearAll = async () => {
-        if (!supabase) return;
         const ids = notifications.map((n) => n.id).filter(Boolean);
         if (!ids.length) return;
-        const { error } = await supabase.rpc('delete_my_notifications', {
-            p_notification_ids: ids,
-        });
-        if (error) {
-            console.error('Unable to delete notifications:', error);
-            return;
-        }
+        await api.data.remove('notifications', { id: ids });
         setNotifications([]);
         setUnreadCount(0);
     };

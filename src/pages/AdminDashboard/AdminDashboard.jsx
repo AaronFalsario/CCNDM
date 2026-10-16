@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import api from '../../lib/api';
-import { supabase } from '../../lib/supabase';
 import Toast from '../../components/Toast';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
 import { useAuth } from '../../hooks/useAuth';
@@ -248,19 +247,11 @@ const fadeInStyle = { animation: 'fadeIn 0.3s ease-out' };
 const uploadImageToBucket = async (bucket, file) => {
     if (!file) return { url: null, error: null };
     try {
-        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-        const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-
-        const { data: signed, error: signErr } = await supabase
-            .storage
-            .from(bucket)
-            .createSignedUploadUrl(filename);
-
-        if (signErr) {
-            console.error('[upload] sign failed', signErr);
-            return { url: null, error: signErr };
-        }
-
+        const signed = await api.post('/api/admin/uploads/signed', {
+            bucket,
+            contentType: file.type,
+            size: file.size,
+        });
         const uploadRes = await fetch(signed.signedUrl, {
             method: 'PUT',
             headers: { 'Content-Type': file.type || 'application/octet-stream' },
@@ -268,16 +259,10 @@ const uploadImageToBucket = async (bucket, file) => {
         });
 
         if (!uploadRes.ok) {
-            const text = await uploadRes.text();
-            console.error('[upload] PUT failed', uploadRes.status, text);
-            return { url: null, error: { message: text || `HTTP ${uploadRes.status}` } };
+            throw new Error(`Image upload failed (HTTP ${uploadRes.status}).`);
         }
-
-        const { data: pub } = supabase.storage.from(bucket).getPublicUrl(filename);
-        console.log('[upload] OK', pub?.publicUrl);
-        return { url: pub?.publicUrl || null, error: null };
+        return { url: signed.publicUrl, error: null };
     } catch (err) {
-        console.error('[upload] THREW', err);
         return { url: null, error: err };
     }
 };
@@ -575,16 +560,11 @@ export default function AdminDashboard() {
     }, []);
     const loadActivity = useCallback(async () => {
         try {
-            const { data, error } = await supabase
-                .from('activity_log')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(50);
-            if (error) {
-                console.error('[loadActivity]', error);
-                setActivityLog([]);
-                return;
-            }
+            const data = await api.data.list('activity_log', {
+                order: 'created_at',
+                ascending: false,
+                limit: 50,
+            });
             setActivityLog(data || []);
         } catch (e) {
             console.error('[loadActivity]', e);
@@ -625,21 +605,6 @@ export default function AdminDashboard() {
         }, 60000);
         return () => clearInterval(id);
     }, [loadPenalties, loadAppeals, loadNotifications, loadActivity]);
-
-    useEffect(() => {
-        const channel = supabase
-            .channel('admin-activity-log')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'activity_log' },
-                () => loadActivity()
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [loadActivity]);
 
     const stats = useMemo(() => {
         const pendingAppeals = appeals.filter(a => (a.status || '').toLowerCase() === 'pending').length;
@@ -837,19 +802,20 @@ export default function AdminDashboard() {
     }, [announcements, announcementSearch]);
 
     const logActivity = useCallback(async (type, description, targetId = null) => {
-        const { data, error } = await supabase.from('activity_log').insert([{
-            admin_id: admin?.id || null,
-            admin_name: admin?.full_name || admin?.name || 'Admin',
-            type,
-            description,
-            target_id: targetId,
-            created_at: new Date().toISOString(),
-        }]).select().single();
-        if (error) {
+        try {
+            const rows = await api.data.insert('activity_log', [{
+                admin_id: admin?.id || null,
+                admin_name: admin?.full_name || admin?.name || 'Admin',
+                type,
+                description,
+                target_id: targetId,
+                created_at: new Date().toISOString(),
+            }]);
+            return rows[0] || null;
+        } catch (error) {
             console.error('[logActivity]', error);
             return null;
         }
-        return data;
     }, [admin]);
 
     const refreshAll = useCallback(async () => {
@@ -928,21 +894,24 @@ export default function AdminDashboard() {
             if (deadline) data.deadline = deadline;
         }
 
-        const { error } = await supabase.from('penalties').insert([data]).select();
-        if (error) return showToast('error', 'Failed', error.message);
+        try {
+            await api.data.insert('penalties', [data]);
+        } catch (error) {
+            return showToast('error', 'Failed', error.message);
+        }
 
-        const { error: notificationError } = await supabase.from('notifications').insert([{
-            student_id: sid,
-            title: 'New violation assigned',
-            message: `${violation} has been assigned to your account.`,
-            type: 'violation',
-            is_read: false,
-            created_at: nowIso,
-        }]);
-        if (notificationError) {
-            showToast('warning', 'Penalty added', 'The violation was saved, but its notification could not be sent');
-        } else {
+        try {
+            await api.data.insert('notifications', [{
+                student_id: sid,
+                title: 'New violation assigned',
+                message: `${violation} has been assigned to your account.`,
+                type: 'violation',
+                is_read: false,
+                created_at: nowIso,
+            }]);
             showToast('success', 'Penalty added', `Recorded for ${selectedStudent.name}`);
+        } catch {
+            showToast('warning', 'Penalty added', 'The violation was saved, but its notification could not be sent');
         }
         await logActivity('penalty', `Added ${violation} (${offenseLevel}) for ${selectedStudent.name}`);
         setShowAddPenalty(false);
@@ -997,8 +966,11 @@ export default function AdminDashboard() {
             if (deadline) update.deadline = deadline;
         }
 
-        const { error } = await supabase.from('penalties').update(update).eq('id', selectedPenalty.id).select();
-        if (error) return showToast('error', 'Failed', error.message);
+        try {
+            await api.data.update('penalties', { id: selectedPenalty.id }, update);
+        } catch (error) {
+            return showToast('error', 'Failed', error.message);
+        }
         showToast('success', 'Updated', 'Penalty updated successfully');
         await logActivity('penalty', `Updated penalty for ${selectedStudent.name}`);
         setShowEditPenalty(false);
@@ -1020,13 +992,16 @@ export default function AdminDashboard() {
 
         const data = {
             name, student_id_number: studentId, email, course,
-            year_level: year, status: status || 'Good', violation_count: 0,
+            year_level: year, status: status || 'Good',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
         };
 
-        const { error } = await supabase.from('students').insert([data]).select();
-        if (error) return showToast('error', 'Failed', error.message);
+        try {
+            await api.data.insert('students', [data]);
+        } catch (error) {
+            return showToast('error', 'Failed', error.message);
+        }
         showToast('success', 'Student added', `${name} added successfully`);
         await logActivity('student', `Added student ${name} (${studentId})`);
         setShowAddStudent(false);
@@ -1044,12 +1019,14 @@ export default function AdminDashboard() {
         const dup = students.find(s => s.student_id_number === studentId && s.id !== selectedStudent.id);
         if (dup) return showToast('error', 'Duplicate', 'Student ID already used');
 
-        const { error } = await supabase.from('students').update({
+        try {
+            await api.data.update('students', { id: selectedStudent.id }, {
             name, student_id_number: studentId, email, course,
             year_level: year, status, updated_at: new Date().toISOString(),
-        }).eq('id', selectedStudent.id);
-
-        if (error) return showToast('error', 'Failed', error.message);
+            });
+        } catch (error) {
+            return showToast('error', 'Failed', error.message);
+        }
         showToast('success', 'Updated', `${name} updated`);
         await logActivity('student', `Updated student ${name}`);
         setShowEditStudent(false);
@@ -1061,8 +1038,11 @@ export default function AdminDashboard() {
     const handleDeletePenalty = async (id) => {
         if (!window.confirm('Delete this penalty?')) return;
         const target = penalties.find(p => p.id === id);
-        const { error } = await supabase.from('penalties').delete().eq('id', id);
-        if (error) return showToast('error', 'Failed', 'Failed to delete penalty');
+        try {
+            await api.data.remove('penalties', { id });
+        } catch (error) {
+            return showToast('error', 'Failed', error.message);
+        }
         showToast('success', 'Deleted', 'Penalty removed');
         await logActivity('penalty', `Deleted penalty for ${target?.student_name || 'unknown student'}`);
         await loadPenalties();
@@ -1074,9 +1054,12 @@ export default function AdminDashboard() {
         const student = students.find(s => String(s.id) === String(id));
         if (!student) return;
         const sid = student.student_id_number || student.student_id || student.id;
-        await supabase.from('penalties').delete().eq('student_id', String(sid));
-        const { error } = await supabase.from('students').delete().eq('id', student.id);
-        if (error) return showToast('error', 'Failed', 'Failed to delete student');
+        try {
+            await api.data.remove('penalties', { student_id: String(sid) });
+            await api.data.remove('students', { id: student.id });
+        } catch (error) {
+            return showToast('error', 'Failed', error.message);
+        }
         showToast('success', 'Deleted', 'Student removed');
         await logActivity('student', `Deleted student ${student.name}`);
         await loadStudents();
@@ -1087,7 +1070,11 @@ export default function AdminDashboard() {
     const handleBulkDeletePenalties = async () => {
         if (!selectedPenalties.length) return;
         if (!window.confirm(`Delete ${selectedPenalties.length} selected penalties?`)) return;
-        await supabase.from('penalties').delete().in('id', selectedPenalties);
+        try {
+            await api.data.remove('penalties', { id: selectedPenalties });
+        } catch (error) {
+            return showToast('error', 'Failed', error.message);
+        }
         showToast('success', 'Bulk delete', `${selectedPenalties.length} penalties removed`);
         await logActivity('penalty', `Bulk deleted ${selectedPenalties.length} penalties`);
         setSelectedPenalties([]);
@@ -1136,25 +1123,27 @@ export default function AdminDashboard() {
             admin_comment: comment,
         };
 
-        const { error } = await supabase
-            .from('appeals')
-            .update(update)
-            .eq('id', selectedAppeal.id);
-
-        if (error) {
+        try {
+            await api.data.update('appeals', { id: selectedAppeal.id }, update);
+        } catch (error) {
             setAppealActionError(error.message);
             return;
         }
 
         if (selectedAppeal.student_id) {
-            await supabase.from('notifications').insert([{
-                student_id: selectedAppeal.student_id,
-                title: isApprove ? 'Appeal approved' : 'Appeal rejected',
-                message: `Your appeal for "${selectedAppeal.penalty_violation || selectedAppeal.violation || 'violation'}" has been ${isApprove ? 'approved' : 'rejected'}.\n\nRemarks: ${comment}`,
-                type: isApprove ? 'approved' : 'rejected',
-                is_read: false,
-                created_at: nowIso,
-            }]);
+            try {
+                await api.data.insert('notifications', [{
+                    student_id: selectedAppeal.student_id,
+                    title: isApprove ? 'Appeal approved' : 'Appeal rejected',
+                    message: `Your appeal for "${selectedAppeal.penalty_violation || selectedAppeal.violation || 'violation'}" has been ${isApprove ? 'approved' : 'rejected'}.\n\nRemarks: ${comment}`,
+                    type: isApprove ? 'approved' : 'rejected',
+                    is_read: false,
+                    created_at: nowIso,
+                }]);
+            } catch (error) {
+                console.error('[appeal notification]', error);
+                showToast('warning', 'Appeal updated', 'The decision was saved, but the notification could not be sent.');
+            }
         }
 
         showToast('success', isApprove ? 'Approved' : 'Rejected',
@@ -1182,12 +1171,15 @@ export default function AdminDashboard() {
         setCompletePenaltyId(null);
         if (!id) return;
         const nowIso = new Date().toISOString();
-        const { error } = await supabase.from('penalties').update({
-            status: 'Completed',
-            completed_at: nowIso,
-            updated_at: nowIso,
-        }).eq('id', id);
-        if (error) return showToast('error', 'Failed', error.message);
+        try {
+            await api.data.update('penalties', { id }, {
+                status: 'Completed',
+                completed_at: nowIso,
+                updated_at: nowIso,
+            });
+        } catch (error) {
+            return showToast('error', 'Failed', error.message);
+        }
         showToast('success', 'Completed', 'Penalty marked complete');
         await logActivity('penalty', `Marked penalty #${id} as complete`);
         await loadPenalties();
@@ -1196,14 +1188,16 @@ export default function AdminDashboard() {
 
     const handleSaveProfile = async () => {
         if (!adminForm.name.trim()) return showToast('error', 'Name required', '');
-        const { error } = await supabase.from('admins').update({
-            full_name: adminForm.name.trim(),
-            email: adminForm.email.trim(),
-        }).eq('id', admin.id);
-        if (error) return showToast('error', 'Failed', error.message);
+        try {
+            await api.data.update('admins', { id: admin.id }, {
+                full_name: adminForm.name.trim(),
+                email: adminForm.email.trim(),
+            });
+        } catch (error) {
+            return showToast('error', 'Failed', error.message);
+        }
 
         const updated = { ...admin, full_name: adminForm.name.trim(), email: adminForm.email.trim() };
-        localStorage.setItem('currentAdmin', JSON.stringify(updated));
         setAdmin(updated);
         setShowEditProfile(false);
         showToast('success', 'Profile updated', '');
@@ -1211,15 +1205,17 @@ export default function AdminDashboard() {
 
     const handleChangePassword = async () => {
         if (!pwForm.current || !pwForm.newPw || !pwForm.confirm) return showToast('error', 'Missing', 'Fill all fields');
-        if (pwForm.newPw.length < 6) return showToast('error', 'Too short', 'Min 6 characters');
+        if (pwForm.newPw.length < 8) return showToast('error', 'Too short', 'Min 8 characters');
         if (pwForm.newPw !== pwForm.confirm) return showToast('error', 'Mismatch', 'Passwords do not match');
 
-        const { data } = await supabase.from('admins').select('password_hash').eq('id', admin.id).single();
-        if (!data || data.password_hash !== pwForm.current)
-            return showToast('error', 'Wrong password', 'Current password is incorrect');
-
-        const { error } = await supabase.from('admins').update({ password_hash: pwForm.newPw }).eq('id', admin.id);
-        if (error) return showToast('error', 'Failed', error.message);
+        try {
+            await api.post('/api/auth/change-password', {
+                currentPassword: pwForm.current,
+                newPassword: pwForm.newPw,
+            });
+        } catch (error) {
+            return showToast('error', 'Failed', error.message);
+        }
         showToast('success', 'Password updated', '');
         setPwForm({ current: '', newPw: '', confirm: '' });
         setShowChangePassword(false);
@@ -1254,7 +1250,7 @@ export default function AdminDashboard() {
                     email: emailIdx !== -1 ? cols[emailIdx] || '' : '',
                     course: courseIdx !== -1 ? cols[courseIdx] || 'BSN' : 'BSN',
                     year_level: yearIdx !== -1 ? cols[yearIdx] || '1st' : '1st',
-                    status: 'Good', violation_count: 0,
+                    status: 'Good',
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
                 });
@@ -1262,8 +1258,7 @@ export default function AdminDashboard() {
 
             if (!records.length) return showToast('warning', 'No new records', 'All rows were invalid or already exist');
 
-            const { error } = await supabase.from('students').insert(records);
-            if (error) return showToast('error', 'Import failed', error.message);
+            await api.data.insert('students', records);
 
             showToast('success', 'Import complete', `${records.length} students imported`);
             await logActivity('student', `Imported ${records.length} students from CSV`);
@@ -1286,8 +1281,11 @@ export default function AdminDashboard() {
             created_at: new Date().toISOString(),
         };
         if (quickNote.targetStudent) payload.student_id = quickNote.targetStudent;
-        const { error } = await supabase.from('notifications').insert([payload]);
-        if (error) return showToast('error', 'Failed', error.message);
+        try {
+            await api.data.insert('notifications', [payload]);
+        } catch (error) {
+            return showToast('error', 'Failed', error.message);
+        }
         showToast('success', 'Notification sent', quickNote.targetStudent ? 'Sent to selected student' : 'Broadcast sent');
         await logActivity('system', `Sent notification: ${quickNote.title}`);
         setShowQuickNote(false);
@@ -1311,18 +1309,9 @@ export default function AdminDashboard() {
 
         setSuggesting(true);
         try {
-            const { data, error } = await supabase.functions.invoke('suggest-caption', {
-                body: { title },
-            });
-
-            if (error) {
-                console.error('[suggest-caption] invoke error', error);
-                showToast('error', 'AI request failed', error.message || 'Try again in a moment');
-                return;
-            }
+            const data = await api.post('/api/admin/suggest-caption', { title });
 
             if (!data || data.error) {
-                console.error('[suggest-caption] returned', data);
                 showToast('error', 'AI could not respond', data?.error || 'Unknown error');
                 return;
             }
@@ -1336,7 +1325,6 @@ export default function AdminDashboard() {
 
             showToast('success', '✨ Caption suggested', 'Review it and tweak if needed');
         } catch (err) {
-            console.error('[suggest-caption] threw', err);
             showToast('error', 'AI request failed', err?.message || 'Check your connection');
         } finally {
             setSuggesting(false);
@@ -1367,39 +1355,16 @@ export default function AdminDashboard() {
         if (imageUrl) basePayload.image_url = imageUrl;
         if (announcementForm.target) basePayload.student_id = announcementForm.target;
 
-        const tryWrite = async (includePriority) => {
-            const payload = { ...basePayload };
-            if (includePriority) payload.priority = announcementForm.priority;
-
+        const payload = { ...basePayload, priority: announcementForm.priority };
+        try {
             if (selectedAnnouncement) {
-                return await supabase
-                    .from('notifications')
-                    .update(payload)
-                    .eq('id', selectedAnnouncement.id);
-            }
-            payload.created_at = new Date().toISOString();
-            return await supabase.from('notifications').insert([payload]);
-        };
-
-        let result = await tryWrite(true);
-
-        if (result.error && /priority/i.test(result.error.message || '')) {
-            result = await tryWrite(false);
-        }
-        if (result.error && /image_url/i.test(result.error.message || '')) {
-            const dropImage = { ...basePayload };
-            delete dropImage.image_url;
-            if (selectedAnnouncement) {
-                result = await supabase.from('notifications').update(dropImage).eq('id', selectedAnnouncement.id);
+                await api.data.update('notifications', { id: selectedAnnouncement.id }, payload);
             } else {
-                dropImage.created_at = new Date().toISOString();
-                result = await supabase.from('notifications').insert([dropImage]);
+                payload.created_at = new Date().toISOString();
+                await api.data.insert('notifications', [payload]);
             }
-            showToast('warning', 'Saved without image', 'Add an "image_url" text column to your notifications table.');
-        }
-
-        if (result.error) {
-            return showToast('error', 'Failed', result.error.message);
+        } catch (error) {
+            return showToast('error', 'Failed', error.message);
         }
 
         showToast(
@@ -1421,8 +1386,11 @@ export default function AdminDashboard() {
 
     const handleDeleteAnnouncement = async (id) => {
         if (!window.confirm('Delete this announcement?')) return;
-        const { error } = await supabase.from('notifications').delete().eq('id', id);
-        if (error) return showToast('error', 'Failed', error.message);
+        try {
+            await api.data.remove('notifications', { id });
+        } catch (error) {
+            return showToast('error', 'Failed', error.message);
+        }
         showToast('success', 'Deleted', 'Announcement removed');
         await loadAnnouncements();
         await loadNotifications();
@@ -1481,7 +1449,14 @@ export default function AdminDashboard() {
     };
 
     const markAllRead = async () => {
-        await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('is_read', false);
+        try {
+            await api.data.update('notifications', { is_read: false }, {
+                is_read: true,
+                read_at: new Date().toISOString(),
+            });
+        } catch (error) {
+            return showToast('error', 'Unable to update notifications', error.message);
+        }
         await loadNotifications();
         showToast('info', 'All marked as read', '');
     };
@@ -1491,12 +1466,23 @@ export default function AdminDashboard() {
             showToast('warning', 'Cannot delete here', 'Announcements can only be deleted from the Announcements tab');
             return;
         }
-        await supabase.from('notifications').delete().eq('id', id);
+        try {
+            await api.data.remove('notifications', { id });
+        } catch (error) {
+            return showToast('error', 'Unable to delete notification', error.message);
+        }
         await loadNotifications();
         if (loadAnnouncements) await loadAnnouncements();
     };
     const markNotifRead = async (id) => {
-        await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', id);
+        try {
+            await api.data.update('notifications', { id }, {
+                is_read: true,
+                read_at: new Date().toISOString(),
+            });
+        } catch (error) {
+            return showToast('error', 'Unable to update notification', error.message);
+        }
         await loadNotifications();
     };
 
@@ -3267,7 +3253,7 @@ export default function AdminDashboard() {
                         </div>
                         <div>
                             <label className={labelCls}>New Password</label>
-                            <input type="password" value={pwForm.newPw} onChange={(e) => setPwForm({ ...pwForm, newPw: e.target.value })} className={inputCls} placeholder="Min 6 characters" />
+                            <input type="password" value={pwForm.newPw} onChange={(e) => setPwForm({ ...pwForm, newPw: e.target.value })} className={inputCls} placeholder="Min 8 characters" />
                         </div>
                         <div>
                             <label className={labelCls}>Confirm New Password</label>
