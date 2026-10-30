@@ -1,29 +1,54 @@
 const API_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL ?? '');
 
 async function apiRequest(path, options = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+      ...options,
+    });
+  } catch (networkError) {
+    throw new Error('Unable to connect to the server. Please check your network or verify the backend is running.');
+  }
 
   const text = await response.text();
   let data = null;
+
   if (text) {
     try {
       data = JSON.parse(text);
     } catch {
-      throw new Error('The server returned an invalid response.');
+      // Not JSON
     }
   }
 
   if (!response.ok) {
-    const error = new Error(data?.message || 'Request failed');
+    let message = data?.message;
+    if (!message) {
+      if (response.status === 502 || response.status === 504) {
+        message = 'The backend server is unreachable. Please make sure the backend is running.';
+      } else if (response.status === 404) {
+        message = 'The requested API endpoint was not found (404).';
+      } else if (text && text.length < 200 && !text.trim().startsWith('<')) {
+        message = text.trim();
+      } else {
+        message = `Server returned error (${response.status} ${response.statusText || 'Error'}).`;
+      }
+    }
+    const error = new Error(message);
     error.status = response.status;
     throw error;
+  }
+
+  if (text && data === null) {
+    if (text.trim().startsWith('<')) {
+      throw new Error('The server returned an HTML page instead of API data. Please check your API routing configuration.');
+    }
+    throw new Error('The server returned an invalid response.');
   }
 
   return data;

@@ -3,6 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import dns from 'node:dns';
 import helmet from 'helmet';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getDbStatus, supabase } from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import dataRoutes from './routes/dataRoutes.js';
@@ -13,10 +15,13 @@ import { requireAuth, requireRole } from './middleware/authMiddleware.js';
 // Force IPv4 — fixes "fetch failed" on Vercel when Supabase DNS doesn't respond to IPv6
 dns.setDefaultResultOrder('ipv4first');
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config();
 
 const app = express();
-const PORT = Number(process.env.PORT) || 5000;
+const PORT = Number(process.env.PORT) || 5050;
 if (!process.env.AUTH_JWT_SECRET || Buffer.byteLength(process.env.AUTH_JWT_SECRET) < 32) {
   throw new Error('AUTH_JWT_SECRET must be configured with at least 32 bytes.');
 }
@@ -44,6 +49,8 @@ const isAllowedOrigin = (origin) => {
 if (process.env.NODE_ENV !== 'production') {
   allowedOrigins.add('http://localhost:5173');
   allowedOrigins.add('http://127.0.0.1:5173');
+  allowedOrigins.add('http://localhost:5050');
+  allowedOrigins.add('http://127.0.0.1:5050');
 } else if (allowedOrigins.size === 0) {
   throw new Error('Configure FRONTEND_URL or CORS_ORIGINS before starting the production backend.');
 }

@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Landing from './pages/Landing';
 import StudentLogin from './pages/StudentLogin/studentLogin';
+import ConfirmEmail from './pages/StudentLogin/ConfirmEmail';
 import StudentDashboard from './pages/StudentDashboard/StudentDashboard';
 import AdminLogin from './pages/AdminLogin/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard/AdminDashboard';
@@ -15,6 +16,8 @@ export default function App() {
 
       {/* Student */}
       <Route path="/student/login" element={<StudentLogin />} />
+      <Route path="/student/confirm-email" element={<ConfirmEmail />} />
+      <Route path="/confirm-email" element={<ConfirmEmail />} />
       <Route path="/student/dashboard" element={<StudentDashboard />} />
       <Route path="/student/ForgotPassword" element={<ForgotPassword />} />
       <Route path="/student/ResetPassword" element={<ResetPassword />} />

@@ -1,18 +1,33 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import api from '../../lib/api';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
+import heroImg from '../../assets/hero.png';
+import logo from '../../assets/CC.png';
 
-/*SVG ICONS*/
 const Icon = {
-    check: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-            <polyline points="20 6 9 17 4 12" />
+    user: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+        </svg>
+    ),
+    idCard: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+            <rect x="2" y="3" width="20" height="18" rx="2" />
+            <line x1="8" y1="8" x2="16" y2="8" />
+            <line x1="8" y1="12" x2="12" y2="12" />
+        </svg>
+    ),
+    lock: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
     ),
     eye: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z" />
             <circle cx="12" cy="12" r="3" />
         </svg>
     ),
@@ -22,29 +37,10 @@ const Icon = {
             <line x1="1" y1="1" x2="23" y2="23" />
         </svg>
     ),
-    idCard: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-            <rect x="3" y="5" width="18" height="14" rx="2" />
-            <circle cx="9" cy="11" r="2" />
-            <path d="M15 11h4M15 15h4M6 16c.5-1.5 1.8-2.5 3-2.5s2.5 1 3 2.5" />
-        </svg>
-    ),
-    user: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-        </svg>
-    ),
     mail: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
             <rect x="2" y="4" width="20" height="16" rx="2" />
             <polyline points="22,6 12,13 2,6" />
-        </svg>
-    ),
-    lock: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-            <rect x="3" y="11" width="18" height="11" rx="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
     ),
     book: (
@@ -55,7 +51,7 @@ const Icon = {
     ),
     calendar: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <rect x="3" y="4" width="18" height="18" rx="2" />
             <line x1="16" y1="2" x2="16" y2="6" />
             <line x1="8" y1="2" x2="8" y2="6" />
             <line x1="3" y1="10" x2="21" y2="10" />
@@ -63,10 +59,9 @@ const Icon = {
     ),
 };
 
-const EMAIL_DOMAIN = '@columban.edu.ph';
-
 export default function StudentLogin() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [panel, setPanel] = useState('login');
     const [showPassword, setShowPassword] = useState({});
     const [loading, setLoading] = useState(false);
@@ -79,14 +74,32 @@ export default function StudentLogin() {
         () => localStorage.getItem('rememberedStudentId') || ''
     );
     const [loginPassword, setLoginPassword] = useState('');
+    const [loginAlert, setLoginAlert] = useState(null); // { type: 'success' | 'error' | 'info', message: string, showResend?: boolean }
 
     const [signupId, setSignupId] = useState('');
     const [signupName, setSignupName] = useState('');
     const [signupEmail, setSignupEmail] = useState('');
-    const [signupCourse, setSignupCourse] = useState('');
-    const [signupYearLevel, setSignupYearLevel] = useState('');
+    const [signupCourse, setSignupCourse] = useState('BS Nursing');
+    const [signupYearLevel, setSignupYearLevel] = useState('1st Year');
     const [signupPassword, setSignupPassword] = useState('');
     const [signupConfirm, setSignupConfirm] = useState('');
+    const [signupSuccessData, setSignupSuccessData] = useState(null);
+
+    // Check if user came from email confirmation redirect
+    useEffect(() => {
+        if (searchParams.get('confirmed') === 'true') {
+            setLoginAlert({
+                type: 'success',
+                message: 'Your email has been successfully confirmed! You can now sign in.',
+            });
+        } else if (searchParams.get('error')) {
+            setLoginAlert({
+                type: 'error',
+                message: 'Email confirmation link was invalid or expired. You can resend a confirmation link below.',
+                showResend: true,
+            });
+        }
+    }, [searchParams]);
 
     /* DARK MODE FIX */
     useEffect(() => {
@@ -108,24 +121,9 @@ export default function StudentLogin() {
         setShowPassword((prev) => ({ ...prev, [key]: !prev[key] }));
     };
 
-    /* EMAIL HANDLER — strips any existing domain and locks in @columban.edu.ph */
-    const handleEmailChange = (e) => {
-        let value = e.target.value;
-
-        // Remove the domain if the user pastes or types it
-        const atIndex = value.indexOf('@');
-        if (atIndex !== -1) {
-            value = value.slice(0, atIndex);
-        }
-
-        // Only allow alphanumeric, dots, underscores, and hyphens in the local part
-        value = value.replace(/[^a-zA-Z0-9._-]/g, '');
-
-        setSignupEmail(value);
-    };
-
     const handleLogin = async (e) => {
         e?.preventDefault();
+        setLoginAlert(null);
         const studentId = loginId.trim();
         const password = loginPassword;
 
@@ -146,7 +144,34 @@ export default function StudentLogin() {
             setRedirecting(true);
             setTimeout(() => navigate('/student/dashboard'), 600);
         } catch (error) {
-            alert(error.message);
+            const msg = error.message || 'Login failed';
+            const isUnconfirmed = msg.toLowerCase().includes('confirm your email') || msg.toLowerCase().includes('inbox for the link');
+            setLoginAlert({
+                type: 'error',
+                message: msg,
+                showResend: isUnconfirmed,
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResendConfirmation = async () => {
+        const studentId = loginId.trim();
+        if (!studentId || !/^\d{8}$/.test(studentId)) {
+            alert('Please enter your 8-digit Student ID in the field above first.');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const res = await api.post('/api/auth/student/resend-confirmation', { studentId });
+            setLoginAlert({
+                type: 'success',
+                message: res?.message || 'A new confirmation email has been sent! Check your inbox.',
+            });
+        } catch (err) {
+            alert(err.message || 'Unable to resend confirmation email.');
         } finally {
             setLoading(false);
         }
@@ -156,25 +181,22 @@ export default function StudentLogin() {
         e?.preventDefault();
         const studentId = signupId.trim();
         const name = signupName.trim();
-        const emailLocalPart = signupEmail.trim();
+        const email = signupEmail.trim().toLowerCase();
         const course = signupCourse.trim();
         const yearLevel = signupYearLevel.trim();
 
-        if (!studentId || !name || !emailLocalPart || !course || !yearLevel || !signupPassword || !signupConfirm)
+        if (!studentId || !name || !email || !course || !yearLevel || !signupPassword || !signupConfirm)
             return alert('Please fill in all fields');
         if (signupPassword !== signupConfirm) return alert('Passwords do not match!');
         if (signupPassword.length < 8) return alert('Password must be at least 8 characters');
-        if (emailLocalPart.length < 2) return alert('Please enter a valid email username');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return alert('Please enter a valid email address (e.g. name@gmail.com)');
         if (name.length < 2) return alert('Please enter your full name');
         if (!/^\d{8}$/.test(studentId)) return alert('Student ID must be exactly 8 digits');
-
-        // Build the full email with the fixed domain
-        const email = `${emailLocalPart}${EMAIL_DOMAIN}`;
 
         try {
             setLoading(true);
 
-            await api.post('/api/auth/student/register', {
+            const res = await api.post('/api/auth/student/register', {
                 studentId,
                 name,
                 email,
@@ -183,11 +205,17 @@ export default function StudentLogin() {
                 password: signupPassword,
             });
 
-            alert('Account created successfully! You can now login with your Student ID.');
-            setSignupId(''); setSignupName(''); setSignupEmail('');
-            setSignupCourse(''); setSignupYearLevel('');
-            setSignupPassword(''); setSignupConfirm('');
-            setPanel('login');
+            setSignupSuccessData({
+                message: res.message || 'Account registered! Please check your email inbox to confirm your account.',
+                email,
+                confirmUrl: res.confirmUrl,
+            });
+
+            setSignupId('');
+            setSignupName('');
+            setSignupEmail('');
+            setSignupPassword('');
+            setSignupConfirm('');
             setLoginId(studentId);
         } catch (error) {
             alert(error.message);
@@ -208,70 +236,154 @@ export default function StudentLogin() {
     if (redirecting) return <DashboardSkeleton />;
 
     return (
-        <div className="min-h-screen w-full bg-[#EEF3FF] flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans overflow-hidden">
-            <style>{`
-        @keyframes slideUpCard { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideInLeft { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes rotateIn { from { opacity: 0; transform: rotate(-180deg) scale(0.5); } to { opacity: 1; transform: rotate(0) scale(1); } }
-        @keyframes panelFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        .anim-card { animation: slideUpCard 0.6s cubic-bezier(0.2, 0.9, 0.4, 1.1) both; }
-        .anim-left { animation: slideInLeft 0.6s ease-out 0.1s both; }
-        .anim-right { animation: slideInRight 0.6s ease-out 0.15s both; }
-        .anim-logo { animation: rotateIn 0.6s ease-out 0.2s both; }
-        .anim-feature { animation: fadeInUp 0.5s ease-out both; }
-        .anim-panel { animation: panelFade 0.4s ease-out both; }
-      `}</style>
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-0 md:p-6 font-['Plus_Jakarta_Sans',sans-serif]">
+            <div className="w-full max-w-[1100px] min-h-[660px] bg-white rounded-none md:rounded-3xl shadow-none md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.07)] overflow-hidden flex flex-col md:flex-row border-0 md:border border-slate-100">
 
-            <div className="w-full max-w-[1200px] anim-card">
-                <div className="bg-white rounded-3xl shadow-[0_20px_60px_rgba(37,99,235,0.15)] overflow-hidden flex flex-col md:flex-row min-h-[640px]">
+                {/* LEFT HERO */}
+                <div
+                    className="relative md:w-1/2 p-8 md:p-12 text-white flex flex-col justify-between overflow-hidden bg-cover bg-center min-h-[360px] md:min-h-auto"
+                    style={{ backgroundImage: `url(${heroImg})` }}
+                >
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-900/85 via-blue-800/80 to-blue-950/90 backdrop-blur-[2px]" />
 
-                    <div className="w-full md:w-[45%] relative flex flex-col items-center justify-center p-8 sm:p-12 md:p-14 text-center bg-gradient-to-br from-[#2563EB] via-[#1D4ED8] to-[#1741B0] border-b md:border-b-0 md:border-r border-slate-100 anim-left overflow-hidden">
-                        <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-white/10 blur-3xl pointer-events-none" />
-                        <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-white/5 blur-3xl pointer-events-none" />
-
-                        <div className="relative z-10 flex flex-col items-center">
-                            <img src="/CC.png" alt="CCNDM Logo" className="w-28 h-28 sm:w-32 sm:h-32 object-contain mb-6 anim-logo drop-shadow-lg" />
-                            <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-3 tracking-wide">COLUMBAN COLLEGE</h2>
-                            <h3 className="text-sm sm:text-base font-semibold text-blue-100 tracking-wide uppercase mb-2">Nursing Discipline Monitoring</h3>
-                            <p className="text-[11px] text-blue-200 mb-10 font-medium tracking-widest">VERSION 1.0.0</p>
-
-                            <ul className="flex flex-col gap-4 text-left w-full max-w-[300px]">
-                                {features.map((f, i) => (
-                                    <li key={f} className="flex items-start gap-3 anim-feature" style={{ animationDelay: `${0.3 + i * 0.1}s` }}>
-                                        <span className="text-white flex-shrink-0 mt-0.5">{Icon.check}</span>
-                                        <span className="text-sm sm:text-[15px] text-white/95 leading-snug font-medium">{f}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                    <div className="relative z-10">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold tracking-wide uppercase mb-6">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            Official Portal
                         </div>
+
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="w-16 h-16 rounded-2xl bg-white p-2 shadow-lg flex-shrink-0">
+                                <img src={logo} alt="Columban College Logo" className="w-full h-full object-contain" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-wide">COLUMBAN COLLEGE</h2>
+                                <p className="text-blue-200 text-xs sm:text-sm font-semibold tracking-wider uppercase">Nursing Discipline Monitoring</p>
+                            </div>
+                        </div>
+
+                        <p className="text-blue-100/90 text-sm leading-relaxed max-w-sm mt-4">
+                            Student Portal for disciplinary record monitoring, community service tracking, and appeal management.
+                        </p>
                     </div>
 
-                    <div className="w-full md:w-[55%] p-8 sm:p-10 md:p-14 flex flex-col justify-center anim-right">
-                        <div className="w-full max-w-[440px] mx-auto">
+                    <div className="relative z-10 mt-8 space-y-3">
+                        {features.map((feature, idx) => (
+                            <div key={idx} className="flex items-center gap-3 text-xs sm:text-sm text-blue-100/90">
+                                <div className="w-5 h-5 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center text-emerald-300 font-bold text-xs flex-shrink-0">✓</div>
+                                <span>{feature}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="relative z-10 pt-8 mt-8 border-t border-white/15 flex items-center justify-between text-xs text-blue-200/80">
+                        <span>CCNDM • Student Portal</span>
+                        <Link to="/admin/login" className="hover:text-white transition-colors underline font-medium">
+                            Admin Login →
+                        </Link>
+                    </div>
+                </div>
+
+                {/* RIGHT FORM */}
+                <div className="md:w-1/2 p-6 sm:p-10 md:p-12 flex flex-col justify-center bg-white">
+                    <div className="max-w-[420px] w-full mx-auto">
+                        <div className="min-h-[460px] flex flex-col justify-center">
+
+                            {/* Alert banner if present */}
+                            {loginAlert && (
+                                <div className={`mb-6 p-4 rounded-xl border text-sm ${
+                                    loginAlert.type === 'success'
+                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                        : 'bg-red-50 border-red-200 text-red-800'
+                                }`}>
+                                    <p className="font-semibold">{loginAlert.message}</p>
+                                    {loginAlert.showResend && (
+                                        <button
+                                            type="button"
+                                            onClick={handleResendConfirmation}
+                                            disabled={loading}
+                                            className="mt-2.5 inline-flex items-center text-xs font-bold text-blue-700 hover:text-blue-900 underline"
+                                        >
+                                            Resend Confirmation Email →
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* SIGNUP SUCCESS BANNER */}
+                            {signupSuccessData && (
+                                <div className="mb-6 p-5 rounded-2xl bg-blue-50 border border-blue-200 text-slate-800">
+                                    <div className="flex items-center gap-2.5 text-blue-700 font-bold text-base mb-1.5">
+                                        <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs">✓</span>
+                                        Check Your Email!
+                                    </div>
+                                    <p className="text-xs text-slate-600 leading-relaxed mb-3">
+                                        We sent a confirmation link to <strong className="text-blue-900">{signupSuccessData.email}</strong>. Please click the link in your email to confirm your account and log in.
+                                    </p>
+
+                                    {signupSuccessData.confirmUrl && (
+                                        <div className="mt-3 p-3 bg-white rounded-xl border border-blue-200 text-xs">
+                                            <p className="font-bold text-blue-800 mb-1">Testing Locally (Dev Mode):</p>
+                                            <a
+                                                href={signupSuccessData.confirmUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-blue-600 font-semibold underline break-all block hover:text-blue-800"
+                                            >
+                                                Click here to verify email directly
+                                            </a>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSignupSuccessData(null);
+                                            setPanel('login');
+                                        }}
+                                        className="mt-4 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition"
+                                    >
+                                        Proceed to Login
+                                    </button>
+                                </div>
+                            )}
 
                             {panel === 'login' && (
                                 <form onSubmit={handleLogin} className="anim-panel">
                                     <h1 className="text-2xl sm:text-[28px] font-extrabold text-slate-800 text-center mb-2">Student Login</h1>
-                                    <p className="text-sm text-slate-500 text-center mb-9">Sign in to access your student portal</p>
+                                    <p className="text-sm text-slate-500 text-center mb-8">Sign in with your Student ID to access your records</p>
 
                                     <div className="relative mb-5">
                                         <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
                                             <legend className="text-[11px] text-slate-500 px-1 font-semibold">Student ID <span className="text-red-500">*</span></legend>
                                             <div className="flex items-center">
                                                 <span className="text-slate-400 mr-2.5 flex-shrink-0">{Icon.idCard}</span>
-                                                <input type="text" value={loginId} onChange={(e) => setLoginId(e.target.value)} placeholder="Enter your Student ID" className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5" />
+                                                <input
+                                                    type="text"
+                                                    value={loginId}
+                                                    onChange={(e) => setLoginId(e.target.value)}
+                                                    placeholder="Enter your 8-digit Student ID"
+                                                    maxLength={8}
+                                                    required
+                                                    className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5"
+                                                />
                                             </div>
                                         </fieldset>
                                     </div>
 
-                                    <div className="relative mb-3">
+                                    <div className="relative mb-4">
                                         <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
                                             <legend className="text-[11px] text-slate-500 px-1 font-semibold">Password <span className="text-red-500">*</span></legend>
                                             <div className="flex items-center">
                                                 <span className="text-slate-400 mr-2.5 flex-shrink-0">{Icon.lock}</span>
-                                                <input type={showPassword.login ? 'text' : 'password'} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Your password" className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5" />
+                                                <input
+                                                    type={showPassword.login ? 'text' : 'password'}
+                                                    value={loginPassword}
+                                                    onChange={(e) => setLoginPassword(e.target.value)}
+                                                    placeholder="Enter your password"
+                                                    required
+                                                    className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5"
+                                                />
                                                 <button type="button" onClick={() => togglePassword('login')} className="text-slate-400 hover:text-blue-500 p-1 flex items-center transition-colors">
                                                     {showPassword.login ? Icon.eyeOff : Icon.eye}
                                                 </button>
@@ -281,7 +393,7 @@ export default function StudentLogin() {
 
                                     <div className="flex items-center justify-between mb-7">
                                         <label className="flex items-center gap-2 text-[13px] text-slate-500 cursor-pointer">
-                                            <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                                            <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="w-4 h-4 accent-blue-600 rounded" />
                                             Remember Me
                                         </label>
                                         <Link
@@ -298,7 +410,7 @@ export default function StudentLogin() {
 
                                     <p className="text-center text-[13.5px] text-slate-500 mb-6">
                                         Don't have an account?{' '}
-                                        <button type="button" onClick={() => setPanel('signup')} className="text-blue-600 font-semibold cursor-pointer hover:underline bg-transparent border-none p-0">Sign Up</button>
+                                        <button type="button" onClick={() => { setSignupSuccessData(null); setPanel('signup'); }} className="text-blue-600 font-semibold cursor-pointer hover:underline bg-transparent border-none p-0">Sign Up</button>
                                     </p>
 
                                     <p className="text-[11.5px] text-slate-400 leading-relaxed text-center">
@@ -309,93 +421,112 @@ export default function StudentLogin() {
 
                             {panel === 'signup' && (
                                 <form onSubmit={handleSignup} className="anim-panel">
-                                    <p className="mb-5 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                                        Your administrator must add your student profile first. Enter the same Student ID, name, and email on that profile.
-                                    </p>
-                                    <h1 className="text-2xl sm:text-[28px] font-extrabold text-slate-800 text-center mb-2">Student Sign Up</h1>
-                                    <p className="text-sm text-slate-500 text-center mb-9">Create your account to get started</p>
+                                    <div className="mb-4 rounded-xl bg-blue-50/80 border border-blue-100 p-3.5 text-xs text-blue-900 leading-relaxed">
+                                        Enter your <strong>Student ID</strong> and your active <strong>email address (e.g. Gmail)</strong>. A verification link will be sent to complete your registration.
+                                    </div>
+                                    <h1 className="text-2xl sm:text-[28px] font-extrabold text-slate-800 text-center mb-1">Student Sign Up</h1>
+                                    <p className="text-xs text-slate-500 text-center mb-6">Create your student account to get started</p>
 
-                                    <div className="relative mb-4">
+                                    <div className="relative mb-3">
                                         <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
                                             <legend className="text-[11px] text-slate-500 px-1 font-semibold">Student ID <span className="text-red-500">*</span></legend>
                                             <div className="flex items-center">
                                                 <span className="text-slate-400 mr-2.5 flex-shrink-0">{Icon.idCard}</span>
-                                                <input type="text" value={signupId} onChange={(e) => setSignupId(e.target.value)} placeholder="Enter your Student ID" required className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5" />
+                                                <input
+                                                    type="text"
+                                                    value={signupId}
+                                                    onChange={(e) => setSignupId(e.target.value)}
+                                                    placeholder="8-digit ID (e.g., 26012345)"
+                                                    maxLength={8}
+                                                    required
+                                                    className="flex-1 bg-transparent text-[14px] text-slate-800 outline-none placeholder:text-slate-400 py-1"
+                                                />
                                             </div>
                                         </fieldset>
                                     </div>
-                                    <p className="text-[10.5px] text-slate-400 mb-5 pl-1">Format: 8 digits (e.g., 26012345)</p>
 
-                                    <div className="relative mb-5">
+                                    <div className="relative mb-3">
                                         <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
                                             <legend className="text-[11px] text-slate-500 px-1 font-semibold">Full Name <span className="text-red-500">*</span></legend>
                                             <div className="flex items-center">
                                                 <span className="text-slate-400 mr-2.5 flex-shrink-0">{Icon.user}</span>
-                                                <input type="text" value={signupName} onChange={(e) => setSignupName(e.target.value)} placeholder="Enter your full name" required className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5" />
+                                                <input
+                                                    type="text"
+                                                    value={signupName}
+                                                    onChange={(e) => setSignupName(e.target.value)}
+                                                    placeholder="Enter your full name"
+                                                    required
+                                                    className="flex-1 bg-transparent text-[14px] text-slate-800 outline-none placeholder:text-slate-400 py-1"
+                                                />
                                             </div>
                                         </fieldset>
                                     </div>
 
-                                    {/* Email with fixed @columban.edu.ph domain */}
-                                    <div className="relative mb-5">
+                                    {/* Email with support for gmail.com or any email */}
+                                    <div className="relative mb-3">
                                         <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
-                                            <legend className="text-[11px] text-slate-500 px-1 font-semibold">Email Address <span className="text-red-500">*</span></legend>
+                                            <legend className="text-[11px] text-slate-500 px-1 font-semibold">Email Address (Gmail, School, etc.) <span className="text-red-500">*</span></legend>
                                             <div className="flex items-center">
                                                 <span className="text-slate-400 mr-2.5 flex-shrink-0">{Icon.mail}</span>
                                                 <input
-                                                    type="text"
+                                                    type="email"
                                                     value={signupEmail}
-                                                    onChange={handleEmailChange}
-                                                    placeholder="yourname"
+                                                    onChange={(e) => setSignupEmail(e.target.value)}
+                                                    placeholder="e.g. studentname@gmail.com"
                                                     required
-                                                    className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5 min-w-0"
+                                                    className="flex-1 bg-transparent text-[14px] text-slate-800 outline-none placeholder:text-slate-400 py-1 min-w-0"
                                                 />
-                                                <span className="text-[15px] text-slate-500 font-medium flex-shrink-0 select-none">
-                                                    {EMAIL_DOMAIN}
-                                                </span>
                                             </div>
                                         </fieldset>
                                     </div>
-                                    <p className="text-[10.5px] text-slate-400 mb-5 pl-1">
-                                        Your email will be: <span className="font-semibold text-blue-600">{signupEmail || 'yourname'}{EMAIL_DOMAIN}</span>
-                                    </p>
 
-                                    <div className="relative mb-5">
+                                    <div className="grid grid-cols-2 gap-3 mb-3">
                                         <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
                                             <legend className="text-[11px] text-slate-500 px-1 font-semibold">Course <span className="text-red-500">*</span></legend>
                                             <div className="flex items-center">
-                                                <span className="text-slate-400 mr-2.5 flex-shrink-0">{Icon.book}</span>
-                                                <input type="text" value={signupCourse} onChange={(e) => setSignupCourse(e.target.value)} placeholder="e.g., BS Nursing" required className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5" />
+                                                <span className="text-slate-400 mr-2 flex-shrink-0">{Icon.book}</span>
+                                                <input
+                                                    type="text"
+                                                    value={signupCourse}
+                                                    onChange={(e) => setSignupCourse(e.target.value)}
+                                                    placeholder="BS Nursing"
+                                                    required
+                                                    className="flex-1 bg-transparent text-[14px] text-slate-800 outline-none py-1"
+                                                />
                                             </div>
                                         </fieldset>
-                                    </div>
 
-                                    <div className="relative mb-5">
                                         <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
                                             <legend className="text-[11px] text-slate-500 px-1 font-semibold">Year Level <span className="text-red-500">*</span></legend>
                                             <div className="flex items-center">
-                                                <span className="text-slate-400 mr-2.5 flex-shrink-0">{Icon.calendar}</span>
-                                                <select value={signupYearLevel} onChange={(e) => setSignupYearLevel(e.target.value)} required className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none py-1.5 cursor-pointer appearance-none">
-                                                    <option value="" disabled>Select year level</option>
+                                                <span className="text-slate-400 mr-2 flex-shrink-0">{Icon.calendar}</span>
+                                                <select
+                                                    value={signupYearLevel}
+                                                    onChange={(e) => setSignupYearLevel(e.target.value)}
+                                                    required
+                                                    className="flex-1 bg-transparent text-[14px] text-slate-800 outline-none py-1 cursor-pointer appearance-none"
+                                                >
                                                     {yearLevels.map((year) => (
                                                         <option key={year} value={year}>{year}</option>
                                                     ))}
                                                 </select>
-                                                <span className="text-slate-400 pointer-events-none flex-shrink-0">
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                                                        <polyline points="6 9 12 15 18 9" />
-                                                    </svg>
-                                                </span>
                                             </div>
                                         </fieldset>
                                     </div>
 
-                                    <div className="relative mb-5">
+                                    <div className="relative mb-3">
                                         <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
                                             <legend className="text-[11px] text-slate-500 px-1 font-semibold">Password <span className="text-red-500">*</span></legend>
                                             <div className="flex items-center">
                                                 <span className="text-slate-400 mr-2.5 flex-shrink-0">{Icon.lock}</span>
-                                                <input type={showPassword.signup ? 'text' : 'password'} value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} placeholder="Create a password (min. 8 chars)" required className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5" />
+                                                <input
+                                                    type={showPassword.signup ? 'text' : 'password'}
+                                                    value={signupPassword}
+                                                    onChange={(e) => setSignupPassword(e.target.value)}
+                                                    placeholder="Min. 8 characters"
+                                                    required
+                                                    className="flex-1 bg-transparent text-[14px] text-slate-800 outline-none placeholder:text-slate-400 py-1"
+                                                />
                                                 <button type="button" onClick={() => togglePassword('signup')} className="text-slate-400 hover:text-blue-500 p-1 flex items-center transition-colors">
                                                     {showPassword.signup ? Icon.eyeOff : Icon.eye}
                                                 </button>
@@ -403,12 +534,19 @@ export default function StudentLogin() {
                                         </fieldset>
                                     </div>
 
-                                    <div className="relative mb-7">
+                                    <div className="relative mb-5">
                                         <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
                                             <legend className="text-[11px] text-slate-500 px-1 font-semibold">Confirm Password <span className="text-red-500">*</span></legend>
                                             <div className="flex items-center">
                                                 <span className="text-slate-400 mr-2.5 flex-shrink-0">{Icon.lock}</span>
-                                                <input type={showPassword.confirm ? 'text' : 'password'} value={signupConfirm} onChange={(e) => setSignupConfirm(e.target.value)} placeholder="Confirm your password" required className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5" />
+                                                <input
+                                                    type={showPassword.confirm ? 'text' : 'password'}
+                                                    value={signupConfirm}
+                                                    onChange={(e) => setSignupConfirm(e.target.value)}
+                                                    placeholder="Confirm password"
+                                                    required
+                                                    className="flex-1 bg-transparent text-[14px] text-slate-800 outline-none placeholder:text-slate-400 py-1"
+                                                />
                                                 <button type="button" onClick={() => togglePassword('confirm')} className="text-slate-400 hover:text-blue-500 p-1 flex items-center transition-colors">
                                                     {showPassword.confirm ? Icon.eyeOff : Icon.eye}
                                                 </button>
@@ -416,13 +554,13 @@ export default function StudentLogin() {
                                         </fieldset>
                                     </div>
 
-                                    <button type="submit" disabled={loading} className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed text-white text-[15px] font-bold rounded-xl mb-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
-                                        {loading ? 'Creating account...' : 'Sign Up'}
+                                    <button type="submit" disabled={loading} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed text-white text-[15px] font-bold rounded-xl mb-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+                                        {loading ? 'Creating account...' : 'Create Account'}
                                     </button>
 
-                                    <p className="text-center text-[13.5px] text-slate-500">
+                                    <p className="text-center text-[13px] text-slate-500">
                                         Already have an account?{' '}
-                                        <button type="button" onClick={() => setPanel('login')} className="text-blue-600 font-semibold cursor-pointer hover:underline bg-transparent border-none p-0">Login</button>
+                                        <button type="button" onClick={() => { setSignupSuccessData(null); setPanel('login'); }} className="text-blue-600 font-semibold cursor-pointer hover:underline bg-transparent border-none p-0">Login</button>
                                     </p>
                                 </form>
                             )}

@@ -97,11 +97,11 @@ function generateConfirmationToken() {
 }
 
 function mailTransport() {
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT);
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = Number(process.env.SMTP_PORT) || 465;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  if (!host || !port || !user || !pass || !process.env.SMTP_FROM) {
+  if (!user || !pass || !process.env.SMTP_FROM) {
     throw new Error('Email is not configured.');
   }
   return nodemailer.createTransport({
@@ -114,12 +114,9 @@ function mailTransport() {
 
 function isMailConfigured() {
   return Boolean(
-    process.env.SMTP_HOST &&
-    Number(process.env.SMTP_PORT) &&
     process.env.SMTP_USER &&
     process.env.SMTP_PASS &&
-    process.env.SMTP_FROM &&
-    process.env.FRONTEND_URL
+    process.env.SMTP_FROM
   );
 }
 
@@ -237,17 +234,12 @@ router.post('/student/register', loginLimiter, async (req, res, next) => {
   const password = req.body?.password;
 
   if (!/^\d{8}$/.test(studentId) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return respondWithError(res, 400, 'Enter your valid Student ID and school email.');
+    return respondWithError(res, 400, 'Enter your valid 8-digit Student ID and a valid email address (e.g. your Gmail).');
   }
   if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
     return respondWithError(res, 400, 'Password must be between 8 and 128 characters.');
   }
   if (!supabase) return respondWithError(res, 503, 'Authentication service is not configured.');
-  
-  // NEW: Ensure mail is configured before allowing registration
-  if (!isMailConfigured()) {
-    return respondWithError(res, 503, 'Registration is temporarily unavailable (email not configured).');
-  }
 
   try {
     const { data: profile, error } = await supabase
@@ -257,71 +249,132 @@ router.post('/student/register', loginLimiter, async (req, res, next) => {
       .maybeSingle();
 
     if (error) return next(error);
-    const suppliedName = String(req.body?.name || '').trim().toLowerCase();
-    if (
-      !profile ||
-      String(profile.email || '').trim().toLowerCase() !== email ||
-      String(profile.name || '').trim().toLowerCase() !== suppliedName ||
-      isInactive(profile)
-    ) {
-      return respondWithError(res, 403, 'No eligible student profile matches those details. Contact an administrator.');
-    }
-    if (profile.password) {
+
+    if (profile && profile.password) {
       return respondWithError(res, 409, 'This student profile is already registered. Sign in or contact an administrator.');
     }
 
-    // NEW: Generate a confirmation token
     const confirmationToken = generateConfirmationToken();
     const passwordHash = await bcrypt.hash(password, PASSWORD_ROUNDS);
-    
-    let claim = supabase
-      .from('students')
-      .update({ 
-        password: passwordHash, 
-        updated_at: new Date().toISOString(),
-        confirmation_token: confirmationToken, // Save token
-        email_confirmed: false                 // Ensure it defaults to false
-      })
-      .eq('id', profile.id);
-      
-    claim = profile.password === null
-      ? claim.is('password', null)
-      : claim.eq('password', '');
 
-    const { data: claimed, error: updateError } = await claim.select('id').maybeSingle();
-    if (updateError) return next(updateError);
-    if (!claimed) {
-      return respondWithError(res, 409, 'This student profile is already registered. Sign in or contact an administrator.');
+    if (profile) {
+      // Pre-enrolled by admin, claim profile & attach credentials
+      const { error: updateError } = await supabase
+        .from('students')
+        .update({
+          password: passwordHash,
+          email: email,
+          updated_at: new Date().toISOString(),
+          confirmation_token: confirmationToken,
+          email_confirmed: false,
+        })
+        .eq('id', profile.id);
+
+      if (updateError) return next(updateError);
+    } else {
+      // New self-registered student
+      const { error: insertError } = await supabase
+        .from('students')
+        .insert([{
+          student_id_number: studentId,
+          name: String(req.body?.name || 'Student').trim(),
+          email: email,
+          course: String(req.body?.course || 'BS Nursing').trim(),
+          year_level: String(req.body?.yearLevel || '1st Year').trim(),
+          password: passwordHash,
+          email_confirmed: false,
+          confirmation_token: confirmationToken,
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }]);
+
+      if (insertError) return next(insertError);
     }
 
-    // NEW: Send the confirmation email
-    const frontendUrl = process.env.FRONTEND_URL?.replace(/\/+$/, '');
+    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
     const confirmUrl = `${frontendUrl}/student/confirm-email?token=${encodeURIComponent(confirmationToken)}`;
 
-    try {
-      await mailTransport().sendMail({
-        from: process.env.SMTP_FROM,
-        to: profile.email,
-        subject: 'CCNDM - Confirm Your Student Account',
-        text: `Hello ${profile.name},\n\nPlease confirm your email address by clicking the link below. This link expires in 24 hours:\n\n${confirmUrl}\n\nIf you did not register for CCNDM, please ignore this email.`,
-      });
-    } catch (mailError) {
-      console.error('[registration email]', mailError);
-      return respondWithError(res, 500, 'Account created, but we could not send the confirmation email. Please contact support.');
+    let emailSent = false;
+    if (isMailConfigured()) {
+      try {
+        await mailTransport().sendMail({
+          from: process.env.SMTP_FROM,
+          to: email,
+          subject: 'CCNDM - Confirm Your Student Account',
+          text: `Hello ${req.body?.name || 'Student'},\n\nPlease confirm your email address by clicking the link below:\n\n${confirmUrl}\n\nIf you did not register for CCNDM, please ignore this email.`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+              <h2 style="color: #1e3a8a; margin-top: 0;">Columban College</h2>
+              <h3 style="color: #3b82f6; margin-top: -8px; font-weight: normal;">Nursing Discipline Monitoring (CCNDM)</h3>
+              <p style="color: #334155; font-size: 15px;">Hello <strong>${req.body?.name || 'Student'}</strong>,</p>
+              <p style="color: #475569; font-size: 14px; line-height: 1.6;">
+                Thank you for registering. Please confirm your email address to activate your CCNDM account and access your student discipline portal:
+              </p>
+              <div style="margin: 28px 0; text-align: center;">
+                <a href="${confirmUrl}" style="background-color: #2563eb; color: #ffffff; padding: 13px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px; display: inline-block;">
+                  Confirm Email Address
+                </a>
+              </div>
+              <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; word-break: break-all;">
+                Or copy and paste this URL into your browser:<br/>
+                <a href="${confirmUrl}" style="color: #2563eb;">${confirmUrl}</a>
+              </p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+              <p style="color: #94a3b8; font-size: 11px; margin: 0;">Columban College Nursing Discipline Office • Automated Message</p>
+            </div>
+          `,
+        });
+        emailSent = true;
+      } catch (mailError) {
+        console.error('[registration email error]', mailError);
+      }
     }
 
-    // IMPORTANT: Do NOT setSession() here. They must confirm email first.
-    return res.status(201).json({ 
-      message: 'Account claimed successfully. Please check your email to confirm your account before logging in.',
-      requiresConfirmation: true 
-    });
+    console.log('\n=============================================================');
+    console.log(`[EMAIL CONFIRMATION] ${emailSent ? 'Sent to' : 'Link for'}: ${email}`);
+    console.log(`Confirm URL: ${confirmUrl}`);
+    console.log('=============================================================\n');
 
+    return res.status(201).json({
+      message: emailSent
+        ? 'Account registered! A confirmation link has been sent to your email.'
+        : 'Account registered! Please check your email (or use the link from the server console) to confirm.',
+      requiresConfirmation: true,
+      confirmUrl: process.env.NODE_ENV !== 'production' ? confirmUrl : undefined,
+    });
   } catch (error) {
     return next(error);
   }
 });
 
-// NEW: Route to handle the link click from the email
+router.get('/student/confirm-email', async (req, res, next) => {
+  const token = String(req.query?.token || '').trim();
+  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
+  if (!token) return res.redirect(`${frontendUrl}/student/login?error=invalid_token`);
+
+  try {
+    const { data: profile, error } = await supabase
+      .from('students')
+      .select('id')
+      .eq('confirmation_token', token)
+      .maybeSingle();
+
+    if (error || !profile) {
+      return res.redirect(`${frontendUrl}/student/login?error=invalid_or_expired`);
+    }
+
+    await supabase
+      .from('students')
+      .update({ email_confirmed: true, confirmation_token: null })
+      .eq('id', profile.id);
+
+    return res.redirect(`${frontendUrl}/student/login?confirmed=true`);
+  } catch (err) {
+    return next(err);
+  }
+});
+
 router.post('/student/confirm-email', loginLimiter, async (req, res, next) => {
   const { token } = req.body;
   if (!token || typeof token !== 'string') {
@@ -359,9 +412,6 @@ router.post('/student/resend-confirmation', loginLimiter, async (req, res, next)
   if (!/^\d{8}$/.test(studentId)) {
     return respondWithError(res, 400, 'Enter a valid Student ID.');
   }
-  if (!isMailConfigured()) {
-    return respondWithError(res, 503, 'Email service is not configured.');
-  }
 
   try {
     const { data: profile, error } = await supabase
@@ -382,20 +432,37 @@ router.post('/student/resend-confirmation', loginLimiter, async (req, res, next)
         
       if (updateError) return next(updateError);
 
-      const frontendUrl = process.env.FRONTEND_URL?.replace(/\/+$/, '');
+      const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
       const confirmUrl = `${frontendUrl}/student/confirm-email?token=${encodeURIComponent(newToken)}`;
 
-      await mailTransport().sendMail({
-        from: process.env.SMTP_FROM,
-        to: profile.email,
-        subject: 'CCNDM - Confirm Your Student Account (Resent)',
-        text: `Hello ${profile.name},\n\nHere is your new confirmation link. It expires in 24 hours:\n\n${confirmUrl}\n\nIf you did not request this, please ignore this email.`,
+      let emailSent = false;
+      if (isMailConfigured()) {
+        try {
+          await mailTransport().sendMail({
+            from: process.env.SMTP_FROM,
+            to: profile.email,
+            subject: 'CCNDM - Confirm Your Student Account (Resent)',
+            text: `Hello ${profile.name},\n\nHere is your confirmation link:\n\n${confirmUrl}\n\nIf you did not request this, please ignore this email.`,
+          });
+          emailSent = true;
+        } catch (mailErr) {
+          console.error('[resend email error]', mailErr);
+        }
+      }
+
+      console.log('\n=============================================================');
+      console.log(`[EMAIL CONFIRMATION RESENT] ${emailSent ? 'Sent to' : 'Link for'}: ${profile.email}`);
+      console.log(`Confirm URL: ${confirmUrl}`);
+      console.log('=============================================================\n');
+
+      return res.status(202).json({
+        message: 'A new confirmation email has been sent to your registered address.',
+        confirmUrl: process.env.NODE_ENV !== 'production' ? confirmUrl : undefined,
       });
     }
 
-    // Always return generic success to prevent account enumeration
     return res.status(202).json({
-      message: 'If this account requires confirmation, a new link has been sent.',
+      message: 'If this account requires confirmation, a link has been sent.',
     });
   } catch (error) {
     return next(error);
