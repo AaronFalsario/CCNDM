@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import api from '../../lib/api';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
-import heroImg from '../../assets/hero.png';
 import logo from '../../assets/CC.png';
 
 const Icon = {
@@ -74,7 +73,7 @@ export default function StudentLogin() {
         () => localStorage.getItem('rememberedStudentId') || ''
     );
     const [loginPassword, setLoginPassword] = useState('');
-    const [loginAlert, setLoginAlert] = useState(null); // { type: 'success' | 'error' | 'info', message: string, showResend?: boolean }
+    const [loginAlert, setLoginAlert] = useState(null); // { type: 'success' | 'error' | 'info', message: string }
 
     const [signupId, setSignupId] = useState('');
     const [signupName, setSignupName] = useState('');
@@ -91,12 +90,6 @@ export default function StudentLogin() {
             setLoginAlert({
                 type: 'success',
                 message: 'Your email has been successfully confirmed! You can now sign in.',
-            });
-        } else if (searchParams.get('error')) {
-            setLoginAlert({
-                type: 'error',
-                message: 'Email confirmation link was invalid or expired. You can resend a confirmation link below.',
-                showResend: true,
             });
         }
     }, [searchParams]);
@@ -144,34 +137,10 @@ export default function StudentLogin() {
             setRedirecting(true);
             setTimeout(() => navigate('/student/dashboard'), 600);
         } catch (error) {
-            const msg = error.message || 'Login failed';
-            const isUnconfirmed = msg.toLowerCase().includes('confirm your email') || msg.toLowerCase().includes('inbox for the link');
             setLoginAlert({
                 type: 'error',
-                message: msg,
-                showResend: isUnconfirmed,
+                message: error.message || 'Login failed',
             });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleResendConfirmation = async () => {
-        const studentId = loginId.trim();
-        if (!studentId || !/^\d{8}$/.test(studentId)) {
-            alert('Please enter your 8-digit Student ID in the field above first.');
-            return;
-        }
-
-        try {
-            setLoading(true);
-            const res = await api.post('/api/auth/student/resend-confirmation', { studentId });
-            setLoginAlert({
-                type: 'success',
-                message: res?.message || 'A new confirmation email has been sent! Check your inbox.',
-            });
-        } catch (err) {
-            alert(err.message || 'Unable to resend confirmation email.');
         } finally {
             setLoading(false);
         }
@@ -241,11 +210,8 @@ export default function StudentLogin() {
 
                 {/* LEFT HERO */}
                 <div
-                    className="relative md:w-1/2 p-8 md:p-12 text-white flex flex-col justify-between overflow-hidden bg-cover bg-center min-h-[360px] md:min-h-auto"
-                    style={{ backgroundImage: `url(${heroImg})` }}
+                    className="relative md:w-1/2 p-8 md:p-12 text-white flex flex-col justify-between overflow-hidden min-h-[360px] md:min-h-auto bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950"
                 >
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-900/85 via-blue-800/80 to-blue-950/90 backdrop-blur-[2px]" />
-
                     <div className="relative z-10">
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold tracking-wide uppercase mb-6">
                             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -278,9 +244,6 @@ export default function StudentLogin() {
 
                     <div className="relative z-10 pt-8 mt-8 border-t border-white/15 flex items-center justify-between text-xs text-blue-200/80">
                         <span>CCNDM • Student Portal</span>
-                        <Link to="/admin/login" className="hover:text-white transition-colors underline font-medium">
-                            Admin Login →
-                        </Link>
                     </div>
                 </div>
 
@@ -297,16 +260,6 @@ export default function StudentLogin() {
                                         : 'bg-red-50 border-red-200 text-red-800'
                                 }`}>
                                     <p className="font-semibold">{loginAlert.message}</p>
-                                    {loginAlert.showResend && (
-                                        <button
-                                            type="button"
-                                            onClick={handleResendConfirmation}
-                                            disabled={loading}
-                                            className="mt-2.5 inline-flex items-center text-xs font-bold text-blue-700 hover:text-blue-900 underline"
-                                        >
-                                            Resend Confirmation Email →
-                                        </button>
-                                    )}
                                 </div>
                             )}
 
@@ -318,7 +271,7 @@ export default function StudentLogin() {
                                         Check Your Email!
                                     </div>
                                     <p className="text-xs text-slate-600 leading-relaxed mb-3">
-                                        We sent a confirmation link to <strong className="text-blue-900">{signupSuccessData.email}</strong>. Please click the link in your email to confirm your account and log in.
+                                        We sent a confirmation link to <strong className="text-blue-900">{signupSuccessData.email}</strong>. You can log in now, but please confirm your email to secure your account.
                                     </p>
 
                                     {signupSuccessData.confirmUrl && (

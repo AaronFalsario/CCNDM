@@ -3,7 +3,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { rateLimit } from 'express-rate-limit';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { supabase } from '../config/db.js';
 import { COOKIE_NAME, getJwtSecret, requireAuth } from '../middleware/authMiddleware.js';
 
@@ -91,33 +91,15 @@ function hashResetToken(token) {
   return createHash('sha256').update(token).digest('hex');
 }
 
-// NEW: Helper to generate a secure confirmation token
 function generateConfirmationToken() {
   return randomBytes(32).toString('base64url');
 }
 
-function mailTransport() {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = Number(process.env.SMTP_PORT) || 465;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!user || !pass || !process.env.SMTP_FROM) {
-    throw new Error('Email is not configured.');
-  }
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-  });
-}
+// RESEND SETUP
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 function isMailConfigured() {
-  return Boolean(
-    process.env.SMTP_USER &&
-    process.env.SMTP_PASS &&
-    process.env.SMTP_FROM
-  );
+  return Boolean(resend);
 }
 
 function respondWithError(res, status, message) {
@@ -147,7 +129,6 @@ router.post('/student/login', loginLimiter, async (req, res, next) => {
     const matches = await passwordMatches(password, profile.password);
     if (!matches) return respondWithError(res, 401, 'Invalid Student ID or password.');
 
-    // NEW: Check if the student has confirmed their email
     if (!profile.email_confirmed) {
       return respondWithError(res, 403, 'Please confirm your email address before logging in. Check your inbox for the link.');
     }
@@ -258,7 +239,6 @@ router.post('/student/register', loginLimiter, async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, PASSWORD_ROUNDS);
 
     if (profile) {
-      // Pre-enrolled by admin, claim profile & attach credentials
       const { error: updateError } = await supabase
         .from('students')
         .update({
@@ -272,7 +252,6 @@ router.post('/student/register', loginLimiter, async (req, res, next) => {
 
       if (updateError) return next(updateError);
     } else {
-      // New self-registered student
       const { error: insertError } = await supabase
         .from('students')
         .insert([{
@@ -298,11 +277,10 @@ router.post('/student/register', loginLimiter, async (req, res, next) => {
     let emailSent = false;
     if (isMailConfigured()) {
       try {
-        await mailTransport().sendMail({
-          from: process.env.SMTP_FROM,
-          to: email,
+        const { error: mailError } = await resend.emails.send({
+          from: 'CCNDM <onboarding@resend.dev>',
+          to: [email],
           subject: 'CCNDM - Confirm Your Student Account',
-          text: `Hello ${req.body?.name || 'Student'},\n\nPlease confirm your email address by clicking the link below:\n\n${confirmUrl}\n\nIf you did not register for CCNDM, please ignore this email.`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
               <h2 style="color: #1e3a8a; margin-top: 0;">Columban College</h2>
@@ -325,6 +303,8 @@ router.post('/student/register', loginLimiter, async (req, res, next) => {
             </div>
           `,
         });
+
+        if (mailError) throw mailError;
         emailSent = true;
       } catch (mailError) {
         console.error('[registration email error]', mailError);
@@ -406,7 +386,6 @@ router.post('/student/confirm-email', loginLimiter, async (req, res, next) => {
   }
 });
 
-// NEW: Route to resend the email if they lost it
 router.post('/student/resend-confirmation', loginLimiter, async (req, res, next) => {
   const studentId = String(req.body?.studentId || '').trim();
   if (!/^\d{8}$/.test(studentId)) {
@@ -421,15 +400,15 @@ router.post('/student/resend-confirmation', loginLimiter, async (req, res, next)
       .maybeSingle();
 
     if (error) return next(error);
-    
+
     if (profile && !profile.email_confirmed) {
       const newToken = generateConfirmationToken();
-      
+
       const { error: updateError } = await supabase
         .from('students')
         .update({ confirmation_token: newToken })
         .eq('id', profile.id);
-        
+
       if (updateError) return next(updateError);
 
       const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
@@ -438,12 +417,18 @@ router.post('/student/resend-confirmation', loginLimiter, async (req, res, next)
       let emailSent = false;
       if (isMailConfigured()) {
         try {
-          await mailTransport().sendMail({
-            from: process.env.SMTP_FROM,
-            to: profile.email,
+          const { error: mailErr } = await resend.emails.send({
+            from: 'CCNDM <onboarding@resend.dev>',
+            to: [profile.email],
             subject: 'CCNDM - Confirm Your Student Account (Resent)',
-            text: `Hello ${profile.name},\n\nHere is your confirmation link:\n\n${confirmUrl}\n\nIf you did not request this, please ignore this email.`,
+            html: `
+              <p>Hello ${profile.name},</p>
+              <p>Here is your confirmation link:</p>
+              <p><a href="${confirmUrl}">${confirmUrl}</a></p>
+              <p>If you did not request this, please ignore this email.</p>
+            `,
           });
+          if (mailErr) throw mailErr;
           emailSent = true;
         } catch (mailErr) {
           console.error('[resend email error]', mailErr);
@@ -521,13 +506,20 @@ router.post('/forgot-password', loginLimiter, async (req, res, next) => {
         return respondWithError(res, 503, 'Password reset email is not configured.');
       }
       const resetUrl = `${frontendUrl}/student/ResetPassword?role=${role}&token=${encodeURIComponent(token)}`;
+
       try {
-        await mailTransport().sendMail({
-          from: process.env.SMTP_FROM,
-          to: profile.email,
-          subject: 'CCNDM password reset',
-          text: `Use this link to reset your password. It expires in 30 minutes:\n\n${resetUrl}\n\nIf you did not request this, ignore this email.`,
+        const { error: mailError } = await resend.emails.send({
+          from: 'CCNDM <onboarding@resend.dev>',
+          to: [profile.email],
+          subject: 'CCNDM Password Reset',
+          html: `
+            <p>Use this link to reset your password. It expires in 30 minutes:</p>
+            <p><a href="${resetUrl}">${resetUrl}</a></p>
+            <p>If you did not request this, ignore this email.</p>
+          `,
         });
+
+        if (mailError) throw mailError;
       } catch (mailError) {
         const { error: cleanupError } = await supabase
           .from('password_reset_tokens')

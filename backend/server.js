@@ -22,12 +22,16 @@ dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5050;
-if (!process.env.AUTH_JWT_SECRET || Buffer.byteLength(process.env.AUTH_JWT_SECRET) < 32) {
-  throw new Error('AUTH_JWT_SECRET must be configured with at least 32 bytes.');
+
+// FIXED: Changed AUTH_JWT_SECRET to JWT_SECRET
+if (!process.env.JWT_SECRET || Buffer.byteLength(process.env.JWT_SECRET) < 32) {
+  throw new Error('JWT_SECRET must be configured with at least 32 bytes.');
 }
+
 if (!supabase) {
   throw new Error('Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before starting the backend.');
 }
+
 const allowedOrigins = new Set(
   [process.env.FRONTEND_URL, ...(process.env.CORS_ORIGINS || '').split(',')]
     .map((origin) => origin?.trim())
