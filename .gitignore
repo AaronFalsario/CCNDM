@@ -129,3 +129,5 @@ Desktop.ini
 *.rar
 *.7z
 *.tar
+.vercel
+.env*
