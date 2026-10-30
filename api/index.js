@@ -1,4 +1,4 @@
-import app from '../backend/server.mjs';
+import app from '../backend/server.js';
 
 export default app;
 
