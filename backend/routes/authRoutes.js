@@ -91,13 +91,18 @@ function hashResetToken(token) {
   return createHash('sha256').update(token).digest('hex');
 }
 
+// NEW: Helper to generate a secure confirmation token
+function generateConfirmationToken() {
+  return randomBytes(32).toString('base64url');
+}
+
 function mailTransport() {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT);
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   if (!host || !port || !user || !pass || !process.env.SMTP_FROM) {
-    throw new Error('Password reset email is not configured.');
+    throw new Error('Email is not configured.');
   }
   return nodemailer.createTransport({
     host,
@@ -144,6 +149,11 @@ router.post('/student/login', loginLimiter, async (req, res, next) => {
 
     const matches = await passwordMatches(password, profile.password);
     if (!matches) return respondWithError(res, 401, 'Invalid Student ID or password.');
+
+    // NEW: Check if the student has confirmed their email
+    if (!profile.email_confirmed) {
+      return respondWithError(res, 403, 'Please confirm your email address before logging in. Check your inbox for the link.');
+    }
 
     if (!/^\$2[aby]\$\d{2}\$/.test(profile.password)) {
       const passwordHash = await bcrypt.hash(password, PASSWORD_ROUNDS);
@@ -233,6 +243,11 @@ router.post('/student/register', loginLimiter, async (req, res, next) => {
     return respondWithError(res, 400, 'Password must be between 8 and 128 characters.');
   }
   if (!supabase) return respondWithError(res, 503, 'Authentication service is not configured.');
+  
+  // NEW: Ensure mail is configured before allowing registration
+  if (!isMailConfigured()) {
+    return respondWithError(res, 503, 'Registration is temporarily unavailable (email not configured).');
+  }
 
   try {
     const { data: profile, error } = await supabase
@@ -255,22 +270,133 @@ router.post('/student/register', loginLimiter, async (req, res, next) => {
       return respondWithError(res, 409, 'This student profile is already registered. Sign in or contact an administrator.');
     }
 
+    // NEW: Generate a confirmation token
+    const confirmationToken = generateConfirmationToken();
     const passwordHash = await bcrypt.hash(password, PASSWORD_ROUNDS);
+    
     let claim = supabase
       .from('students')
-      .update({ password: passwordHash, updated_at: new Date().toISOString() })
+      .update({ 
+        password: passwordHash, 
+        updated_at: new Date().toISOString(),
+        confirmation_token: confirmationToken, // Save token
+        email_confirmed: false                 // Ensure it defaults to false
+      })
       .eq('id', profile.id);
+      
     claim = profile.password === null
       ? claim.is('password', null)
       : claim.eq('password', '');
+
     const { data: claimed, error: updateError } = await claim.select('id').maybeSingle();
     if (updateError) return next(updateError);
     if (!claimed) {
       return respondWithError(res, 409, 'This student profile is already registered. Sign in or contact an administrator.');
     }
 
-    setSession(res, profile, 'student', false);
-    return res.status(201).json({ user: safeProfile(profile, 'student') });
+    // NEW: Send the confirmation email
+    const frontendUrl = process.env.FRONTEND_URL?.replace(/\/+$/, '');
+    const confirmUrl = `${frontendUrl}/student/confirm-email?token=${encodeURIComponent(confirmationToken)}`;
+
+    try {
+      await mailTransport().sendMail({
+        from: process.env.SMTP_FROM,
+        to: profile.email,
+        subject: 'CCNDM - Confirm Your Student Account',
+        text: `Hello ${profile.name},\n\nPlease confirm your email address by clicking the link below. This link expires in 24 hours:\n\n${confirmUrl}\n\nIf you did not register for CCNDM, please ignore this email.`,
+      });
+    } catch (mailError) {
+      console.error('[registration email]', mailError);
+      return respondWithError(res, 500, 'Account created, but we could not send the confirmation email. Please contact support.');
+    }
+
+    // IMPORTANT: Do NOT setSession() here. They must confirm email first.
+    return res.status(201).json({ 
+      message: 'Account claimed successfully. Please check your email to confirm your account before logging in.',
+      requiresConfirmation: true 
+    });
+
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// NEW: Route to handle the link click from the email
+router.post('/student/confirm-email', loginLimiter, async (req, res, next) => {
+  const { token } = req.body;
+  if (!token || typeof token !== 'string') {
+    return respondWithError(res, 400, 'Invalid confirmation token.');
+  }
+
+  try {
+    const { data: profile, error } = await supabase
+      .from('students')
+      .select('id')
+      .eq('confirmation_token', token)
+      .maybeSingle();
+
+    if (error) return next(error);
+    if (!profile) {
+      return respondWithError(res, 400, 'The confirmation link is invalid or has already been used.');
+    }
+
+    const { error: updateError } = await supabase
+      .from('students')
+      .update({ email_confirmed: true, confirmation_token: null })
+      .eq('id', profile.id);
+
+    if (updateError) return next(updateError);
+
+    return res.json({ message: 'Email successfully confirmed. You can now log in.' });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// NEW: Route to resend the email if they lost it
+router.post('/student/resend-confirmation', loginLimiter, async (req, res, next) => {
+  const studentId = String(req.body?.studentId || '').trim();
+  if (!/^\d{8}$/.test(studentId)) {
+    return respondWithError(res, 400, 'Enter a valid Student ID.');
+  }
+  if (!isMailConfigured()) {
+    return respondWithError(res, 503, 'Email service is not configured.');
+  }
+
+  try {
+    const { data: profile, error } = await supabase
+      .from('students')
+      .select('id, email, name, email_confirmed')
+      .eq('student_id_number', studentId)
+      .maybeSingle();
+
+    if (error) return next(error);
+    
+    if (profile && !profile.email_confirmed) {
+      const newToken = generateConfirmationToken();
+      
+      const { error: updateError } = await supabase
+        .from('students')
+        .update({ confirmation_token: newToken })
+        .eq('id', profile.id);
+        
+      if (updateError) return next(updateError);
+
+      const frontendUrl = process.env.FRONTEND_URL?.replace(/\/+$/, '');
+      const confirmUrl = `${frontendUrl}/student/confirm-email?token=${encodeURIComponent(newToken)}`;
+
+      await mailTransport().sendMail({
+        from: process.env.SMTP_FROM,
+        to: profile.email,
+        subject: 'CCNDM - Confirm Your Student Account (Resent)',
+        text: `Hello ${profile.name},\n\nHere is your new confirmation link. It expires in 24 hours:\n\n${confirmUrl}\n\nIf you did not request this, please ignore this email.`,
+      });
+    }
+
+    // Always return generic success to prevent account enumeration
+    return res.status(202).json({
+      message: 'If this account requires confirmation, a new link has been sent.',
+    });
   } catch (error) {
     return next(error);
   }
