@@ -23,7 +23,6 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT) || 5050;
 
-// FIXED: Changed AUTH_JWT_SECRET to JWT_SECRET
 if (!process.env.JWT_SECRET || Buffer.byteLength(process.env.JWT_SECRET) < 32) {
   throw new Error('JWT_SECRET must be configured with at least 32 bytes.');
 }
@@ -32,32 +31,21 @@ if (!supabase) {
   throw new Error('Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before starting the backend.');
 }
 
-const allowedOrigins = new Set(
-  [process.env.FRONTEND_URL, ...(process.env.CORS_ORIGINS || '').split(',')]
-    .map((origin) => origin?.trim())
-    .filter(Boolean)
-);
+// HARDCODED VERCEL URL + Environment Variables
+const allowedOrigins = new Set([
+  'https://ccndm.vercel.app',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5050',
+  'http://127.0.0.1:5050',
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+  ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [])
+].map((origin) => origin?.trim()).filter(Boolean));
+
 const isAllowedOrigin = (origin) => {
   if (!origin || allowedOrigins.has(origin)) return true;
-  if (process.env.NODE_ENV === 'production') return false;
-
-  try {
-    const parsed = new URL(origin);
-    return parsed.protocol === 'http:'
-      && ['localhost', '127.0.0.1'].includes(parsed.hostname);
-  } catch {
-    return false;
-  }
+  return false; // Strict production check
 };
-
-if (process.env.NODE_ENV !== 'production') {
-  allowedOrigins.add('http://localhost:5173');
-  allowedOrigins.add('http://127.0.0.1:5173');
-  allowedOrigins.add('http://localhost:5050');
-  allowedOrigins.add('http://127.0.0.1:5050');
-} else if (allowedOrigins.size === 0) {
-  throw new Error('Configure FRONTEND_URL or CORS_ORIGINS before starting the production backend.');
-}
 
 app.set('trust proxy', 1);
 app.use(helmet());
