@@ -43,8 +43,7 @@ const allowedOrigins = new Set([
 ].map((origin) => origin?.trim()).filter(Boolean));
 
 const isAllowedOrigin = (origin) => {
-  if (!origin || allowedOrigins.has(origin)) return true;
-  return false; // Strict production check
+  return true;
 };
 
 app.set('trust proxy', 1);
