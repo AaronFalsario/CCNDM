@@ -210,7 +210,7 @@ router.post('/notifications/read', requireAuth, async (req, res, next) => {
 
     const { error } = await supabase
       .from('notification_reads')
-      .upsert(rows, { onConflict: 'student_profile_id,notification_id' });
+      .upsert(rows, { onConflict: 'student_id,notification_id' });
     if (error) return next(error);
     return res.json({ updated: rows.length });
   } catch (error) {
