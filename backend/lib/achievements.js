@@ -29,19 +29,19 @@ export async function unlockEligibleAchievements(supabase, student) {
     supabase
       .from('penalties')
       .select('status, hours, started_at, created_at, completed_at, updated_at, deadline')
-      .eq('student_id', student.student_id_number),
+      .eq('student_profile_id', student.id),
     supabase
       .from('service_sessions')
       .select('status, scheduled_date')
-      .eq('student_id', student.student_id_number),
+      .eq('student_profile_id', student.id),
     supabase
       .from('appeals')
       .select('status, created_at')
-      .eq('student_id', student.student_id_number),
+      .eq('student_profile_id', student.id),
     supabase
       .from('achievements')
       .select('badge_key, unlocked_at')
-      .eq('student_id', student.student_id_number),
+      .eq('student_profile_id', student.id),
   ]);
   const failedQuery = [penaltiesResult, sessionsResult, appealsResult, achievementsResult]
     .find((result) => result.error);

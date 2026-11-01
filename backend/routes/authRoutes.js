@@ -11,7 +11,6 @@ const router = Router();
 const PASSWORD_ROUNDS = 12;
 const SESSION_HOURS = 12;
 const REMEMBER_DAYS = 7;
-
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,

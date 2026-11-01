@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import api from '../../lib/api';
 import Toast from '../../components/Toast';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
+import PasswordStrength from '../../components/PasswordStrength';
 import { useAuth } from '../../hooks/useAuth';
 
 //ICONS
@@ -3254,6 +3255,7 @@ export default function AdminDashboard() {
                         <div>
                             <label className={labelCls}>New Password</label>
                             <input type="password" value={pwForm.newPw} onChange={(e) => setPwForm({ ...pwForm, newPw: e.target.value })} className={inputCls} placeholder="Min 8 characters" />
+                            <PasswordStrength password={pwForm.newPw} />
                         </div>
                         <div>
                             <label className={labelCls}>Confirm New Password</label>

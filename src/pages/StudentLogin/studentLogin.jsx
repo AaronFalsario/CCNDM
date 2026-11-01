@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import api from '../../lib/api';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
+import PasswordStrength from '../../components/PasswordStrength';
 import logo from '../../assets/CC.png';
 
 const Icon = {
@@ -56,12 +57,19 @@ const Icon = {
             <line x1="3" y1="10" x2="21" y2="10" />
         </svg>
     ),
+    check: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+            <path d="m5 12 4 4L19 6" />
+        </svg>
+    ),
 };
 
 export default function StudentLogin() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const [panel, setPanel] = useState('login');
+    const [panel, setPanel] = useState(
+        () => searchParams.get('panel') === 'signup' ? 'signup' : 'login'
+    );
     const [showPassword, setShowPassword] = useState({});
     const [loading, setLoading] = useState(false);
     const [redirecting, setRedirecting] = useState(false);
@@ -83,7 +91,6 @@ export default function StudentLogin() {
     const [signupPassword, setSignupPassword] = useState('');
     const [signupConfirm, setSignupConfirm] = useState('');
     const [signupSuccessData, setSignupSuccessData] = useState(null);
-
     // Check if user came from email confirmation redirect
     useEffect(() => {
         if (searchParams.get('confirmed') === 'true') {
@@ -205,50 +212,37 @@ export default function StudentLogin() {
     if (redirecting) return <DashboardSkeleton />;
 
     return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-0 md:p-6 font-['Plus_Jakarta_Sans',sans-serif]">
-            <div className="w-full max-w-[1100px] min-h-[660px] bg-white rounded-none md:rounded-3xl shadow-none md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.07)] overflow-hidden flex flex-col md:flex-row border-0 md:border border-slate-100">
+        <div className="min-h-screen w-full bg-[#EEF3FF] flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans">
+            <div className="w-full max-w-[1200px] bg-white rounded-3xl shadow-[0_20px_60px_rgba(37,99,235,0.15)] overflow-hidden flex flex-col md:flex-row min-h-[640px]">
 
-                {/* LEFT HERO */}
-                <div
-                    className="relative md:w-1/2 p-8 md:p-12 text-white flex flex-col justify-between overflow-hidden min-h-[360px] md:min-h-auto bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950"
-                >
-                    <div className="relative z-10">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold tracking-wide uppercase mb-6">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                            Official Portal
-                        </div>
+                {/* LEFT PANEL */}
+                <div className="w-full md:w-[45%] relative flex flex-col items-center justify-center p-8 sm:p-12 md:p-14 text-center text-white bg-gradient-to-br from-[#2563EB] via-[#1D4ED8] to-[#1741B0] border-b md:border-b-0 md:border-r border-slate-100 overflow-hidden">
+                    <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+                    <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-white/5 blur-3xl pointer-events-none" />
 
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="w-16 h-16 rounded-2xl bg-white p-2 shadow-lg flex-shrink-0">
-                                <img src={logo} alt="Columban College Logo" className="w-full h-full object-contain" />
-                            </div>
-                            <div>
-                                <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-wide">COLUMBAN COLLEGE</h2>
-                                <p className="text-blue-200 text-xs sm:text-sm font-semibold tracking-wider uppercase">Nursing Discipline Monitoring</p>
-                            </div>
-                        </div>
+                    <div className="relative z-10 flex flex-col items-center">
+                        <img
+                            src={logo}
+                            alt="Columban College Logo"
+                            className="w-28 h-28 sm:w-32 sm:h-32 object-contain mb-6 drop-shadow-lg"
+                        />
+                        <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-3 tracking-wide">COLUMBAN COLLEGE</h2>
+                        <h3 className="text-sm sm:text-base font-semibold text-blue-100 tracking-wide uppercase mb-2">Nursing Discipline Monitoring</h3>
+                        <p className="text-[11px] text-blue-200 mb-10 font-medium tracking-widest">STUDENT PORTAL · V1.0.0</p>
 
-                        <p className="text-blue-100/90 text-sm leading-relaxed max-w-sm mt-4">
-                            Student Portal for disciplinary record monitoring, community service tracking, and appeal management.
-                        </p>
-                    </div>
-
-                    <div className="relative z-10 mt-8 space-y-3">
-                        {features.map((feature, idx) => (
-                            <div key={idx} className="flex items-center gap-3 text-xs sm:text-sm text-blue-100/90">
-                                <div className="w-5 h-5 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center text-emerald-300 font-bold text-xs flex-shrink-0">✓</div>
-                                <span>{feature}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="relative z-10 pt-8 mt-8 border-t border-white/15 flex items-center justify-between text-xs text-blue-200/80">
-                        <span>CCNDM • Student Portal</span>
+                        <ul className="flex flex-col gap-4 text-left w-full max-w-[300px]">
+                            {features.map((feature) => (
+                                <li key={feature} className="flex items-start gap-3">
+                                    <span className="text-white flex-shrink-0 mt-0.5">{Icon.check}</span>
+                                    <span className="text-sm sm:text-[15px] text-white/95 leading-snug font-medium">{feature}</span>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
                 </div>
 
                 {/* RIGHT FORM */}
-                <div className="md:w-1/2 p-6 sm:p-10 md:p-12 flex flex-col justify-center bg-white">
+                <div className="w-full md:w-[55%] p-6 sm:p-10 md:p-14 flex flex-col justify-center bg-white">
                     <div className="max-w-[420px] w-full mx-auto">
                         <div className="min-h-[460px] flex flex-col justify-center">
 
@@ -485,6 +479,7 @@ export default function StudentLogin() {
                                                 </button>
                                             </div>
                                         </fieldset>
+                                        <PasswordStrength password={signupPassword} />
                                     </div>
 
                                     <div className="relative mb-5">

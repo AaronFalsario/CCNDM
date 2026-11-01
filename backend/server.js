@@ -105,7 +105,7 @@ app.get('/api/penalties', requireAuth, async (req, res, next) => {
     .select('*')
     .order('created_at', { ascending: false });
   if (req.user.role === 'student') {
-    query = query.eq('student_id', req.user.student_id_number);
+    query = query.eq('student_profile_id', req.user.id);
   }
   const { data, error } = await query;
 
@@ -126,7 +126,7 @@ app.get('/api/appeals', requireAuth, async (req, res, next) => {
     .select('*')
     .order('created_at', { ascending: false });
   if (req.user.role === 'student') {
-    query = query.eq('student_id', req.user.student_id_number);
+    query = query.eq('student_profile_id', req.user.id);
   }
   const { data, error } = await query;
 
@@ -147,11 +147,7 @@ app.get('/api/notifications', requireAuth, async (req, res, next) => {
     .select('*')
     .order('created_at', { ascending: false });
   if (req.user.role === 'student') {
-    const studentId = String(req.user.student_id_number || '');
-    if (!/^\d{8}$/.test(studentId)) {
-      return res.status(403).json({ message: 'The student profile is not valid.' });
-    }
-    query = query.or(`student_id.is.null,student_id.eq.${studentId}`);
+    query = query.or(`student_id.is.null,student_profile_id.eq.${req.user.id}`);
   }
   const { data, error } = await query;
 

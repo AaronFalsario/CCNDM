@@ -7,7 +7,7 @@ export async function applyStudentReadState(supabase, notifications, studentId) 
   const { data: reads, error } = await supabase
     .from('notification_reads')
     .select('notification_id, read_at')
-    .eq('student_id', studentId)
+    .eq('student_profile_id', studentId)
     .in('notification_id', broadcastIds);
   if (error) throw error;
 

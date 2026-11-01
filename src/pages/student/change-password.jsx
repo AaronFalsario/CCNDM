@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../lib/api';
+import PasswordStrength from '../../components/PasswordStrength';
 
 const LockIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -131,7 +132,7 @@ export default function ChangePassword() {
                                     )}
                                 </div>
                                 {index === 1 && (
-                                    <p className="mt-2 text-xs text-slate-500">Use at least 8 characters.</p>
+                                    <PasswordStrength password={newPassword} />
                                 )}
                             </div>
                         ))}

@@ -45,6 +45,8 @@ CCNDM is a React + Vite student discipline portal with a Node.js + Express API a
 
 For Vercel, configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `AUTH_JWT_SECRET`, `FRONTEND_URL`, `BREVO_API_KEY`, and `BREVO_SENDER_EMAIL` in the project's environment variables. `AUTH_JWT_SECRET` must be at least 32 bytes and `BREVO_SENDER_EMAIL` must be verified with Brevo. For other production deployments, set `VITE_API_URL` to the deployed backend URL, configure the exact frontend origin in the backend's `FRONTEND_URL`/`CORS_ORIGINS`, and serve both over HTTPS so the session cookie is secure.
 
+The additive `202611010001_preserve_data_relationships.sql` migration adds stable foreign-key columns and indexes for student-linked records without dropping tables or records. It backfills references that match current profiles and leaves unmatched historical rows in place with a null new reference. Apply this migration before deploying backend code that reads and writes the new relationship columns; keep a database backup and review the migration output first.
+
 ## Build and lint
 
 ```bash

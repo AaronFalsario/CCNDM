@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import api from '../../lib/api';
+import PasswordStrength from '../../components/PasswordStrength';
 
 const I = {
     lock: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>,
@@ -119,6 +120,7 @@ export default function ResetPassword() {
                                         {showPw ? I.eyeOff : I.eye}
                                     </button>
                                 </div>
+                                <PasswordStrength password={password} />
                             </div>
 
                             <div>

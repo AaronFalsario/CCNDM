@@ -32,7 +32,7 @@ const resourceRules = {
     ],
     admin: ['read', 'create', 'update', 'delete'],
     student: ['read'],
-    studentFilter: ['student_id'],
+    studentFilter: ['student_profile_id'],
   },
   appeals: {
     fields: [
@@ -43,7 +43,7 @@ const resourceRules = {
     ],
     admin: ['read', 'update', 'delete'],
     student: ['read', 'create'],
-    studentFilter: ['student_id'],
+    studentFilter: ['student_profile_id'],
     studentCreate: [
       'penalty_id', 'penalty_violation', 'penalty_hours', 'penalty_deadline',
       'appeal_reason', 'supporting_statement', 'created_at',
@@ -56,7 +56,7 @@ const resourceRules = {
     ],
     admin: ['read', 'create', 'update', 'delete'],
     student: ['read', 'update', 'delete'],
-    studentFilter: ['student_id'],
+    studentFilter: ['student_profile_id'],
     studentUpdate: ['is_read', 'read_at'],
   },
   activity_log: {
@@ -74,7 +74,7 @@ const resourceRules = {
     ],
     admin: ['read', 'create', 'update', 'delete'],
     student: ['read'],
-    studentFilter: ['student_id'],
+    studentFilter: ['student_profile_id'],
   },
   achievements: {
     fields: [
@@ -83,12 +83,19 @@ const resourceRules = {
     ],
     admin: ['read', 'create', 'update', 'delete'],
     student: ['read'],
-    studentFilter: ['student_id'],
+    studentFilter: ['student_profile_id'],
   },
 };
 
 const privateFields = new Set(['password', 'password_hash']);
 const maxRows = 500;
+const studentLinkedTables = new Set([
+  'penalties',
+  'appeals',
+  'service_sessions',
+  'achievements',
+  'notifications',
+]);
 
 function getRules(table) {
   return resourceRules[table] || null;
@@ -195,6 +202,7 @@ router.post('/notifications/read', requireAuth, async (req, res, next) => {
       .filter((notification) => notification.student_id === null || notification.student_id === undefined)
       .map((notification) => ({
         student_id: req.user.id,
+        student_profile_id: req.user.id,
         notification_id: notification.id,
         read_at: new Date().toISOString(),
       }));
@@ -202,7 +210,7 @@ router.post('/notifications/read', requireAuth, async (req, res, next) => {
 
     const { error } = await supabase
       .from('notification_reads')
-      .upsert(rows, { onConflict: 'student_id,notification_id' });
+      .upsert(rows, { onConflict: 'student_profile_id,notification_id' });
     if (error) return next(error);
     return res.json({ updated: rows.length });
   } catch (error) {
@@ -238,6 +246,7 @@ router.post('/achievements/unlock', requireAuth, async (req, res, next) => {
       .filter((key) => Object.hasOwn(badges, key) && eligible[key] && !activeKeys.has(key))
       .map((key) => ({
         student_id: req.user.student_id_number,
+        student_profile_id: req.user.id,
         badge_key: key,
         badge_name: badges[key].name,
         badge_desc: badges[key].description,
@@ -286,12 +295,8 @@ router.all('/:table', requireAuth, async (req, res, next) => {
     let error;
 
     if (role === 'student') {
-      if (rules.studentFilter?.includes('student_id')) {
-        const ownId = String(req.user.student_id_number || '');
-        if (!/^\d{8}$/.test(ownId)) {
-          return res.status(403).json({ message: 'The student profile is not valid.' });
-        }
-        filters.student_id = ownId;
+      if (rules.studentFilter?.includes('student_profile_id')) {
+        filters.student_profile_id = req.user.id;
       } else if (rules.studentFilter?.includes('student_id_number')) {
         filters.student_id_number = req.user.student_id_number;
       }
@@ -301,14 +306,19 @@ router.all('/:table', requireAuth, async (req, res, next) => {
         if (!/^\d{8}$/.test(ownId)) {
           return res.status(403).json({ message: 'The student profile is not valid.' });
         }
-        query = supabase.from(table).select('*').or(`student_id.is.null,student_id.eq.${ownId}`);
+        query = supabase
+          .from(table)
+          .select('*')
+          .or(`student_id.is.null,student_profile_id.eq.${req.user.id}`);
       }
     }
 
     if (req.method === 'GET') {
       if (!query) query = supabase.from(table).select('*');
       const queryFilters = role === 'student' && table === 'notifications'
-        ? Object.fromEntries(Object.entries(filters).filter(([field]) => field !== 'student_id'))
+        ? Object.fromEntries(
+          Object.entries(filters).filter(([field]) => !['student_id', 'student_profile_id'].includes(field))
+        )
         : filters;
       query = applyFilters(query, queryFilters);
 
@@ -342,7 +352,7 @@ router.all('/:table', requireAuth, async (req, res, next) => {
             .from('penalties')
             .select('id, student_id, violation, hours, deadline')
             .eq('id', row.penalty_id)
-            .eq('student_id', req.user.student_id_number)
+            .eq('student_profile_id', req.user.id)
             .maybeSingle();
           if (penaltyError) return next(penaltyError);
           if (!penalty) {
@@ -351,7 +361,7 @@ router.all('/:table', requireAuth, async (req, res, next) => {
           const { data: existingAppeal, error: appealError } = await supabase
             .from('appeals')
             .select('id')
-            .eq('student_id', req.user.student_id_number)
+            .eq('student_profile_id', req.user.id)
             .eq('penalty_id', penalty.id)
             .limit(1)
             .maybeSingle();
@@ -361,6 +371,7 @@ router.all('/:table', requireAuth, async (req, res, next) => {
           }
 
           row.student_id = req.user.student_id_number;
+          row.student_profile_id = req.user.id;
           row.student_name = req.user.name;
           row.student_email = req.user.email || '';
           row.penalty_violation = penalty.violation;
@@ -373,13 +384,50 @@ router.all('/:table', requireAuth, async (req, res, next) => {
       if (role === 'student' && table === 'achievements') {
         rows.forEach((row) => {
           row.student_id = req.user.student_id_number;
+          row.student_profile_id = req.user.id;
         });
       }
       if (role === 'admin' && table === 'activity_log') {
         rows.forEach((row) => {
           row.admin_id = req.user.id;
+          row.admin_profile_id = req.user.id;
           row.admin_name = req.user.full_name || req.user.admin_id || 'Admin';
         });
+      }
+      if (studentLinkedTables.has(table)) {
+        const studentIds = [...new Set(rows
+          .map((row) => String(row.student_id ?? '').trim())
+          .filter(Boolean))];
+        const profilesResult = studentIds.length
+          ? await supabase
+            .from('students')
+            .select('id, student_id_number')
+            .in('student_id_number', studentIds)
+          : { data: [], error: null };
+        if (profilesResult.error) return next(profilesResult.error);
+
+        const profilesByStudentId = new Map(
+          (profilesResult.data || []).map((profile) => [
+            profile.student_id_number,
+            String(profile.id),
+          ])
+        );
+        for (const row of rows) {
+          const studentId = String(row.student_id ?? '').trim();
+          if (!studentId && table === 'notifications') {
+            row.student_id = null;
+            row.student_profile_id = null;
+            continue;
+          }
+          const profileId = profilesByStudentId.get(studentId);
+          if (!profileId) {
+            return res.status(400).json({
+              message: 'Every student-linked record must reference an existing student profile.',
+            });
+          }
+          row.student_id = studentId;
+          row.student_profile_id = profileId;
+        }
       }
       ({ data, error } = await supabase.from(table).insert(rows).select('*'));
     } else if (req.method === 'PATCH') {
@@ -394,6 +442,7 @@ router.all('/:table', requireAuth, async (req, res, next) => {
       if (role === 'student' && table === 'notifications') {
         const ownId = String(req.user.student_id_number || '');
         filters.student_id = ownId;
+        filters.student_profile_id = req.user.id;
       }
       query = applyFilters(query, filters);
       ({ data, error } = await query.select('*'));
@@ -405,6 +454,7 @@ router.all('/:table', requireAuth, async (req, res, next) => {
       if (role === 'student' && table === 'notifications') {
         const ownId = String(req.user.student_id_number || '');
         filters.student_id = ownId;
+        filters.student_profile_id = req.user.id;
       }
       query = applyFilters(query, filters);
       ({ data, error } = await query.select('*'));
