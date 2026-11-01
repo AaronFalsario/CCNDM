@@ -28,7 +28,7 @@ CCNDM is a React + Vite student discipline portal with a Node.js + Express API a
    npm install --prefix backend
    ```
 
-2. Configure the backend by copying `backend/.env.example` to `backend/.env`. Set the Supabase URL and **service-role key**, generate a strong `AUTH_JWT_SECRET` (at least 32 bytes), and set `FRONTEND_URL` and `CORS_ORIGINS` to the frontend origin. Configure all `SMTP_*` values to enable password recovery.
+2. Configure the backend by copying `backend/.env.example` to `backend/.env`. Set the Supabase URL and **service-role key**, generate a strong `AUTH_JWT_SECRET` (at least 32 bytes), and set `FRONTEND_URL` and `CORS_ORIGINS` to the frontend origin. To send confirmation and password-reset emails, set `BREVO_API_KEY` and the verified sender address in `BREVO_SENDER_EMAIL`; `BREVO_SENDER_NAME` is optional.
 
 3. In development, the Vite server proxies `/api` requests to `http://localhost:5000`. Keep the frontend and backend running on localhost; no `VITE_API_URL` is needed for local development. This keeps the HttpOnly session cookie on the frontend's origin and allows it to survive page reloads.
 
@@ -43,7 +43,7 @@ CCNDM is a React + Vite student discipline portal with a Node.js + Express API a
    npm run dev:backend
    ```
 
-For production, set `VITE_API_URL` to the deployed backend URL, configure the exact frontend origin in the backend's `FRONTEND_URL`/`CORS_ORIGINS`, and serve both over HTTPS so the session cookie is secure.
+For Vercel, configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `AUTH_JWT_SECRET`, `FRONTEND_URL`, `BREVO_API_KEY`, and `BREVO_SENDER_EMAIL` in the project's environment variables. `AUTH_JWT_SECRET` must be at least 32 bytes and `BREVO_SENDER_EMAIL` must be verified with Brevo. For other production deployments, set `VITE_API_URL` to the deployed backend URL, configure the exact frontend origin in the backend's `FRONTEND_URL`/`CORS_ORIGINS`, and serve both over HTTPS so the session cookie is secure.
 
 ## Build and lint
 

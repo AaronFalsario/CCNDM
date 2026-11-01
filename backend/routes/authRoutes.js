@@ -3,7 +3,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { rateLimit } from 'express-rate-limit';
-import { TransactionalEmailsApi, SendSmtpEmail } from "@getbrevo/brevo";
+import { BrevoClient } from '@getbrevo/brevo';
 import { supabase } from '../config/db.js';
 import { COOKIE_NAME, getJwtSecret, requireAuth } from '../middleware/authMiddleware.js';
 
@@ -96,13 +96,20 @@ function generateConfirmationToken() {
 }
 
 // BREVO SETUP
-const brevoApi = process.env.BREVO_API_KEY ? new TransactionalEmailsApi() : null;
-if (brevoApi) {
-  brevoApi.authentications.apiKey.apiKey = process.env.BREVO_API_KEY;
-}
+const brevoApi = process.env.BREVO_API_KEY
+  ? new BrevoClient({ apiKey: process.env.BREVO_API_KEY })
+  : null;
+const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL?.trim();
 
 function isMailConfigured() {
-  return Boolean(brevoApi);
+  return Boolean(brevoApi && brevoSenderEmail);
+}
+
+function setMailSender(message) {
+  message.sender = {
+    name: process.env.BREVO_SENDER_NAME?.trim() || 'CCNDM',
+    email: brevoSenderEmail,
+  };
 }
 
 function respondWithError(res, status, message) {
@@ -280,11 +287,10 @@ router.post('/student/register', loginLimiter, async (req, res, next) => {
     let emailSent = false;
     if (isMailConfigured()) {
       try {
-        let message = new SendSmtpEmail();
+        const message = {};
         message.subject = 'CCNDM - Confirm Your Student Account';
         
-        // IMPORTANT: Replace this with the email you verified in Brevo!
-        message.sender = { name: "CCNDM", email: "ccndm2025@gmail.com" }; 
+        setMailSender(message);
         message.to = [{ email: email, name: req.body?.name || 'Student' }];
         
         message.htmlContent = `
@@ -309,7 +315,7 @@ router.post('/student/register', loginLimiter, async (req, res, next) => {
             </div>
         `;
         
-        await brevoApi.sendTransacEmail(message);
+        await brevoApi.transactionalEmails.sendTransacEmail(message);
         emailSent = true;
       } catch (mailError) {
         console.error('[registration email error]', mailError.response?.body || mailError);
@@ -324,7 +330,7 @@ router.post('/student/register', loginLimiter, async (req, res, next) => {
     return res.status(201).json({
       message: emailSent
         ? 'Account registered! A confirmation link has been sent to your email.'
-        : 'Account registered! Please check your email (or use the link from the server console) to confirm.',
+        : 'Account registered, but we could not send the confirmation email. Please contact the administrator for help.',
       requiresConfirmation: true,
       confirmUrl: process.env.NODE_ENV !== 'production' ? confirmUrl : undefined,
     });
@@ -422,11 +428,10 @@ router.post('/student/resend-confirmation', loginLimiter, async (req, res, next)
       let emailSent = false;
       if (isMailConfigured()) {
         try {
-          let message = new SendSmtpEmail();
+          const message = {};
           message.subject = 'CCNDM - Confirm Your Student Account (Resent)';
           
-          // IMPORTANT: Replace this with the email you verified in Brevo!
-          message.sender = { name: "CCNDM", email: "your-verified-email@gmail.com" };
+          setMailSender(message);
           message.to = [{ email: profile.email, name: profile.name }];
           
           message.htmlContent = `
@@ -436,7 +441,7 @@ router.post('/student/resend-confirmation', loginLimiter, async (req, res, next)
             <p>If you did not request this, please ignore this email.</p>
           `;
           
-          await brevoApi.sendTransacEmail(message);
+          await brevoApi.transactionalEmails.sendTransacEmail(message);
           emailSent = true;
         } catch (mailErr) {
           console.error('[resend email error]', mailErr.response?.body || mailErr);
@@ -449,7 +454,9 @@ router.post('/student/resend-confirmation', loginLimiter, async (req, res, next)
       console.log('=============================================================\n');
 
       return res.status(202).json({
-        message: 'A new confirmation email has been sent to your registered address.',
+        message: emailSent
+          ? 'A new confirmation email has been sent to your registered address.'
+          : 'We could not send a confirmation email. Please contact the administrator for help.',
         confirmUrl: process.env.NODE_ENV !== 'production' ? confirmUrl : undefined,
       });
     }
@@ -516,11 +523,10 @@ router.post('/forgot-password', loginLimiter, async (req, res, next) => {
       const resetUrl = `${frontendUrl}/student/ResetPassword?role=${role}&token=${encodeURIComponent(token)}`;
 
       try {
-        let message = new SendSmtpEmail();
+        const message = {};
         message.subject = 'CCNDM Password Reset';
         
-        // IMPORTANT: Replace this with the email you verified in Brevo!
-        message.sender = { name: "CCNDM", email: "your-verified-email@gmail.com" };
+        setMailSender(message);
         message.to = [{ email: profile.email }];
         
         message.htmlContent = `
@@ -529,7 +535,7 @@ router.post('/forgot-password', loginLimiter, async (req, res, next) => {
           <p>If you did not request this, ignore this email.</p>
         `;
         
-        await brevoApi.sendTransacEmail(message);
+        await brevoApi.transactionalEmails.sendTransacEmail(message);
       } catch (mailError) {
         const { error: cleanupError } = await supabase
           .from('password_reset_tokens')

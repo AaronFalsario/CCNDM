@@ -10,7 +10,7 @@ import authRoutes from './routes/authRoutes.js';
 import dataRoutes from './routes/dataRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import { applyStudentReadState } from './lib/notifications.js';
-import { requireAuth, requireRole } from './middleware/authMiddleware.js';
+import { getJwtSecret, requireAuth, requireRole } from './middleware/authMiddleware.js';
 
 // Force IPv4 — fixes "fetch failed" on Vercel when Supabase DNS doesn't respond to IPv6
 dns.setDefaultResultOrder('ipv4first');
@@ -23,9 +23,7 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT) || 5050;
 
-if (!process.env.JWT_SECRET || Buffer.byteLength(process.env.JWT_SECRET) < 32) {
-  throw new Error('JWT_SECRET must be configured with at least 32 bytes.');
-}
+getJwtSecret();
 
 if (!supabase) {
   throw new Error('Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before starting the backend.');
