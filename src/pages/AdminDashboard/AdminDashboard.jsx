@@ -134,15 +134,7 @@ const calculateProgress = (penalty) => {
     const elapsed = Math.floor((Date.now() - parseDbDate(src)) / 1000);
     return Math.round(Math.min(100, Math.max(0, (elapsed / (penalty.hours * 3600)) * 100)));
 };
-const exportToCSV = (rows, filename) => {
-    if (!rows || rows.length === 0) return false;
-    const headers = Object.keys(rows[0]);
-    const esc = (v) => {
-        const s = v === null || v === undefined ? '' : String(v);
-        return `"${s.replace(/"/g, '""')}"`;
-    };
-    const csv = [headers.join(','), ...rows.map(r => headers.map(h => esc(r[h])).join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+const downloadBlob = (blob, filename) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -150,32 +142,66 @@ const exportToCSV = (rows, filename) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+const exportToCSV = (rows, filename) => {
+    if (!rows?.length) return false;
+    const headers = [...new Set(rows.flatMap(row => Object.keys(row)))];
+    const esc = (value) => {
+        let text = value === null || value === undefined ? '' : String(value);
+        if (/^[\s]*[=+\-@\t\r]/.test(text)) text = `'${text}`;
+        return `"${text.replace(/"/g, '""')}"`;
+    };
+    const csv = [
+        headers.map(esc).join(','),
+        ...rows.map(row => headers.map(header => esc(row[header])).join(',')),
+    ].join('\r\n');
+    downloadBlob(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' }), filename);
     return true;
 };
 const exportToExcel = async (sheets, filename) => {
-    if (!sheets?.some(sheet => sheet.rows?.length)) return false;
+    const populatedSheets = sheets?.filter(sheet => sheet.rows?.length);
+    if (!populatedSheets?.length) return false;
     const excelModule = await import('exceljs');
     const ExcelJS = excelModule.default || excelModule;
     const workbook = new ExcelJS.Workbook();
-    sheets.forEach(({ name, rows }) => {
+    workbook.creator = 'Student Conduct Portal';
+    workbook.created = new Date();
+    populatedSheets.forEach(({ name, rows }) => {
         const sheetName = name.replace(/[\\/*?:[\]]/g, '').slice(0, 31) || 'Data';
         const worksheet = workbook.addWorksheet(sheetName);
         const columns = [...new Set(rows.flatMap(row => Object.keys(row)))];
-        worksheet.columns = columns.map(key => ({ header: key, key }));
+        worksheet.columns = columns.map(key => ({
+            header: key,
+            key,
+            width: Math.min(48, Math.max(
+                14,
+                key.length + 2,
+                ...rows.map(row => String(row[key] ?? '').length + 2),
+            )),
+        }));
         worksheet.addRows(rows);
+        worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+        worksheet.autoFilter = {
+            from: { row: 1, column: 1 },
+            to: { row: 1, column: columns.length },
+        };
+        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        worksheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF2563EB' },
+        };
+        worksheet.getRow(1).alignment = { vertical: 'middle', wrapText: true };
+        worksheet.getRow(1).height = 24;
+        worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber > 1) row.alignment = { vertical: 'top', wrapText: true };
+        });
     });
     const buffer = await workbook.xlsx.writeBuffer();
-    const url = URL.createObjectURL(new Blob([buffer], {
+    downloadBlob(new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    }), filename);
     return true;
 };
 const exportReportToPDF = async ({ stats, students, penalties, appeals, department }) => {
@@ -210,7 +236,8 @@ const exportReportToPDF = async ({ stats, students, penalties, appeals, departme
 
     let nextY = pdf.lastAutoTable.finalY + 9;
     const addSection = (title, headers, rows) => {
-        if (nextY > 175) {
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        if (nextY > pageHeight - 35) {
             pdf.addPage();
             nextY = 18;
         }
@@ -221,9 +248,10 @@ const exportReportToPDF = async ({ stats, students, penalties, appeals, departme
             head: [headers],
             body: rows.length ? rows : [['No records', ...headers.slice(1).map(() => '')]],
             theme: 'grid',
-            styles: { fontSize: 8, cellPadding: 2 },
+            styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
             headStyles: { fillColor: [37, 99, 235] },
             margin: { left: 14, right: 14 },
+            rowPageBreak: 'avoid',
         });
         nextY = pdf.lastAutoTable.finalY + 9;
     };
@@ -239,6 +267,14 @@ const exportReportToPDF = async ({ stats, students, penalties, appeals, departme
         appeal.student_name || '', appeal.penalty_violation || appeal.violation || '', appeal.status || '',
         formatDate(appeal.created_at), appeal.admin_comment || '',
     ]));
+
+    const pageCount = pdf.getNumberOfPages();
+    for (let page = 1; page <= pageCount; page += 1) {
+        pdf.setPage(page);
+        pdf.setFontSize(8);
+        pdf.setTextColor(100);
+        pdf.text(`Page ${page} of ${pageCount}`, pdf.internal.pageSize.getWidth() - 14, pdf.internal.pageSize.getHeight() - 7, { align: 'right' });
+    }
 
     pdf.save(`report_${new Date().toISOString().slice(0, 10)}.pdf`);
     return true;
@@ -420,6 +456,7 @@ export default function AdminDashboard() {
     const [activityLog, setActivityLog] = useState([]);
     const [announcements, setAnnouncements] = useState([]);
     const [darkMode, setDarkMode] = useState(false);
+    const [largeTextPreference, setLargeTextPreference] = useState(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifFilter, setNotifFilter] = useState('all');
@@ -515,6 +552,22 @@ export default function AdminDashboard() {
     const closeToast = () => {
         if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
         setToast(null);
+    };
+
+    const isLargeText = Boolean(
+        admin?.id
+        && (largeTextPreference?.adminId === String(admin.id)
+            ? largeTextPreference.enabled
+            : localStorage.getItem(`admin_large_text_${admin.id}`) === 'true')
+    );
+
+    const toggleLargeText = () => {
+        if (!admin?.id) return;
+
+        const adminId = String(admin.id);
+        const nextEnabled = !isLargeText;
+        localStorage.setItem(`admin_large_text_${adminId}`, String(nextEnabled));
+        setLargeTextPreference({ adminId, enabled: nextEnabled });
     };
 
     // DARK MODE
@@ -1584,7 +1637,7 @@ export default function AdminDashboard() {
 
     return (
         <div className={darkMode ? 'dashboard-dark' : ''}>
-            <div className="dashboard-canvas min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans text-base leading-relaxed">
+            <div className={`dashboard-canvas min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans text-base leading-relaxed ${isLargeText ? 'admin-large-text' : ''} ${currentTab === 'reports' ? 'admin-report-print' : ''}`}>
                 <style>{`
             @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
             @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
@@ -1648,6 +1701,21 @@ export default function AdminDashboard() {
                     </nav>
 
                     <div className="border-t border-slate-200 dark:border-slate-700 flex-shrink-0">
+                        <button
+                            type="button"
+                            onClick={toggleLargeText}
+                            aria-pressed={isLargeText}
+                            aria-label={isLargeText ? 'Use standard text size' : 'Use larger text size'}
+                            title={isLargeText ? 'Use standard text size' : 'Use larger text size'}
+                            className={`relative flex items-center w-full h-11 transition-colors ${isLargeText
+                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'}`}
+                        >
+                            <span className="w-14 md:w-[68px] flex-shrink-0 flex items-center justify-center font-bold text-xl" aria-hidden="true">A+</span>
+                            <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm">
+                                {isLargeText ? 'Standard Text' : 'Larger Text'}
+                            </span>
+                        </button>
                         <button
                             onClick={() => { setAdminForm({ name: adminName, email: admin.email || '' }); setShowEditProfile(true); }}
                             className="relative flex items-center w-full h-11 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -1812,7 +1880,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                <main className="md:ml-[68px] p-4 md:p-8 pb-20 md:pb-8">
+                <main className={`md:ml-[68px] p-4 md:p-8 pb-20 md:pb-8 ${currentTab === 'reports' ? 'admin-report-print-main' : ''}`}>
                     {currentTab === 'dashboard' && (
                         <div style={fadeInStyle}>
                             <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
@@ -2927,19 +2995,20 @@ export default function AdminDashboard() {
                     )}
 
                     {currentTab === 'reports' && (
-                        <div style={fadeInStyle} className="w-full space-y-4">
+                        <div style={fadeInStyle} className="admin-report-content w-full space-y-4">
                             <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl p-6 md:p-7 text-white flex flex-wrap items-center justify-between gap-4">
                                 <div>
                                     <h1 className="text-2xl md:text-3xl font-bold">Reports & Analytics</h1>
                                     <p className="text-sm text-blue-100 mt-1">Generate comprehensive reports and analyze trends</p>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="admin-report-actions flex flex-wrap gap-2">
                                     <button onClick={async () => {
                                         try {
                                             if (await exportReportToPDF({ stats, students, penalties, appeals, department: 'Student Conduct' })) {
                                                 showToast('success', 'PDF exported', 'Your report download has started');
                                             }
-                                        } catch {
+                                        } catch (error) {
+                                            console.error('[PDF export]', error);
                                             showToast('error', 'PDF export failed', 'Please try again');
                                         }
                                     }}
@@ -2967,7 +3036,8 @@ export default function AdminDashboard() {
                                                 if (await exportToExcel(sheets, `report_${new Date().toISOString().slice(0, 10)}.xlsx`)) {
                                                     showToast('success', 'Excel exported', 'Your report download has started');
                                                 }
-                                            } catch {
+                                            } catch (error) {
+                                                console.error('[Excel export]', error);
                                                 showToast('error', 'Excel export failed', 'Please try again');
                                             }
                                         }}
@@ -2977,8 +3047,42 @@ export default function AdminDashboard() {
                                     <button
                                         onClick={() => {
                                             const data = [
-                                                ...students.map(s => ({ Name: s.name, ID: s.student_id_number, Course: s.course, Year: s.year_level, Status: s.status })),
-                                                ...penalties.map(p => ({ Violation: p.violation_type, Level: p.offense_level, Status: p.status })),
+                                                ...students.map(s => ({
+                                                    'Record Type': 'Student',
+                                                    'Student ID': s.student_id_number || '',
+                                                    Name: s.name || '',
+                                                    Course: s.course || '',
+                                                    Year: s.year_level || '',
+                                                    Violation: '',
+                                                    Level: '',
+                                                    Hours: '',
+                                                    Status: s.status || '',
+                                                    Date: '',
+                                                })),
+                                                ...penalties.map(p => ({
+                                                    'Record Type': 'Penalty',
+                                                    'Student ID': p.student_id_number || '',
+                                                    Name: p.student_name || '',
+                                                    Course: '',
+                                                    Year: '',
+                                                    Violation: p.violation_type || '',
+                                                    Level: p.offense_level || '',
+                                                    Hours: p.hours ?? '',
+                                                    Status: p.status || '',
+                                                    Date: formatDate(p.created_at),
+                                                })),
+                                                ...appeals.map(a => ({
+                                                    'Record Type': 'Appeal',
+                                                    'Student ID': a.student_id_number || '',
+                                                    Name: a.student_name || '',
+                                                    Course: '',
+                                                    Year: '',
+                                                    Violation: a.penalty_violation || a.violation || '',
+                                                    Level: '',
+                                                    Hours: '',
+                                                    Status: a.status || '',
+                                                    Date: formatDate(a.created_at),
+                                                })),
                                             ];
                                             if (exportToCSV(data, `report_${new Date().toISOString().slice(0, 10)}.csv`)) {
                                                 showToast('success', 'Export complete', 'File downloaded');

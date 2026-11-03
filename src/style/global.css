@@ -134,10 +134,156 @@ body {
     font-size: 12px;
 }
 
+.dashboard-canvas.admin-large-text .text-xs {
+    font-size: max(0.8125rem, 13px);
+}
+
+.dashboard-canvas.admin-large-text .text-sm {
+    font-size: max(0.9375rem, 15px);
+}
+
+.dashboard-canvas.admin-large-text .text-base {
+    font-size: max(1rem, 16px);
+}
+
+.dashboard-canvas.admin-large-text .text-lg {
+    font-size: 1.125rem;
+}
+
+.dashboard-canvas.admin-large-text .text-xl {
+    font-size: 1.25rem;
+}
+
+.dashboard-canvas.admin-large-text .text-2xl {
+    font-size: 1.5rem;
+}
+
+.dashboard-canvas.admin-large-text .text-3xl {
+    font-size: 1.875rem;
+}
+
+.dashboard-canvas.admin-large-text .text-4xl {
+    font-size: 2.25rem;
+}
+
+.dashboard-canvas.admin-large-text [class~="text-[9px]"] {
+    font-size: 11px;
+}
+
+.dashboard-canvas.admin-large-text [class~="text-[10px]"] {
+    font-size: 12px;
+}
+
+.dashboard-canvas.admin-large-text [class~="text-[11px]"] {
+    font-size: 13px;
+}
+
+.dashboard-canvas.admin-large-text button {
+    min-height: 2.625rem;
+}
+
+.dashboard-canvas.admin-large-text :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    min-height: 2.625rem;
+    padding-block: 0.625rem;
+    padding-inline: 0.875rem;
+}
+
+.dashboard-canvas.admin-large-text :is(input[type="checkbox"], input[type="radio"]) {
+    width: 1rem;
+    height: 1rem;
+}
+
+.dashboard-canvas.admin-large-text table {
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.dashboard-canvas.admin-large-text :is(th, td) {
+    padding: 0.625rem 0.875rem;
+}
+
+.dashboard-canvas.admin-large-text th {
+    font-size: 0.9375rem;
+    font-weight: 700;
+}
+
+.dashboard-canvas.admin-large-text :is([class~="text-[10px]"], [class~="text-[11px]"]).rounded-full {
+    padding-block: 0.125rem;
+    padding-inline: 0.5rem;
+}
+
 @media (max-width: 767px) {
     .dashboard-canvas header button {
         min-width: 44px;
         min-height: 44px;
+    }
+
+    .dashboard-canvas.admin-large-text :is(th, td) {
+        padding: 0.5625rem 0.625rem;
+    }
+}
+
+@page {
+    size: landscape;
+    margin: 12mm;
+}
+
+@media print {
+    .dashboard-canvas.admin-report-print > :not(.admin-report-print-main) {
+        display: none !important;
+    }
+
+    .admin-report-print-main > :not(.admin-report-content) {
+        display: none !important;
+    }
+
+    .dashboard-canvas.admin-report-print,
+    .admin-report-print-main,
+    .admin-report-content {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        color: #0f172a !important;
+        background: #fff !important;
+        box-shadow: none !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .admin-report-content,
+    .admin-report-content * {
+        animation: none !important;
+        transform: none !important;
+    }
+
+    .admin-report-content > .bg-gradient-to-br {
+        background: #1d4ed8 !important;
+    }
+
+    .admin-report-content .admin-report-actions,
+    .admin-report-content button {
+        display: none !important;
+    }
+
+    .admin-report-content :is(.bg-white, [class~="dark:bg-slate-900"], [class~="dark:bg-slate-800"]) {
+        color: #0f172a !important;
+        background: #fff !important;
+        border-color: #cbd5e1 !important;
+        box-shadow: none !important;
+    }
+
+    .admin-report-content table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    .admin-report-content tr,
+    .admin-report-content .rounded-xl {
+        break-inside: avoid;
     }
 }
 

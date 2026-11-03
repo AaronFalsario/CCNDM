@@ -21,8 +21,6 @@ const I = {
     check: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>,
     star: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>,
     info: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>,
-    trash: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>,
-    download: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>,
     eye: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12C5 4 19 4 23 12C19 20 5 20 1 12Z" /><circle cx="12" cy="12" r="3" /></svg>,
     lock: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>,
     key: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" /></svg>,
@@ -198,7 +196,7 @@ const notifMeta = (n) => {
     return { icon: 'info', bg: 'bg-slate-100 dark:bg-slate-700', fg: 'text-slate-600 dark:text-slate-300' };
 };
 
-function NotificationItem({ notification: n, onMarkRead, onDelete, onAction }) {
+function NotificationItem({ notification: n, onMarkRead, onAction }) {
     const meta = notifMeta(n);
     const IconEl = I[meta.icon] || I.info;
     return (
@@ -218,7 +216,7 @@ function NotificationItem({ notification: n, onMarkRead, onDelete, onAction }) {
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.fg}`}>
                 {IconEl}
             </div>
-            <div className="flex-1 min-w-0 pr-8">
+            <div className="flex-1 min-w-0">
                 <p className={`text-sm truncate ${!n.is_read ? 'font-bold text-slate-800 dark:text-slate-100' : 'font-semibold text-slate-700 dark:text-slate-200'}`}>
                     {n.title || 'Notification'}
                 </p>
@@ -238,13 +236,6 @@ function NotificationItem({ notification: n, onMarkRead, onDelete, onAction }) {
                     )}
                 </div>
             </div>
-            <button
-                onClick={(e) => { e.stopPropagation(); onDelete(n.id); }}
-                className="absolute top-2.5 right-2.5 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 opacity-0 group-hover:opacity-100 transition"
-                title="Delete"
-            >
-                {I.trash}
-            </button>
         </div>
     );
 }
@@ -719,38 +710,6 @@ export default function StudentDashboard() {
         await loadAppeals();
     };
 
-    /* EXPORT CSV */
-    const exportPenalties = () => {
-        if (!penalties.length) {
-            showToast('warning', 'Nothing to export', 'You have no penalties recorded');
-            return;
-        }
-        const headers = ['Date', 'Violation', 'Service Type', 'Hours', 'Status', 'Deadline', 'Offense Level'];
-        const rows = penalties.map((p) => [
-            formatDate(p.created_at),
-            p.violation || 'N/A',
-            p.service_type || 'Community Service',
-            p.hours || 0,
-            p.status || 'Pending',
-            formatDate(p.deadline),
-            p.offense_level || 'N/A',
-        ]);
-        let csv = headers.join(',') + '\n';
-        rows.forEach((row) => {
-            csv += row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
-        });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `saocst_penalties_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        showToast('success', 'Export complete', 'File downloaded successfully');
-    };
-
     /* EDIT PROFILE */
     useEffect(() => {
         if (student) {
@@ -786,17 +745,6 @@ export default function StudentDashboard() {
         }
         await loadNotifications();
         showToast('info', 'All marked as read', '');
-    };
-
-    const deleteNotif = async (id) => {
-        try {
-            await api.data.remove('notifications', { id });
-        } catch (error) {
-            console.error('Unable to delete notification:', error);
-            return showToast('error', 'Unable to delete notification', error.message);
-        }
-        await loadNotifications();
-        await loadAnnouncements();
     };
 
     const markNotifRead = async (id) => {
@@ -1220,7 +1168,6 @@ export default function StudentDashboard() {
                                                 key={n.id}
                                                 notification={n}
                                                 onMarkRead={markNotifRead}
-                                                onDelete={deleteNotif}
                                                 onAction={(notif) => {
                                                     setShowNotifications(false);
                                                     if (notif.action_tab) setCurrentTab(notif.action_tab);
@@ -1241,7 +1188,6 @@ export default function StudentDashboard() {
                                                 key={n.id}
                                                 notification={n}
                                                 onMarkRead={markNotifRead}
-                                                onDelete={deleteNotif}
                                                 onAction={(notif) => {
                                                     setShowNotifications(false);
                                                     if (notif.action_tab) setCurrentTab(notif.action_tab);
@@ -1489,17 +1435,11 @@ export default function StudentDashboard() {
                     {/* PENALTIES */}
                     {currentTab === 'penalties' && (
                         <div style={fadeInStyle}>
-                            <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl p-6 md:p-7 mb-6 text-white flex items-center justify-between flex-wrap gap-4">
+                            <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl p-6 md:p-7 mb-6 text-white">
                                 <div>
                                     <h1 className="text-2xl font-bold">My Penalties</h1>
                                     <p className="text-sm text-blue-100 mt-1">View your community service penalties and track your progress</p>
                                 </div>
-                                <button
-                                    onClick={exportPenalties}
-                                    className="flex items-center gap-2 px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white text-sm font-medium rounded-lg transition"
-                                >
-                                    {I.download} Export CSV
-                                </button>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -2682,13 +2622,21 @@ export default function StudentDashboard() {
                                 {selectedPenalty.image_url && (
                                     <div>
                                         <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                                            Evidence Image
+                                            Violation Image
                                         </h4>
-                                        <img
-                                            src={selectedPenalty.image_url}
-                                            alt="Evidence"
-                                            className="w-full rounded-lg border border-slate-200 dark:border-slate-800"
-                                        />
+                                        <a
+                                            href={selectedPenalty.image_url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            aria-label="Open violation image in a new tab"
+                                            className="block rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800"
+                                        >
+                                            <img
+                                                src={selectedPenalty.image_url}
+                                                alt={`Image uploaded for ${selectedPenalty.violation || 'this violation'}`}
+                                                className="w-full max-h-[28rem] object-contain"
+                                            />
+                                        </a>
                                     </div>
                                 )}
 
