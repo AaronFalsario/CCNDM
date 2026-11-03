@@ -320,6 +320,22 @@ export default function StudentDashboard() {
     const [showIdleWarning, setShowIdleWarning] = useState(false);
     const [idleCountdown, setIdleCountdown] = useState(30);
 
+    useEffect(() => {
+        if (!drawerOpen) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        const closeOnEscape = (event) => {
+            if (event.key === 'Escape') setDrawerOpen(false);
+        };
+        document.body.style.overflow = 'hidden';
+        document.addEventListener('keydown', closeOnEscape);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [drawerOpen]);
+
     /* View Violation Details modal */
     const [selectedPenalty, setSelectedPenalty] = useState(null);
     const [selectedAppealDetail, setSelectedAppealDetail] = useState(null);
@@ -797,32 +813,29 @@ export default function StudentDashboard() {
         await loadAnnouncements();
     };
 
-    /* mark a single announcement as read */
-    const markAnnouncementRead = async (id) => {
+    const announcementReadRequests = useRef(new Set());
+
+    const markAnnouncementRead = useCallback(async (id) => {
+        if (announcementReadRequests.current.has(id)) return;
+        announcementReadRequests.current.add(id);
+
         try {
             await api.post('/api/data/notifications/read', { id });
         } catch (error) {
+            announcementReadRequests.current.delete(id);
             console.error('Unable to mark announcement as read:', error);
             return showToast('error', 'Unable to update announcement', error.message);
         }
         await loadAnnouncements();
         await loadNotifications();
-    };
+    }, [loadAnnouncements, loadNotifications, showToast]);
 
-    /* mark all announcements read (broadcasts only) */
-    const markAllAnnouncementsRead = async () => {
-        const unreadIds = announcements.filter((a) => !a.is_read).map((a) => a.id);
-        if (!unreadIds.length) return;
-        try {
-            await api.post('/api/data/notifications/read', { ids: unreadIds });
-        } catch (error) {
-            console.error('Unable to mark announcement as read:', error);
-            return showToast('error', 'Unable to update announcements', error.message);
+    useEffect(() => {
+        if (currentTab === 'announcements' && selectedAnnouncement && !selectedAnnouncement.is_read) {
+            const timeout = setTimeout(() => markAnnouncementRead(selectedAnnouncement.id), 0);
+            return () => clearTimeout(timeout);
         }
-        await loadAnnouncements();
-        await loadNotifications();
-        showToast('info', 'All announcements marked as read', '');
-    };
+    }, [currentTab, selectedAnnouncement, markAnnouncementRead]);
 
     /* IDLE TIMER */
     const idleTimer = useRef(null);
@@ -939,7 +952,7 @@ export default function StudentDashboard() {
 
     return (
         <div className={darkMode ? 'dashboard-dark' : ''}>
-            <div className="dashboard-canvas min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans text-[15px] leading-relaxed">
+            <div className="dashboard-canvas min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans text-base leading-relaxed">
                 <style>{`
                 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
                 @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
@@ -958,14 +971,25 @@ export default function StudentDashboard() {
 
                 {/* DRAWER */}
                 <aside
-                    className={`group fixed top-0 left-0 bottom-0 w-[68px] hover:w-[220px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-[300] flex flex-col transition-all duration-300 ease-out overflow-hidden md:translate-x-0 ${drawerOpen ? 'translate-x-0' : '-translate-x-full'
+                    aria-label="Student navigation"
+                    className={`group fixed top-0 left-0 bottom-0 w-72 max-w-[calc(100vw-1rem)] md:w-[68px] md:max-w-none md:hover:w-[220px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-[300] flex flex-col transition-all duration-300 ease-out overflow-hidden md:translate-x-0 ${drawerOpen ? 'translate-x-0' : '-translate-x-full'
                         }`}
                 >
-                    <div className="flex flex-col items-center pt-4 pb-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+                    <div className="flex md:hidden justify-end p-2">
+                        <button
+                            type="button"
+                            onClick={() => setDrawerOpen(false)}
+                            aria-label="Close navigation menu"
+                            className="h-11 w-11 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                            {I.close}
+                        </button>
+                    </div>
+                    <div className="flex flex-col items-start md:items-center px-5 md:px-0 pt-3 md:pt-4 pb-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
                         <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-md">
                             {getInitials(studentName)}
                         </div>
-                        <div className="mt-3 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap px-3">
+                        <div className="w-full mt-3 text-left md:text-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap px-0 md:px-3">
                             <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate max-w-[180px]">
                                 {studentName}
                             </div>
@@ -991,7 +1015,7 @@ export default function StudentDashboard() {
                             <button
                                 key={item.tab}
                                 onClick={() => { setCurrentTab(item.tab); setDrawerOpen(false); }}
-                                className={`relative flex items-center w-full h-12 transition-colors duration-150 ${currentTab === item.tab
+                                className={`relative flex items-center w-full h-14 md:h-12 transition-colors duration-150 ${currentTab === item.tab
                                     ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
                                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                                     }`}
@@ -999,7 +1023,7 @@ export default function StudentDashboard() {
                                 {currentTab === item.tab && (
                                     <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 dark:bg-blue-400 rounded-r" />
                                 )}
-                                <span className="w-[68px] flex-shrink-0 flex items-center justify-center relative">
+                                <span className="w-14 md:w-[68px] flex-shrink-0 flex items-center justify-center relative">
                                     {item.icon}
                                     {item.tab === 'announcements' && unreadAnnouncements > 0 && (
                                         <span className="absolute top-2 right-3 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">
@@ -1007,7 +1031,7 @@ export default function StudentDashboard() {
                                         </span>
                                     )}
                                 </span>
-                                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm font-medium pr-4">
+                                <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm font-medium pr-4">
                                     {item.label}
                                 </span>
                             </button>
@@ -1019,8 +1043,8 @@ export default function StudentDashboard() {
                             onClick={() => setShowEditProfile(true)}
                             className="relative flex items-center w-full h-12 text-slate-600 dark:text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 transition-colors duration-150"
                         >
-                            <span className="w-[68px] flex-shrink-0 flex items-center justify-center">{I.userEdit}</span>
-                            <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm">
+                            <span className="w-14 md:w-[68px] flex-shrink-0 flex items-center justify-center">{I.userEdit}</span>
+                            <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm">
                                 Edit Profile
                             </span>
                         </button>
@@ -1028,8 +1052,8 @@ export default function StudentDashboard() {
                             onClick={() => setShowLogoutConfirm(true)}
                             className="relative flex items-center w-full h-12 text-slate-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400 transition-colors duration-150"
                         >
-                            <span className="w-[68px] flex-shrink-0 flex items-center justify-center">{I.logout}</span>
-                            <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm">
+                            <span className="w-14 md:w-[68px] flex-shrink-0 flex items-center justify-center">{I.logout}</span>
+                            <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm">
                                 Logout
                             </span>
                         </button>
@@ -1039,7 +1063,13 @@ export default function StudentDashboard() {
                 {/* TOPBAR */}
                 <header className="sticky top-0 z-[100] h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-8 md:ml-[68px]">
                     <div className="flex items-center gap-3">
-                        <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={() => setDrawerOpen(true)}>
+                        <button
+                            type="button"
+                            className="md:hidden flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                            onClick={() => setDrawerOpen(true)}
+                            aria-label="Open navigation menu"
+                            aria-expanded={drawerOpen}
+                        >
                             <span className="w-5 h-0.5 bg-slate-700 dark:bg-slate-200 rounded" />
                             <span className="w-5 h-0.5 bg-slate-700 dark:bg-slate-200 rounded" />
                             <span className="w-5 h-0.5 bg-slate-700 dark:bg-slate-200 rounded" />
@@ -2055,7 +2085,7 @@ export default function StudentDashboard() {
                                         {I.megaphone} Announcements
                                     </h1>
                                     <p className="text-sm md:text-base text-fuchsia-100 mt-1">
-                                        Updates and important notices from the Discipline Office
+                                        Updates and important notices from the Discipline Office. Announcements are marked as read when opened.
                                     </p>
                                 </div>
                                 {unreadAnnouncements > 0 && (
@@ -2064,12 +2094,6 @@ export default function StudentDashboard() {
                                             <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
                                             {unreadAnnouncements} new
                                         </span>
-                                        <button
-                                            onClick={markAllAnnouncementsRead}
-                                            className="px-3 py-1.5 rounded-full bg-white text-fuchsia-700 text-xs font-bold hover:bg-fuchsia-50 transition"
-                                        >
-                                            Mark all read
-                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -2205,14 +2229,6 @@ export default function StudentDashboard() {
                                                     <span className="text-sm text-slate-400">
                                                         Broadcast from Discipline Office
                                                     </span>
-                                                    {!current.is_read && (
-                                                        <button
-                                                            onClick={() => markAnnouncementRead(current.id)}
-                                                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-fuchsia-600 dark:text-fuchsia-400 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/40 transition"
-                                                        >
-                                                            {I.check} Mark as read
-                                                        </button>
-                                                    )}
                                                 </div>
                                             </article>
 

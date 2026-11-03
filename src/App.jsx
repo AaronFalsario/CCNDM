@@ -5,6 +5,7 @@ import StudentDashboard from './pages/StudentDashboard/StudentDashboard';
 import AdminLogin from './pages/AdminLogin/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard/AdminDashboard';
 import AdminStudentRegistration from './pages/AdminDashboard/AdminStudentRegistration';
+import AdminInvitationRegistration from './pages/AdminDashboard/AdminInvitationRegistration';
 import ForgotPassword from './pages/ForgotPassword/ForgotPassword';
 import ResetPassword from './pages/ForgotPassword/ResetPassword';
 import ChangePassword from './pages/student/change-password';
@@ -25,6 +26,8 @@ export default function App() {
       {/* Admin */}
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin/students/register" element={<AdminStudentRegistration />} />
+      <Route path="/admin/admins/invite" element={<AdminInvitationRegistration />} />
+      <Route path="/admin/accept-invitation" element={<ResetPassword />} />
       <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
 
       {/* Fallback */}

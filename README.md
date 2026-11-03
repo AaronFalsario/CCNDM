@@ -12,6 +12,7 @@ CCNDM is a React + Vite student discipline portal with a Node.js + Express API a
 - The backend uses the Supabase service-role key. Keep it in `backend/.env` or the backend host's secret store only; never use a `VITE_` prefix for it.
 - Student accounts are created by authenticated administrators in the admin dashboard; there is no public student registration.
 - Each new account receives a one-time email invitation to set its password. Invitation links expire after 24 hours and can only be used once; students see their Student ID and password on their own screen before signing in.
+- Active administrators can invite another administrator from the dashboard. The invited administrator sets her own password through a one-time, 24-hour link; the account remains inactive until setup is complete.
 - Password reset emails require SMTP settings in the backend environment.
 
 ## Prerequisites
@@ -49,6 +50,8 @@ For Vercel, configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `AUTH_JWT_SEC
 The additive `202611010001_preserve_data_relationships.sql` migration adds stable foreign-key columns and indexes for student-linked records without dropping tables or records. It backfills references that match current profiles and leaves unmatched historical rows in place with a null new reference. Apply this migration before deploying backend code that reads and writes the new relationship columns; keep a database backup and review the migration output first.
 
 The `202611030001_admin_student_provisioning.sql` migration adds the student first-login password-change flag and the private invitation-token table. Apply it before deploying the account provisioning flow. In the admin dashboard, open **Students → Register Account** and provide the student's details. They will receive a one-time, 24-hour invitation email to choose a password.
+
+The `202611030002_admin_invitations.sql` migration adds the private admin invitation-token table and pending-invitation flag. Apply it before deploying admin invitations. Signed-in active administrators can use **Dashboard → Invite Admin** to send a one-time invitation; the invitee sets her own password, and her account is activated only after setup.
 
 ## Build and lint
 

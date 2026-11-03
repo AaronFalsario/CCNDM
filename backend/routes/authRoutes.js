@@ -284,6 +284,86 @@ router.post('/student/accept-invitation', loginLimiter, async (req, res, next) =
   }
 });
 
+router.post('/admin/accept-invitation', loginLimiter, async (req, res, next) => {
+  const token = req.body?.token;
+  const password = req.body?.password;
+  if (typeof token !== 'string' || token.length < 32 || token.length > 128) {
+    return respondWithError(res, 400, 'This invitation link is invalid or expired.');
+  }
+  if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
+    return respondWithError(res, 400, 'Password must be between 8 and 128 characters.');
+  }
+  if (!supabase) return respondWithError(res, 503, 'Authentication service is not configured.');
+
+  const tokenHash = hashResetToken(token);
+  try {
+    const now = new Date().toISOString();
+    const { data: invitation, error: invitationError } = await supabase
+      .from('admin_invitation_tokens')
+      .select('id, admin_profile_id')
+      .eq('token_hash', tokenHash)
+      .is('used_at', null)
+      .gt('expires_at', now)
+      .maybeSingle();
+    if (invitationError) return next(invitationError);
+    if (!invitation) return respondWithError(res, 400, 'This invitation link is invalid or expired.');
+
+    const { data: profile, error: profileError } = await supabase
+      .from('admins')
+      .select('id, admin_id, status, invitation_pending')
+      .eq('id', invitation.admin_profile_id)
+      .maybeSingle();
+    if (profileError) return next(profileError);
+    if (
+      !profile
+      || !profile.invitation_pending
+      || String(profile.status || '').toLowerCase() !== 'inactive'
+    ) {
+      return respondWithError(res, 400, 'This invitation link is invalid or expired.');
+    }
+
+    const passwordHash = await bcrypt.hash(password, PASSWORD_ROUNDS);
+    const { data: claimed, error: claimError } = await supabase
+      .from('admin_invitation_tokens')
+      .update({ used_at: now })
+      .eq('id', invitation.id)
+      .is('used_at', null)
+      .select('id')
+      .maybeSingle();
+    if (claimError) return next(claimError);
+    if (!claimed) return respondWithError(res, 400, 'This invitation link is invalid or expired.');
+
+    const { data: updated, error: updateError } = await supabase
+      .from('admins')
+      .update({
+        password_hash: passwordHash,
+        status: 'active',
+        invitation_pending: false,
+        session_version: randomUUID(),
+      })
+      .eq('id', profile.id)
+      .eq('status', 'inactive')
+      .eq('invitation_pending', true)
+      .select('admin_id')
+      .maybeSingle();
+
+    if (updateError || !updated) {
+      const { error: releaseError } = await supabase
+        .from('admin_invitation_tokens')
+        .update({ used_at: null })
+        .eq('id', invitation.id)
+        .eq('used_at', now);
+      if (releaseError) return next(releaseError);
+      if (updateError) return next(updateError);
+      return respondWithError(res, 400, 'This invitation link is invalid or expired.');
+    }
+
+    return res.json({ adminId: updated.admin_id });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.post('/student/register', loginLimiter, (req, res) => {
   return respondWithError(res, 410, 'Student accounts must be created by an administrator.');
 });

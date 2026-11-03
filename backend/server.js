@@ -38,10 +38,16 @@ const allowedOrigins = new Set([
   'http://127.0.0.1:5050',
   ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
   ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [])
-].map((origin) => origin?.trim()).filter(Boolean));
+].map((origin) => {
+  try {
+    return new URL(origin?.trim()).origin;
+  } catch {
+    return null;
+  }
+}).filter(Boolean));
 
 const isAllowedOrigin = (origin) => {
-  return true;
+  return !origin || allowedOrigins.has(origin);
 };
 
 app.set('trust proxy', 1);

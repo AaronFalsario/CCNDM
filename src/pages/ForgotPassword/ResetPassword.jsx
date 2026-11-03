@@ -22,11 +22,13 @@ export default function ResetPassword() {
     const [done, setDone] = useState(false);
     const [invitationAccount, setInvitationAccount] = useState(null);
     const [error, setError] = useState('');
-    const invitationMode = location.pathname === '/student/accept-invitation';
+    const adminInvitationMode = location.pathname === '/admin/accept-invitation';
+    const studentInvitationMode = location.pathname === '/student/accept-invitation';
+    const invitationMode = adminInvitationMode || studentInvitationMode;
     const token = invitationMode
         ? new URLSearchParams(location.hash.slice(1)).get('token') || ''
         : searchParams.get('token') || '';
-    const role = invitationMode ? 'student' : searchParams.get('role') || 'student';
+    const role = adminInvitationMode ? 'admin' : studentInvitationMode ? 'student' : searchParams.get('role') || 'student';
     const ready = Boolean(token) && (invitationMode || ['student', 'admin'].includes(role));
 
     const handleSubmit = async (e) => {
@@ -38,7 +40,17 @@ export default function ResetPassword() {
 
         setLoading(true);
         try {
-            if (invitationMode) {
+            if (adminInvitationMode) {
+                const { adminId } = await api.post('/api/auth/admin/accept-invitation', {
+                    token,
+                    password,
+                });
+                setInvitationAccount({ adminId });
+                setDone(true);
+                return;
+            }
+
+            if (studentInvitationMode) {
                 const { studentId } = await api.post('/api/auth/student/accept-invitation', {
                     token,
                     password,
@@ -77,11 +89,13 @@ export default function ResetPassword() {
                         </h1>
                         <p className="text-sm text-slate-500 mt-1.5">
                             {done && invitationMode
-                                ? 'Keep these sign-in details, then continue to the student portal.'
+                                ? adminInvitationMode
+                                    ? 'Your administrator account is ready. Sign in with your Admin ID or email.'
+                                    : 'Keep these sign-in details, then continue to the student portal.'
                                 : done
                                     ? 'Redirecting you to sign in...'
                                     : invitationMode
-                                        ? 'Choose a password for your student account.'
+                                        ? `Choose a password for your ${role} account.`
                                         : 'Choose a new password for your account.'}
                         </p>
                     </div>
@@ -91,7 +105,22 @@ export default function ResetPassword() {
                             <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
                                 {I.checkCircle}
                             </div>
-                            {invitationAccount ? (
+                            {invitationAccount && adminInvitationMode ? (
+                                <div className="w-full space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                                    <p className="text-sm font-semibold text-emerald-900">Your administrator sign-in ID</p>
+                                    <code className="block rounded-lg bg-white px-3 py-2 font-mono text-base text-slate-900">
+                                        {invitationAccount.adminId}
+                                    </code>
+                                    <p className="text-xs text-emerald-800">You can also sign in with the email address that received this invitation.</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate('/admin/login', { replace: true })}
+                                        className="w-full rounded-lg bg-blue-600 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
+                                    >
+                                        Continue to Admin Login
+                                    </button>
+                                </div>
+                            ) : invitationAccount ? (
                                 <div className="w-full space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                                     <p className="text-sm font-semibold text-emerald-900">Your sign-in details (shown only on this screen)</p>
                                     <div>
@@ -134,15 +163,17 @@ export default function ResetPassword() {
                                 </div>
                                 <p className="text-sm font-semibold text-slate-700">Invalid or expired link</p>
                                 <p className="text-xs text-slate-500 text-center max-w-xs">
-                                    This password reset link is no longer valid. Please request a new one.
+                                    This {invitationMode ? 'invitation' : 'password reset'} link is no longer valid. {invitationMode ? 'Contact the administrator who invited you for a new link.' : 'Please request a new one.'}
                                 </p>
                             </div>
-                            <Link
-                                to="/student/forgot-password"
-                                className="block w-full text-center py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition"
-                            >
-                                Request New Link
-                            </Link>
+                            {!invitationMode && (
+                                <Link
+                                    to={role === 'admin' ? '/admin/login' : '/student/forgot-password'}
+                                    className="block w-full text-center py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition"
+                                >
+                                    {role === 'admin' ? 'Return to Admin Sign In' : 'Request New Link'}
+                                </Link>
+                            )}
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-5">
@@ -207,7 +238,7 @@ export default function ResetPassword() {
                 </div>
 
                 <p className="text-center text-[11px] text-slate-400 mt-6">
-                    CCNDM Student Portal · Password Reset
+                    {role === 'admin' ? 'CCNDM Admin Portal' : 'CCNDM Student Portal'} · {invitationMode ? 'Account Setup' : 'Password Reset'}
                 </p>
             </div>
         </div>

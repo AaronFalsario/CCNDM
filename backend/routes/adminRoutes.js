@@ -1,5 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { Router } from 'express';
+import { rateLimit } from 'express-rate-limit';
+import bcrypt from 'bcryptjs';
 import { supabase } from '../config/db.js';
 import { requireAuth, requireRole } from '../middleware/authMiddleware.js';
 import { sendEmail } from '../lib/email.js';
@@ -12,6 +14,13 @@ const uploadTypes = {
 };
 const allowedBuckets = new Set(['penalties', 'announcement']);
 const maxImageBytes = 5 * 1024 * 1024;
+const adminInvitationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { message: 'Too many administrator invitations. Please try again later.' },
+});
 
 function escapeHtml(value) {
   return value.replace(/[&<>"']/g, (character) => ({
@@ -22,6 +31,143 @@ function escapeHtml(value) {
     "'": '&#39;',
   })[character]);
 }
+
+router.post('/admins', requireAuth, requireRole('admin'), adminInvitationLimiter, async (req, res, next) => {
+  const adminId = String(req.body?.adminId || '').trim();
+  const fullName = String(req.body?.fullName || '').trim();
+  const email = String(req.body?.email || '').trim().toLowerCase();
+
+  if (!/^[A-Za-z0-9._-]{3,40}$/.test(adminId)) {
+    return res.status(400).json({ message: 'Admin ID must be 3 to 40 letters, numbers, periods, underscores, or hyphens.' });
+  }
+  if (fullName.length < 2 || fullName.length > 160) {
+    return res.status(400).json({ message: 'Full name must be between 2 and 160 characters.' });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+    return res.status(400).json({ message: 'Enter a valid email address.' });
+  }
+
+  const frontendUrl = process.env.FRONTEND_URL?.trim().replace(/\/+$/, '');
+  if (!frontendUrl) {
+    return res.status(503).json({ message: 'The administrator portal URL is not configured.' });
+  }
+  if (!supabase) {
+    return res.status(503).json({ message: 'Authentication service is not configured.' });
+  }
+
+  try {
+    const [{ data: existingById, error: idLookupError }, { data: existingByEmail, error: emailLookupError }] = await Promise.all([
+      supabase.from('admins').select('id, admin_id, email, invitation_pending').eq('admin_id', adminId).maybeSingle(),
+      supabase.from('admins').select('id, admin_id, email, invitation_pending').eq('email', email).maybeSingle(),
+    ]);
+    if (idLookupError) return next(idLookupError);
+    if (emailLookupError) return next(emailLookupError);
+
+    let profile;
+    let createdProfile = false;
+    if (existingById || existingByEmail) {
+      if (
+        !existingById
+        || !existingByEmail
+        || existingById.id !== existingByEmail.id
+        || !existingById.invitation_pending
+      ) {
+        return res.status(409).json({ message: 'That Admin ID or email address is already in use.' });
+      }
+      profile = existingById;
+      const { error: updateError } = await supabase
+        .from('admins')
+        .update({ full_name: fullName })
+        .eq('id', profile.id);
+      if (updateError) return next(updateError);
+    } else {
+      const passwordHash = await bcrypt.hash(randomBytes(32).toString('base64url'), 12);
+      const { data: created, error: createError } = await supabase
+        .from('admins')
+        .insert({
+          admin_id: adminId,
+          full_name: fullName,
+          email,
+          role: 'Discipline Officer',
+          status: 'inactive',
+          password_hash: passwordHash,
+          session_version: randomUUID(),
+          invitation_pending: true,
+        })
+        .select('id, admin_id, email, full_name')
+        .single();
+      if (createError) {
+        if (createError.code === '23505') {
+          return res.status(409).json({ message: 'That Admin ID or email address is already in use.' });
+        }
+        return next(createError);
+      }
+      profile = created;
+      createdProfile = true;
+    }
+
+    const now = new Date().toISOString();
+    const { error: expiredTokensError } = await supabase
+      .from('admin_invitation_tokens')
+      .delete()
+      .lt('expires_at', now);
+    if (expiredTokensError) return next(expiredTokensError);
+
+    const { error: revokeError } = await supabase
+      .from('admin_invitation_tokens')
+      .delete()
+      .eq('admin_profile_id', profile.id)
+      .is('used_at', null);
+    if (revokeError) return next(revokeError);
+
+    const invitationToken = randomBytes(32).toString('base64url');
+    const tokenHash = createHash('sha256').update(invitationToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const { error: tokenError } = await supabase
+      .from('admin_invitation_tokens')
+      .insert({
+        admin_profile_id: profile.id,
+        token_hash: tokenHash,
+        expires_at: expiresAt,
+      });
+    if (tokenError) {
+      if (createdProfile) {
+        const { error: cleanupError } = await supabase.from('admins').delete().eq('id', profile.id);
+        if (cleanupError) return next(cleanupError);
+      }
+      return next(tokenError);
+    }
+
+    const invitationUrl = `${frontendUrl}/admin/accept-invitation#token=${encodeURIComponent(invitationToken)}`;
+    const safeName = escapeHtml(fullName);
+    const safeUrl = escapeHtml(invitationUrl);
+    const emailResult = await sendEmail({
+      to: [{ email, name: fullName }],
+      subject: 'Set up your CCNDM administrator account',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+          <h2 style="color: #1e3a8a; margin-top: 0;">Columban College</h2>
+          <h3 style="color: #3b82f6; margin-top: -8px; font-weight: normal;">Nursing Discipline Monitoring</h3>
+          <p style="color: #334155;">Hello <strong>${safeName}</strong>,</p>
+          <p style="color: #475569; line-height: 1.6;">You have been invited to administer the CCNDM portal. Use the secure link below within 24 hours to create your password.</p>
+          <p style="margin: 28px 0; text-align: center;">
+            <a href="${safeUrl}" style="background-color: #2563eb; color: #ffffff; padding: 13px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Create My Password</a>
+          </p>
+          <p style="color: #94a3b8; font-size: 12px;">If you were not expecting this invitation, contact the Nursing Discipline Office.</p>
+        </div>
+      `,
+    });
+
+    return res.status(201).json({
+      message: emailResult.sent
+        ? `An administrator invitation was sent to ${email}. The link expires in 24 hours.`
+        : 'The invitation was created, but email delivery is unavailable. Share the secure invitation link with the invited administrator.',
+      invitationUrl: emailResult.sent ? null : invitationUrl,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
 
 router.post('/students', requireAuth, requireRole('admin'), async (req, res, next) => {
   const studentId = String(req.body?.studentId || '').trim();

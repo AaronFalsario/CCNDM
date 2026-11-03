@@ -428,6 +428,22 @@ export default function AdminDashboard() {
     const [refreshing, setRefreshing] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(new Date());
 
+    useEffect(() => {
+        if (!drawerOpen) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        const closeOnEscape = (event) => {
+            if (event.key === 'Escape') setDrawerOpen(false);
+        };
+        document.body.style.overflow = 'hidden';
+        document.addEventListener('keydown', closeOnEscape);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [drawerOpen]);
+
     const [penaltySearch, setPenaltySearch] = useState('');
     const [penaltyCategoryFilter, setPenaltyCategoryFilter] = useState('');
     const [penaltyStatusFilter, setPenaltyStatusFilter] = useState('');
@@ -1568,7 +1584,7 @@ export default function AdminDashboard() {
 
     return (
         <div className={darkMode ? 'dashboard-dark' : ''}>
-            <div className="dashboard-canvas min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans text-[16px] leading-relaxed">
+            <div className="dashboard-canvas min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans text-base leading-relaxed">
                 <style>{`
             @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
             @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
@@ -1580,12 +1596,22 @@ export default function AdminDashboard() {
                     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] md:hidden" onClick={() => setDrawerOpen(false)} />
                 )}
 
-                <aside className={`group fixed top-0 left-0 bottom-0 w-[68px] hover:w-[220px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 z-[300] flex flex-col transition-all duration-300 ease-out overflow-hidden md:translate-x-0 ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                    <div className="flex flex-col items-center pt-4 pb-4 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+                <aside aria-label="Admin navigation" className={`group fixed top-0 left-0 bottom-0 w-72 max-w-[calc(100vw-1rem)] md:w-[68px] md:max-w-none md:hover:w-[220px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 z-[300] flex flex-col transition-all duration-300 ease-out overflow-hidden md:translate-x-0 ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                    <div className="flex md:hidden justify-end p-2">
+                        <button
+                            type="button"
+                            onClick={() => setDrawerOpen(false)}
+                            aria-label="Close navigation menu"
+                            className="h-11 w-11 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                            {I.close}
+                        </button>
+                    </div>
+                    <div className="flex flex-col items-start md:items-center px-5 md:px-0 pt-3 md:pt-4 pb-4 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
                         <div className="w-11 h-11 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-md">
                             {getInitials(adminName)}
                         </div>
-                        <div className="mt-3 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap px-3">
+                        <div className="w-full mt-3 text-left md:text-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap px-0 md:px-3">
                             <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate max-w-[180px]">{adminName}</div>
                             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{adminRole}</div>
                             <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 dark:bg-violet-900/40 dark:text-violet-300 border border-violet-100 dark:border-violet-800">
@@ -1608,15 +1634,15 @@ export default function AdminDashboard() {
                             <button
                                 key={item.tab}
                                 onClick={() => { setCurrentTab(item.tab); setDrawerOpen(false); }}
-                                className={`relative flex items-center w-full h-12 transition-colors duration-150 ${currentTab === item.tab
+                                className={`relative flex items-center w-full h-14 md:h-12 transition-colors duration-150 ${currentTab === item.tab
                                     ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
                                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'}`}
                             >
                                 {currentTab === item.tab && (
                                     <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 dark:bg-blue-400 rounded-r" />
                                 )}
-                                <span className="w-[68px] flex-shrink-0 flex items-center justify-center">{item.icon}</span>
-                                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm font-medium pr-4">{item.label}</span>
+                                <span className="w-14 md:w-[68px] flex-shrink-0 flex items-center justify-center">{item.icon}</span>
+                                <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm font-medium pr-4">{item.label}</span>
                             </button>
                         ))}
                     </nav>
@@ -1626,29 +1652,35 @@ export default function AdminDashboard() {
                             onClick={() => { setAdminForm({ name: adminName, email: admin.email || '' }); setShowEditProfile(true); }}
                             className="relative flex items-center w-full h-11 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors"
                         >
-                            <span className="w-[68px] flex-shrink-0 flex items-center justify-center">{I.edit}</span>
-                            <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm">Edit Profile</span>
+                            <span className="w-14 md:w-[68px] flex-shrink-0 flex items-center justify-center">{I.edit}</span>
+                            <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm">Edit Profile</span>
                         </button>
                         <button
                             onClick={() => { setPwForm({ current: '', newPw: '', confirm: '' }); setShowChangePassword(true); }}
                             className="relative flex items-center w-full h-11 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors"
                         >
-                            <span className="w-[68px] flex-shrink-0 flex items-center justify-center">{I.lock}</span>
-                            <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm">Change Password</span>
+                            <span className="w-14 md:w-[68px] flex-shrink-0 flex items-center justify-center">{I.lock}</span>
+                            <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm">Change Password</span>
                         </button>
                         <button
                             onClick={() => setShowLogoutConfirm(true)}
                             className="relative flex items-center w-full h-12 text-slate-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
                         >
-                            <span className="w-[68px] flex-shrink-0 flex items-center justify-center">{I.logout}</span>
-                            <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm">Logout</span>
+                            <span className="w-14 md:w-[68px] flex-shrink-0 flex items-center justify-center">{I.logout}</span>
+                            <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap text-sm">Logout</span>
                         </button>
                     </div>
                 </aside>
 
-                <header className="sticky top-0 z-[100] h-16/bg-white/90 dark:bg-slate-900/90  backdrop-blur border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-8 md:ml-[68px]">
+                <header className="sticky top-0 z-[100] h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-8 md:ml-[68px]">
                     <div className="flex items-center gap-3">
-                        <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={() => setDrawerOpen(true)}>
+                        <button
+                            type="button"
+                            className="md:hidden flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                            onClick={() => setDrawerOpen(true)}
+                            aria-label="Open navigation menu"
+                            aria-expanded={drawerOpen}
+                        >
                             <span className="w-5 h-0.5 bg-slate-700 dark:bg-slate-200 rounded" />
                             <span className="w-5 h-0.5 bg-slate-700 dark:bg-slate-200 rounded" />
                             <span className="w-5 h-0.5 bg-slate-700 dark:bg-slate-200 rounded" />
@@ -1882,6 +1914,7 @@ export default function AdminDashboard() {
                                     {[
                                         { icon: I.plus, label: 'Add Penalty', onClick: () => { resetPenaltyForm(); setShowAddPenalty(true); }, color: 'bg-blue-500' },
                                         { icon: I.plus, label: 'Create Student', onClick: () => navigate('/admin/students/register'), color: 'bg-emerald-500' },
+                                        { icon: I.shield, label: 'Invite Admin', onClick: () => navigate('/admin/admins/invite'), color: 'bg-indigo-500' },
                                         { icon: I.megaphone, label: 'Announcement', onClick: handleSendAnnouncement, color: 'bg-fuchsia-500' },
                                         { icon: I.doc, label: 'Review Appeals', onClick: () => setCurrentTab('appeals'), color: 'bg-violet-500' },
                                         { icon: I.chart, label: 'View Analytics', onClick: () => setCurrentTab('analytics'), color: 'bg-rose-500' },
@@ -1907,15 +1940,15 @@ export default function AdminDashboard() {
                                         <h3 className="text-base font-bold flex items-center gap-2">{I.trendUp} Violations — Last 7 Days</h3>
                                         <span className="text-xs text-slate-400">Live</span>
                                     </div>
-                                    <div className="flex items-end justify-between gap-2 h-40">
+                                    <div className="flex items-stretch justify-between gap-2 h-40">
                                         {stats.last7.map((d, i) => {
                                             const max = Math.max(...stats.last7.map(x => x.count), 1);
                                             const pct = (d.count / max) * 100;
                                             const isToday = i === 6;
                                             return (
-                                                <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                                                <div key={i} className="flex-1 min-w-0 grid grid-rows-[auto_minmax(0,1fr)_auto] items-end gap-2">
                                                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{d.count}</span>
-                                                    <div className="w-full h-full bg-slate-100 dark:bg-slate-700 rounded-t-lg relative overflow-hidden">
+                                                    <div className="w-full min-h-0 h-full bg-slate-100 dark:bg-slate-700 rounded-t-lg relative overflow-hidden">
                                                         <div
                                                             className={`absolute bottom-0 left-0 right-0 rounded-t-lg transition-all duration-700 ${isToday ? 'bg-gradient-to-t from-blue-600 to-blue-400' : 'bg-gradient-to-t from-blue-500/70 to-blue-400/60'}`}
                                                             style={{ height: `${pct}%` }}
