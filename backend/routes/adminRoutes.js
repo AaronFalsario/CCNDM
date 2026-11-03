@@ -46,9 +46,6 @@ router.post('/students', requireAuth, requireRole('admin'), async (req, res, nex
   if (!course || course.length > 120 || !yearLevel || yearLevel.length > 40) {
     return res.status(400).json({ message: 'Enter a valid course and year level.' });
   }
-  if (!brevoApi || !brevoSenderEmail) {
-    return res.status(503).json({ message: 'Student invitation email is not configured.' });
-  }
   const frontendUrl = process.env.FRONTEND_URL?.trim().replace(/\/+$/, '');
   if (!frontendUrl) {
     return res.status(503).json({ message: 'The student portal URL is not configured.' });
@@ -147,41 +144,50 @@ router.post('/students', requireAuth, requireRole('admin'), async (req, res, nex
     const invitationUrl = `${frontendUrl}/student/accept-invitation#token=${encodeURIComponent(invitationToken)}`;
     const safeName = escapeHtml(name);
     const safeUrl = escapeHtml(invitationUrl);
-    try {
-      await brevoApi.transactionalEmails.sendTransacEmail({
-        sender: {
-          name: process.env.BREVO_SENDER_NAME?.trim() || 'CCNDM',
-          email: brevoSenderEmail,
-        },
-        to: [{ email, name }],
-        subject: 'Set up your CCNDM student account',
-        htmlContent: `
-          <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
-            <h2 style="color: #1e3a8a; margin-top: 0;">Columban College</h2>
-            <h3 style="color: #3b82f6; margin-top: -8px; font-weight: normal;">Nursing Discipline Monitoring</h3>
-            <p style="color: #334155;">Hello <strong>${safeName}</strong>,</p>
-            <p style="color: #475569; line-height: 1.6;">The Nursing Discipline Office invited you to set up your student portal account. Use the secure link below within 24 hours to create your password.</p>
-            <p style="margin: 28px 0; text-align: center;">
-              <a href="${safeUrl}" style="background-color: #2563eb; color: #ffffff; padding: 13px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Create My Password</a>
-            </p>
-            <p style="color: #94a3b8; font-size: 12px;">If you were not expecting this invitation, contact the Nursing Discipline Office.</p>
-          </div>
-        `,
-      });
-    } catch (mailError) {
-      const { error: cleanupError } = await supabase
-        .from('student_invitation_tokens')
-        .delete()
-        .eq('token_hash', tokenHash);
-      if (cleanupError) return next(cleanupError);
-      console.error('[student invitation email]', mailError);
-      return res.status(502).json({
-        message: 'The student profile was saved, but the invitation email could not be sent. Please retry the invitation.',
-      });
+    const emailConfigured = Boolean(brevoApi && brevoSenderEmail);
+    if (emailConfigured) {
+      try {
+        await brevoApi.transactionalEmails.sendTransacEmail({
+          sender: {
+            name: process.env.BREVO_SENDER_NAME?.trim() || 'CCNDM',
+            email: brevoSenderEmail,
+          },
+          to: [{ email, name }],
+          subject: 'Set up your CCNDM student account',
+          htmlContent: `
+            <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+              <h2 style="color: #1e3a8a; margin-top: 0;">Columban College</h2>
+              <h3 style="color: #3b82f6; margin-top: -8px; font-weight: normal;">Nursing Discipline Monitoring</h3>
+              <p style="color: #334155;">Hello <strong>${safeName}</strong>,</p>
+              <p style="color: #475569; line-height: 1.6;">The Nursing Discipline Office invited you to set up your student portal account. Use the secure link below within 24 hours to create your password.</p>
+              <p style="margin: 28px 0; text-align: center;">
+                <a href="${safeUrl}" style="background-color: #2563eb; color: #ffffff; padding: 13px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Create My Password</a>
+              </p>
+              <p style="color: #94a3b8; font-size: 12px;">If you were not expecting this invitation, contact the Nursing Discipline Office.</p>
+            </div>
+          `,
+        });
+      } catch (mailError) {
+        const { error: cleanupError } = await supabase
+          .from('student_invitation_tokens')
+          .delete()
+          .eq('token_hash', tokenHash);
+        if (cleanupError) return next(cleanupError);
+        console.error('[student invitation email]', mailError);
+        return res.status(502).json({
+          message: 'The student profile was saved, but the invitation email could not be sent. Please retry the invitation.',
+          invitationUrl,
+        });
+      }
+    } else {
+      console.warn('[student invitation email] Brevo is not configured; returning invitation link for local testing.');
     }
 
     return res.status(201).json({
-      message: `An account setup invitation was sent to ${email}. The link expires in 24 hours.`,
+      message: emailConfigured
+        ? `An account setup invitation was sent to ${email}. The link expires in 24 hours.`
+        : `The student account was created. Email delivery is not configured in this environment, so the invitation link is available for manual use.`,
+      invitationUrl,
     });
   } catch (error) {
     return next(error);

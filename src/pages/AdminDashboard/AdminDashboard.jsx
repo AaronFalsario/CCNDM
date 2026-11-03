@@ -1881,7 +1881,7 @@ export default function AdminDashboard() {
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                                     {[
                                         { icon: I.plus, label: 'Add Penalty', onClick: () => { resetPenaltyForm(); setShowAddPenalty(true); }, color: 'bg-blue-500' },
-                                        { icon: I.plus, label: 'Add Student', onClick: () => { resetStudentForm(); setShowAddStudent(true); }, color: 'bg-emerald-500' },
+                                        { icon: I.plus, label: 'Create Student', onClick: () => navigate('/admin/students/register'), color: 'bg-emerald-500' },
                                         { icon: I.megaphone, label: 'Announcement', onClick: handleSendAnnouncement, color: 'bg-fuchsia-500' },
                                         { icon: I.doc, label: 'Review Appeals', onClick: () => setCurrentTab('appeals'), color: 'bg-violet-500' },
                                         { icon: I.chart, label: 'View Analytics', onClick: () => setCurrentTab('analytics'), color: 'bg-rose-500' },
@@ -2316,7 +2316,7 @@ export default function AdminDashboard() {
                                         {I.upload} Import CSV
                                     </button>
                                     <button
-                                        onClick={() => { resetStudentForm(); setShowAddStudent(true); }}
+                                        onClick={() => navigate('/admin/students/register')}
                                         className="flex items-center gap-2 px-4 py-2.5 bg-white text-blue-700 hover:bg-blue-50 text-base font-bold rounded-lg transition shadow-lg"
                                     >
                                         {I.plus} Add Student

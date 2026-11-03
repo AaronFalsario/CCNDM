@@ -31,6 +31,7 @@ export default function AdminStudentRegistration() {
       const result = await api.post('/api/admin/students', form);
       setCreatedAccount({
         message: result.message,
+        invitationUrl: result.invitationUrl || null,
       });
       setForm(initialForm);
     } catch (requestError) {
@@ -59,8 +60,18 @@ export default function AdminStudentRegistration() {
         <div className="space-y-6 px-7 py-8 sm:px-10">
           {createdAccount && (
             <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
-              <h2 className="font-bold">Invitation sent</h2>
+              <h2 className="font-bold">{createdAccount.invitationUrl ? 'Invitation ready' : 'Invitation sent'}</h2>
               <p className="mt-1 text-sm">{createdAccount.message}</p>
+              {createdAccount.invitationUrl && (
+                <a
+                  href={createdAccount.invitationUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex break-all rounded-lg bg-white px-3 py-2 text-xs font-medium text-blue-700 underline decoration-blue-700/50 underline-offset-2"
+                >
+                  {createdAccount.invitationUrl}
+                </a>
+              )}
               <p className="mt-3 text-xs">
                 The student will choose a password through the invitation link, then see their Student ID and password once before signing in.
               </p>
