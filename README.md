@@ -29,7 +29,7 @@ CCNDM is a React + Vite student discipline portal with a Node.js + Express API a
    npm install --prefix backend
    ```
 
-2. Configure the backend by copying `backend/.env.example` to `backend/.env`. Set the Supabase URL and **service-role key**, generate a strong `AUTH_JWT_SECRET` (at least 32 bytes), and set `FRONTEND_URL` and `CORS_ORIGINS` to the frontend origin. To send account invitations and password-reset emails, configure either Brevo (`BREVO_API_KEY` + verified `BREVO_SENDER_EMAIL`) or Gmail SMTP (`GMAIL_USER` + `GMAIL_APP_PASSWORD`). `BREVO_SENDER_NAME` and `GMAIL_FROM_NAME` are optional.
+2. Configure the backend by copying `backend/.env.example` to `backend/.env`. Set the Supabase URL and **service-role key**, generate a strong `AUTH_JWT_SECRET` (at least 32 bytes), and set `FRONTEND_URL` and `CORS_ORIGINS` to the frontend origin. To send account invitations and password-reset emails, configure Brevo's API (`BREVO_API_KEY` + verified `BREVO_SENDER_EMAIL`), Brevo SMTP (`BREVO_SMTP_LOGIN` + `BREVO_SMTP_KEY` + verified `BREVO_SENDER_EMAIL`), or Gmail SMTP (`GMAIL_USER` + `GMAIL_APP_PASSWORD`). In Brevo's SMTP settings, use the SMTP login and SMTP key—not the API key. `BREVO_SENDER_NAME` and `GMAIL_FROM_NAME` are optional.
 
 3. In development, the Vite server proxies `/api` requests to `http://localhost:5000`. Keep the frontend and backend running on localhost; no `VITE_API_URL` is needed for local development. This keeps the HttpOnly session cookie on the frontend's origin and allows it to survive page reloads.
 
@@ -44,7 +44,7 @@ CCNDM is a React + Vite student discipline portal with a Node.js + Express API a
    npm run dev:backend
    ```
 
-For Vercel, configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `AUTH_JWT_SECRET`, `FRONTEND_URL`, and either the Brevo values (`BREVO_API_KEY`, `BREVO_SENDER_EMAIL`) or the Gmail SMTP values (`GMAIL_USER`, `GMAIL_APP_PASSWORD`) in the project's environment variables. `AUTH_JWT_SECRET` must be at least 32 bytes. For other production deployments, set `VITE_API_URL` to the deployed backend URL, configure the exact frontend origin in the backend's `FRONTEND_URL`/`CORS_ORIGINS`, and serve both over HTTPS so the session cookie is secure.
+For Vercel, configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `AUTH_JWT_SECRET`, `FRONTEND_URL`, and one of the email provider configurations described above in the project's environment variables. For Brevo SMTP use `BREVO_SMTP_LOGIN`, `BREVO_SMTP_KEY`, and `BREVO_SENDER_EMAIL`. `AUTH_JWT_SECRET` must be at least 32 bytes. For other production deployments, set `VITE_API_URL` to the deployed backend URL, configure the exact frontend origin in the backend's `FRONTEND_URL`/`CORS_ORIGINS`, and serve both over HTTPS so the session cookie is secure.
 
 The additive `202611010001_preserve_data_relationships.sql` migration adds stable foreign-key columns and indexes for student-linked records without dropping tables or records. It backfills references that match current profiles and leaves unmatched historical rows in place with a null new reference. Apply this migration before deploying backend code that reads and writes the new relationship columns; keep a database backup and review the migration output first.
 
