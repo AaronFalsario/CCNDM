@@ -1,10 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Landing from './pages/Landing';
 import StudentLogin from './pages/StudentLogin/studentLogin';
-import ConfirmEmail from './pages/StudentLogin/ConfirmEmail';
 import StudentDashboard from './pages/StudentDashboard/StudentDashboard';
 import AdminLogin from './pages/AdminLogin/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard/AdminDashboard';
+import AdminStudentRegistration from './pages/AdminDashboard/AdminStudentRegistration';
 import ForgotPassword from './pages/ForgotPassword/ForgotPassword';
 import ResetPassword from './pages/ForgotPassword/ResetPassword';
 import ChangePassword from './pages/student/change-password';
@@ -16,15 +16,15 @@ export default function App() {
 
       {/* Student */}
       <Route path="/student/login" element={<StudentLogin />} />
-      <Route path="/student/confirm-email" element={<ConfirmEmail />} />
-      <Route path="/confirm-email" element={<ConfirmEmail />} />
       <Route path="/student/dashboard" element={<StudentDashboard />} />
       <Route path="/student/ForgotPassword" element={<ForgotPassword />} />
       <Route path="/student/ResetPassword" element={<ResetPassword />} />
+      <Route path="/student/accept-invitation" element={<ResetPassword />} />
       <Route path="/student/change-password" element={<ChangePassword />} />
 
       {/* Admin */}
       <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/students/register" element={<AdminStudentRegistration />} />
       <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
 
       {/* Fallback */}

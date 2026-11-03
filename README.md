@@ -10,7 +10,8 @@ CCNDM is a React + Vite student discipline portal with a Node.js + Express API a
 - Broadcast announcement read state is stored per student, so one student cannot mark an announcement read for everyone.
 - Student achievement awards are validated against the student's server-side records before they are stored.
 - The backend uses the Supabase service-role key. Keep it in `backend/.env` or the backend host's secret store only; never use a `VITE_` prefix for it.
-- Student registration is limited to existing profiles provisioned by an administrator. The registering student must provide the provisioned Student ID, name, and email.
+- Student accounts are created by authenticated administrators in the admin dashboard; there is no public student registration.
+- Each new account receives a one-time email invitation to set its password. Invitation links expire after 24 hours and can only be used once; students see their Student ID and password on their own screen before signing in.
 - Password reset emails require SMTP settings in the backend environment.
 
 ## Prerequisites
@@ -28,7 +29,7 @@ CCNDM is a React + Vite student discipline portal with a Node.js + Express API a
    npm install --prefix backend
    ```
 
-2. Configure the backend by copying `backend/.env.example` to `backend/.env`. Set the Supabase URL and **service-role key**, generate a strong `AUTH_JWT_SECRET` (at least 32 bytes), and set `FRONTEND_URL` and `CORS_ORIGINS` to the frontend origin. To send confirmation and password-reset emails, set `BREVO_API_KEY` and the verified sender address in `BREVO_SENDER_EMAIL`; `BREVO_SENDER_NAME` is optional.
+2. Configure the backend by copying `backend/.env.example` to `backend/.env`. Set the Supabase URL and **service-role key**, generate a strong `AUTH_JWT_SECRET` (at least 32 bytes), and set `FRONTEND_URL` and `CORS_ORIGINS` to the frontend origin. To send account invitations and password-reset emails, set `BREVO_API_KEY` and the verified sender address in `BREVO_SENDER_EMAIL`; `BREVO_SENDER_NAME` is optional.
 
 3. In development, the Vite server proxies `/api` requests to `http://localhost:5000`. Keep the frontend and backend running on localhost; no `VITE_API_URL` is needed for local development. This keeps the HttpOnly session cookie on the frontend's origin and allows it to survive page reloads.
 
@@ -46,6 +47,8 @@ CCNDM is a React + Vite student discipline portal with a Node.js + Express API a
 For Vercel, configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `AUTH_JWT_SECRET`, `FRONTEND_URL`, `BREVO_API_KEY`, and `BREVO_SENDER_EMAIL` in the project's environment variables. `AUTH_JWT_SECRET` must be at least 32 bytes and `BREVO_SENDER_EMAIL` must be verified with Brevo. For other production deployments, set `VITE_API_URL` to the deployed backend URL, configure the exact frontend origin in the backend's `FRONTEND_URL`/`CORS_ORIGINS`, and serve both over HTTPS so the session cookie is secure.
 
 The additive `202611010001_preserve_data_relationships.sql` migration adds stable foreign-key columns and indexes for student-linked records without dropping tables or records. It backfills references that match current profiles and leaves unmatched historical rows in place with a null new reference. Apply this migration before deploying backend code that reads and writes the new relationship columns; keep a database backup and review the migration output first.
+
+The `202611030001_admin_student_provisioning.sql` migration adds the student first-login password-change flag and the private invitation-token table. Apply it before deploying the account provisioning flow. In the admin dashboard, open **Students → Register Account** and provide the student's details. They will receive a one-time, 24-hour invitation email to choose a password.
 
 ## Build and lint
 

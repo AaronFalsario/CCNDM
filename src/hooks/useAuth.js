@@ -24,6 +24,9 @@ export function useAuth(role) {
           return;
         }
         setUser(currentUser);
+        if (role === 'student' && currentUser.must_change_password) {
+          navigate('/student/change-password', { replace: true });
+        }
       })
       .catch((error) => {
         if (!active) return;

@@ -47,7 +47,7 @@ export function requireAuth(req, res, next) {
 
   const table = claims.role === 'student' ? 'students' : 'admins';
   const select = claims.role === 'student'
-    ? 'id, student_id_number, name, email, course, year_level, status, session_version'
+    ? 'id, student_id_number, name, email, course, year_level, status, session_version, must_change_password'
     : 'id, admin_id, full_name, email, role, status, session_version';
 
   supabase
@@ -69,6 +69,21 @@ export function requireAuth(req, res, next) {
         id: String(data.id),
         role: claims.role,
       };
+      const allowedDuringPasswordChange = [
+        '/api/auth/me',
+        '/api/auth/change-password',
+        '/api/auth/logout',
+      ];
+      if (
+        claims.role === 'student'
+        && data.must_change_password
+        && !allowedDuringPasswordChange.includes(req.originalUrl.split('?')[0])
+      ) {
+        return res.status(403).json({
+          code: 'PASSWORD_CHANGE_REQUIRED',
+          message: 'Change your temporary password before accessing the portal.',
+        });
+      }
       return next();
     })
     .catch(next);

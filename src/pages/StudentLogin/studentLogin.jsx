@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../../lib/api';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
 import PasswordStrength from '../../components/PasswordStrength';
@@ -66,10 +66,7 @@ const Icon = {
 
 export default function StudentLogin() {
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
-    const [panel, setPanel] = useState(
-        () => searchParams.get('panel') === 'signup' ? 'signup' : 'login'
-    );
+    const [panel, setPanel] = useState('login');
     const [showPassword, setShowPassword] = useState({});
     const [loading, setLoading] = useState(false);
     const [redirecting, setRedirecting] = useState(false);
@@ -91,16 +88,6 @@ export default function StudentLogin() {
     const [signupPassword, setSignupPassword] = useState('');
     const [signupConfirm, setSignupConfirm] = useState('');
     const [signupSuccessData, setSignupSuccessData] = useState(null);
-    // Check if user came from email confirmation redirect
-    useEffect(() => {
-        if (searchParams.get('confirmed') === 'true') {
-            setLoginAlert({
-                type: 'success',
-                message: 'Your email has been successfully confirmed! You can now sign in.',
-            });
-        }
-    }, [searchParams]);
-
     /* DARK MODE FIX */
     useEffect(() => {
         document.documentElement.classList.remove('dark');
@@ -110,7 +97,12 @@ export default function StudentLogin() {
     useEffect(() => {
         api.get('/api/auth/me')
             .then(({ user }) => {
-                if (user?.account_type === 'student') navigate('/student/dashboard', { replace: true });
+                if (user?.account_type === 'student') {
+                    navigate(
+                        user.must_change_password ? '/student/change-password' : '/student/dashboard',
+                        { replace: true }
+                    );
+                }
             })
             .catch((error) => {
                 if (error.status !== 401) console.error('[check student session]', error);
@@ -132,7 +124,7 @@ export default function StudentLogin() {
 
         try {
             setLoading(true);
-            await api.post('/api/auth/student/login', {
+            const { user } = await api.post('/api/auth/student/login', {
                 studentId,
                 password,
                 remember: rememberMe,
@@ -142,7 +134,9 @@ export default function StudentLogin() {
             else localStorage.removeItem('rememberedStudentId');
 
             setRedirecting(true);
-            setTimeout(() => navigate('/student/dashboard'), 600);
+            setTimeout(() => navigate(
+                user?.must_change_password ? '/student/change-password' : '/student/dashboard'
+            ), 600);
         } catch (error) {
             setLoginAlert({
                 type: 'error',
@@ -356,8 +350,7 @@ export default function StudentLogin() {
                                     </button>
 
                                     <p className="text-center text-[13.5px] text-slate-500 mb-6">
-                                        Don't have an account?{' '}
-                                        <button type="button" onClick={() => { setSignupSuccessData(null); setPanel('signup'); }} className="text-blue-600 font-semibold cursor-pointer hover:underline bg-transparent border-none p-0">Sign Up</button>
+                                        Need an account? Contact your administrator.
                                     </p>
 
                                     <p className="text-[11.5px] text-slate-400 leading-relaxed text-center">

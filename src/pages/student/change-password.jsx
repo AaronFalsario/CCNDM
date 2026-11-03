@@ -63,6 +63,7 @@ export default function ChangePassword() {
             setNewPassword('');
             setConfirmPassword('');
             setSuccess('Your password has been changed successfully.');
+            setTimeout(() => navigate('/student/dashboard', { replace: true }), 700);
         } catch (err) {
             setError(err?.message || 'Could not change your password. Please try again.');
         } finally {

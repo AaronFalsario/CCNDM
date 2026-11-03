@@ -43,6 +43,7 @@ function safeProfile(profile, role) {
       course: profile.course || '',
       year_level: profile.year_level || '',
       status: profile.status || 'active',
+      must_change_password: Boolean(profile.must_change_password),
       role,
       account_type: role,
     };
@@ -138,10 +139,6 @@ router.post('/student/login', loginLimiter, async (req, res, next) => {
     const matches = await passwordMatches(password, profile.password);
     if (!matches) return respondWithError(res, 401, 'Invalid Student ID or password.');
 
-    if (!profile.email_confirmed) {
-      return respondWithError(res, 403, 'Please confirm your email address before logging in. Check your inbox for the link.');
-    }
-
     if (!/^\$2[aby]\$\d{2}\$/.test(profile.password)) {
       const passwordHash = await bcrypt.hash(password, PASSWORD_ROUNDS);
       const { error: hashError } = await supabase
@@ -216,6 +213,100 @@ router.post('/admin/login', loginLimiter, async (req, res, next) => {
   } catch (error) {
     return next(error);
   }
+});
+
+router.post('/student/accept-invitation', loginLimiter, async (req, res, next) => {
+  const token = req.body?.token;
+  const password = req.body?.password;
+  if (typeof token !== 'string' || token.length < 32 || token.length > 128) {
+    return respondWithError(res, 400, 'This invitation link is invalid or expired.');
+  }
+  if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
+    return respondWithError(res, 400, 'Password must be between 8 and 128 characters.');
+  }
+  if (!supabase) return respondWithError(res, 503, 'Authentication service is not configured.');
+
+  const tokenHash = hashResetToken(token);
+  try {
+    const now = new Date().toISOString();
+    const { data: invitation, error: invitationError } = await supabase
+      .from('student_invitation_tokens')
+      .select('id, student_profile_id')
+      .eq('token_hash', tokenHash)
+      .is('used_at', null)
+      .gt('expires_at', now)
+      .maybeSingle();
+    if (invitationError) return next(invitationError);
+    if (!invitation) return respondWithError(res, 400, 'This invitation link is invalid or expired.');
+
+    const { data: profile, error: profileError } = await supabase
+      .from('students')
+      .select('id, student_id_number, status, password, must_change_password')
+      .eq('id', invitation.student_profile_id)
+      .maybeSingle();
+    if (profileError) return next(profileError);
+    if (
+      !profile
+      || isInactive(profile)
+      || profile.password
+      || !profile.must_change_password
+    ) {
+      return respondWithError(res, 400, 'This invitation link is invalid or expired.');
+    }
+
+    const { data: claimed, error: claimError } = await supabase
+      .from('student_invitation_tokens')
+      .update({ used_at: now })
+      .eq('id', invitation.id)
+      .is('used_at', null)
+      .select('id')
+      .maybeSingle();
+    if (claimError) return next(claimError);
+    if (!claimed) return respondWithError(res, 400, 'This invitation link is invalid or expired.');
+
+    const passwordHash = await bcrypt.hash(password, PASSWORD_ROUNDS);
+    const { data: updated, error: updateError } = await supabase
+      .from('students')
+      .update({
+        password: passwordHash,
+        email_confirmed: true,
+        must_change_password: false,
+        session_version: randomUUID(),
+        updated_at: now,
+      })
+      .eq('id', profile.id)
+      .is('password', null)
+      .eq('must_change_password', true)
+      .select('student_id_number')
+      .maybeSingle();
+
+    if (updateError || !updated) {
+      const { error: releaseError } = await supabase
+        .from('student_invitation_tokens')
+        .update({ used_at: null })
+        .eq('id', invitation.id)
+        .eq('used_at', now);
+      if (releaseError) return next(releaseError);
+      if (updateError) return next(updateError);
+      return respondWithError(res, 400, 'This invitation link is invalid or expired.');
+    }
+
+    return res.json({ studentId: updated.student_id_number });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/student/register', loginLimiter, (req, res) => {
+  return respondWithError(res, 410, 'Student accounts must be created by an administrator.');
+});
+
+router.all('/student/confirm-email', (req, res) => {
+  return respondWithError(res, 410, 'Email confirmation is no longer used for student accounts.');
+});
+
+router.post('/student/resend-confirmation', loginLimiter, (req, res) => {
+  return respondWithError(res, 410, 'Email confirmation is no longer used for student accounts.');
 });
 
 router.post('/student/register', loginLimiter, async (req, res, next) => {
@@ -597,9 +688,11 @@ router.post('/reset-password', loginLimiter, async (req, res, next) => {
     if (accountError) return next(accountError);
     if (!account) return respondWithError(res, 400, 'The account could not be found.');
 
+    const resetValues = { [passwordField]: passwordHash, session_version: randomUUID() };
+    if (role === 'student') resetValues.must_change_password = false;
     const { data: updated, error: updateError } = await supabase
       .from(table)
-      .update({ [passwordField]: passwordHash, session_version: randomUUID() })
+      .update(resetValues)
       .eq('id', reset.account_id)
       .select('id')
       .maybeSingle();
@@ -652,9 +745,11 @@ router.post('/change-password', requireAuth, async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(newPassword, PASSWORD_ROUNDS);
     const sessionVersion = randomUUID();
+    const passwordUpdates = { [field]: passwordHash, session_version: sessionVersion };
+    if (req.user.role === 'student') passwordUpdates.must_change_password = false;
     const { error: updateError } = await supabase
       .from(table)
-      .update({ [field]: passwordHash, session_version: sessionVersion })
+      .update(passwordUpdates)
       .eq('id', req.user.id);
     if (updateError) return next(updateError);
 

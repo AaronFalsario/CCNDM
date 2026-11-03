@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import api from '../../lib/api';
 import PasswordStrength from '../../components/PasswordStrength';
 
@@ -13,16 +13,21 @@ const I = {
 
 export default function ResetPassword() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams] = useSearchParams();
     const [password, setPassword] = useState('');
     const [confirm, setConfirm] = useState('');
     const [showPw, setShowPw] = useState(false);
     const [loading, setLoading] = useState(false);
     const [done, setDone] = useState(false);
+    const [invitationAccount, setInvitationAccount] = useState(null);
     const [error, setError] = useState('');
-    const token = searchParams.get('token') || '';
-    const role = searchParams.get('role') || 'student';
-    const ready = Boolean(token) && ['student', 'admin'].includes(role);
+    const invitationMode = location.pathname === '/student/accept-invitation';
+    const token = invitationMode
+        ? new URLSearchParams(location.hash.slice(1)).get('token') || ''
+        : searchParams.get('token') || '';
+    const role = invitationMode ? 'student' : searchParams.get('role') || 'student';
+    const ready = Boolean(token) && (invitationMode || ['student', 'admin'].includes(role));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -33,6 +38,16 @@ export default function ResetPassword() {
 
         setLoading(true);
         try {
+            if (invitationMode) {
+                const { studentId } = await api.post('/api/auth/student/accept-invitation', {
+                    token,
+                    password,
+                });
+                setInvitationAccount({ studentId, password });
+                setDone(true);
+                return;
+            }
+
             await api.post('/api/auth/reset-password', {
                 role,
                 token,
@@ -58,10 +73,16 @@ export default function ResetPassword() {
                     <div className="flex flex-col items-center text-center mb-6">
                         <img src="/CC.png" alt="CCNDM" className="w-14 h-14 object-contain rounded-xl bg-blue-50 p-2 mb-3" />
                         <h1 className="text-xl font-bold text-slate-800">
-                            {done ? 'Password Updated' : 'Set New Password'}
+                            {done && invitationMode ? 'Your Account Is Ready' : done ? 'Password Updated' : invitationMode ? 'Create Your Password' : 'Set New Password'}
                         </h1>
                         <p className="text-sm text-slate-500 mt-1.5">
-                            {done ? 'Redirecting you to sign in...' : 'Choose a new password for your account.'}
+                            {done && invitationMode
+                                ? 'Keep these sign-in details, then continue to the student portal.'
+                                : done
+                                    ? 'Redirecting you to sign in...'
+                                    : invitationMode
+                                        ? 'Choose a password for your student account.'
+                                        : 'Choose a new password for your account.'}
                         </p>
                     </div>
 
@@ -70,12 +91,40 @@ export default function ResetPassword() {
                             <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
                                 {I.checkCircle}
                             </div>
-                            <p className="text-xs text-slate-500 text-center">
-                                Your password has been changed. You'll be redirected shortly.
-                            </p>
-                            <Link to="/student/login" className="text-xs font-semibold text-blue-600 hover:underline">
-                                Go to Sign In now
-                            </Link>
+                            {invitationAccount ? (
+                                <div className="w-full space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                                    <p className="text-sm font-semibold text-emerald-900">Your sign-in details (shown only on this screen)</p>
+                                    <div>
+                                        <p className="text-xs font-medium text-emerald-800">Student ID</p>
+                                        <code className="mt-1 block rounded-lg bg-white px-3 py-2 font-mono text-base text-slate-900">
+                                            {invitationAccount.studentId}
+                                        </code>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-emerald-800">Password</p>
+                                        <code className="mt-1 block break-all rounded-lg bg-white px-3 py-2 font-mono text-base text-slate-900">
+                                            {invitationAccount.password}
+                                        </code>
+                                    </div>
+                                    <p className="text-xs text-emerald-800">Save these details somewhere private. Your password is never sent back by the server.</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate('/student/login', { replace: true })}
+                                        className="w-full rounded-lg bg-blue-600 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
+                                    >
+                                        Continue to Student Login
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <p className="text-xs text-slate-500 text-center">
+                                        Your password has been changed. You'll be redirected shortly.
+                                    </p>
+                                    <Link to={role === 'admin' ? '/admin/login' : '/student/login'} className="text-xs font-semibold text-blue-600 hover:underline">
+                                        Go to Sign In now
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     ) : !ready ? (
                         <div className="space-y-5">
@@ -151,7 +200,7 @@ export default function ResetPassword() {
                                 disabled={loading}
                                 className="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-bold transition shadow-lg shadow-blue-500/20"
                             >
-                                {loading ? 'Updating...' : 'Update Password'}
+                                {loading ? 'Saving...' : invitationMode ? 'Create Account' : 'Update Password'}
                             </button>
                         </form>
                     )}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import Toast from '../../components/Toast';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
@@ -402,6 +403,7 @@ function Modal({ open, onClose, title, icon, children, footer, maxWidth = 'max-w
 //MAIN
 export default function AdminDashboard() {
     const { user: admin, setUser: setAdmin, logout } = useAuth('admin');
+    const navigate = useNavigate();
 
     const [currentTab, setCurrentTab] = useState(() => {
         return sessionStorage.getItem('admin_current_tab') || 'dashboard';
@@ -2318,6 +2320,12 @@ export default function AdminDashboard() {
                                         className="flex items-center gap-2 px-4 py-2.5 bg-white text-blue-700 hover:bg-blue-50 text-base font-bold rounded-lg transition shadow-lg"
                                     >
                                         {I.plus} Add Student
+                                    </button>
+                                    <button
+                                        onClick={() => navigate('/admin/students/register')}
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-white text-blue-700 hover:bg-blue-50 text-base font-bold rounded-lg transition shadow-lg"
+                                    >
+                                        {I.plus} Register Account
                                     </button>
                                 </div>
                             </div>
