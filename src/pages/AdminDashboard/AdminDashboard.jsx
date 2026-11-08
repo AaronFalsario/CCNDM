@@ -538,34 +538,37 @@ export default function AdminDashboard() {
         return () => clearInterval(id);
     }, []);
 
-    const loadStudents = useCallback(async () => {
+    const loadStudents = useCallback(async (throwOnError = false) => {
         try {
             const data = await api.get('/api/students');
             setStudents(data || []);
         } catch (e) {
             console.error('[loadStudents]', e);
+            if (throwOnError) throw e;
             setStudents([]);
         }
     }, []);
-    const loadPenalties = useCallback(async () => {
+    const loadPenalties = useCallback(async (throwOnError = false) => {
         try {
             const data = await api.get('/api/penalties');
             setPenalties(data || []);
         } catch (e) {
             console.error('[loadPenalties]', e);
+            if (throwOnError) throw e;
             setPenalties([]);
         }
     }, []);
-    const loadAppeals = useCallback(async () => {
+    const loadAppeals = useCallback(async (throwOnError = false) => {
         try {
             const data = await api.get('/api/appeals');
             setAppeals(data || []);
         } catch (e) {
             console.error('[loadAppeals]', e);
+            if (throwOnError) throw e;
             setAppeals([]);
         }
     }, []);
-    const loadActivity = useCallback(async () => {
+    const loadActivity = useCallback(async (throwOnError = false) => {
         try {
             const data = await api.data.list('activity_log', {
                 order: 'created_at',
@@ -575,10 +578,11 @@ export default function AdminDashboard() {
             setActivityLog(data || []);
         } catch (e) {
             console.error('[loadActivity]', e);
+            if (throwOnError) throw e;
             setActivityLog([]);
         }
     }, []);
-    const loadAnnouncements = useCallback(async () => {
+    const loadAnnouncements = useCallback(async (throwOnError = false) => {
         try {
             const data = await api.data.list('notifications', {
                 order: 'created_at',
@@ -592,6 +596,7 @@ export default function AdminDashboard() {
             setAnnouncements(list);
         } catch (e) {
             console.error('[loadAnnouncements]', e);
+            if (throwOnError) throw e;
             setAnnouncements([]);
         }
     }, []);
@@ -831,13 +836,15 @@ export default function AdminDashboard() {
         if (refreshing) return;
         setRefreshing(true);
         try {
-            await Promise.all([
-                loadStudents(),
-                loadPenalties(),
-                loadAppeals(),
-                loadActivity(),
-                loadAnnouncements(),
+            const results = await Promise.allSettled([
+                loadStudents(true),
+                loadPenalties(true),
+                loadAppeals(true),
+                loadActivity(true),
+                loadAnnouncements(true),
             ]);
+            const failedLoad = results.find((result) => result.status === 'rejected');
+            if (failedLoad) throw failedLoad.reason;
             setLastUpdated(new Date());
             showToast('success', 'Refreshed', 'All data has been updated');
         } catch (err) {
@@ -1668,10 +1675,13 @@ export default function AdminDashboard() {
                             {I.upload} Import
                         </button>
                         <button
+                            type="button"
                             onClick={refreshAll}
                             disabled={refreshing}
-                            className="p-2.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-                            title="Refresh data"
+                            aria-label={refreshing ? 'Refreshing data' : 'Refresh data'}
+                            aria-busy={refreshing}
+                            className="p-2.5 translate-y-1 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                            title={refreshing ? 'Refreshing data' : 'Refresh data'}
                         >
                             <span className={refreshing ? 'animate-spin inline-block' : 'inline-block'}>
                                 {I.refresh}
@@ -1727,8 +1737,10 @@ export default function AdminDashboard() {
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <button
+                                        type="button"
                                         onClick={refreshAll}
                                         disabled={refreshing}
+                                        aria-busy={refreshing}
                                         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-60 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200 text-sm font-semibold transition"
                                     >
                                         <span className={refreshing ? 'animate-spin' : ''}>

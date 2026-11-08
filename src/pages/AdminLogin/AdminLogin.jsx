@@ -284,7 +284,7 @@ export default function AdminLogin() {
                                                 type="text"
                                                 value={username}
                                                 onChange={(e) => setUsername(e.target.value)}
-                                                placeholder="ADMIN-001 or admin@ccndm.edu.ph"
+                                                placeholder="ADMIN001 or admin@ccndm.edu.ph"
                                                 autoComplete="username"
                                                 className="flex-1 bg-transparent text-[13px] sm:text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1"
                                             />
