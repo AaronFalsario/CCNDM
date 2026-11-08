@@ -193,7 +193,7 @@ export default function AdminLogin() {
     if (redirecting) return <DashboardSkeleton variant="admin" />;
 
     return (
-        <div className="min-h-screen w-full bg-[#EEF3FF] flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans overflow-hidden">
+        <div className="min-h-screen w-full bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-3 sm:p-6 lg:p-8 font-sans md:overflow-hidden">
             <style>{`
         @keyframes slideUpCard { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideInLeft { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: translateX(0); } }
@@ -214,10 +214,10 @@ export default function AdminLogin() {
       `}</style>
 
             <div className="w-full max-w-[1200px] anim-card">
-                <div className="bg-white rounded-3xl shadow-[0_20px_60px_rgba(37,99,235,0.15)] overflow-hidden flex flex-col md:flex-row min-h-[640px]">
+                <div className="bg-white rounded-2xl md:rounded-3xl shadow-[0_16px_50px_rgba(37,99,235,0.12)] md:shadow-[0_20px_60px_rgba(37,99,235,0.15)] overflow-hidden flex flex-col md:flex-row min-h-[calc(100dvh-1.5rem)] md:min-h-[640px]">
 
                     {/*LEFT PANEL*/}
-                    <div className="w-full md:w-[45%] relative flex flex-col items-center justify-center p-8 sm:p-12 md:p-14 text-center bg-gradient-to-br from-[#2563EB] via-[#1D4ED8] to-[#1741B0] border-b md:border-b-0 md:border-r border-slate-100 anim-left overflow-hidden">
+                    <div className="hidden md:flex md:w-[45%] relative flex-col items-center justify-center p-8 sm:p-12 md:p-14 text-center bg-gradient-to-br from-[#2563EB] via-[#1D4ED8] to-[#1741B0] border-b md:border-b-0 md:border-r border-slate-100 anim-left overflow-hidden">
                         <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-white/10 blur-3xl pointer-events-none" />
                         <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-white/5 blur-3xl pointer-events-none" />
 
@@ -243,21 +243,29 @@ export default function AdminLogin() {
                     </div>
 
                     {/*RIGHT PANEL*/}
-                    <div className="w-full md:w-[55%] p-8 sm:p-10 md:p-14 flex flex-col justify-center anim-right">
+                    <div className="w-full md:w-[55%] flex-1 p-4 sm:p-10 md:p-14 flex flex-col justify-center anim-right">
                         <div className="w-full max-w-[440px] mx-auto">
+                            <div className="md:hidden flex items-center gap-3 mb-5 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-3">
+                                <img src="/CC.png" alt="Columban College Logo" className="h-12 w-12 shrink-0 object-contain" />
+                                <div className="min-w-0">
+                                    <p className="text-xs font-extrabold tracking-wide text-slate-800">COLUMBAN COLLEGE</p>
+                                    <p className="mt-0.5 text-[10px] leading-snug text-slate-500">Nursing Discipline Monitoring</p>
+                                    <span className="mt-1 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-bold tracking-wider text-blue-700">ADMIN PORTAL · V1.0.0</span>
+                                </div>
+                            </div>
 
                             <form onSubmit={handleLogin} className="anim-panel">
-                                <h1 className="text-2xl sm:text-[28px] font-extrabold text-slate-800 text-center mb-2">Admin Login</h1>
-                                <p className="text-sm text-slate-500 text-center mb-5">Sign in to access the admin dashboard</p>
+                                <h1 className="text-xl sm:text-[28px] font-extrabold text-slate-800 text-center mb-1 sm:mb-2">Admin Login</h1>
+                                <p className="text-xs sm:text-sm text-slate-500 text-center mb-4 sm:mb-5">Sign in to access the admin dashboard</p>
 
-                                <div className="flex justify-center mb-5">
+                                <div className="flex justify-center mb-4 sm:mb-5">
                                     <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-50 text-blue-600 text-[11.5px] font-bold rounded-full tracking-wide">
                                         {Icon.shield}
                                         ADMIN PORTAL
                                     </span>
                                 </div>
 
-                                <div className="flex items-start gap-2.5 p-3 mb-7 bg-amber-50 border border-amber-200 rounded-xl">
+                                <div className="flex items-start gap-2.5 p-2.5 sm:p-3 mb-5 sm:mb-7 bg-amber-50 border border-amber-200 rounded-xl">
                                     <span className="text-amber-500 flex-shrink-0 mt-0.5">{Icon.warning}</span>
                                     <div>
                                         <div className="text-[12.5px] font-bold text-amber-800 mb-0.5">Restricted Access</div>
@@ -267,7 +275,7 @@ export default function AdminLogin() {
                                     </div>
                                 </div>
 
-                                <div className="relative mb-5">
+                                <div className="relative mb-3 sm:mb-5">
                                     <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
                                         <legend className="text-[11px] text-slate-500 px-1 font-semibold">Admin ID or Email <span className="text-red-500">*</span></legend>
                                         <div className="flex items-center">
@@ -278,13 +286,13 @@ export default function AdminLogin() {
                                                 onChange={(e) => setUsername(e.target.value)}
                                                 placeholder="ADMIN-001 or admin@ccndm.edu.ph"
                                                 autoComplete="username"
-                                                className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5"
+                                                className="flex-1 bg-transparent text-[13px] sm:text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1"
                                             />
                                         </div>
                                     </fieldset>
                                 </div>
 
-                                <div className="relative mb-5">
+                                <div className="relative mb-3 sm:mb-5">
                                     <fieldset className="relative border-[1.5px] border-slate-300 rounded-xl px-3 pt-1 pb-1.5 transition-colors focus-within:border-blue-500">
                                         <legend className="text-[11px] text-slate-500 px-1 font-semibold">Password <span className="text-red-500">*</span></legend>
                                         <div className="flex items-center">
@@ -295,7 +303,7 @@ export default function AdminLogin() {
                                                 onChange={(e) => setPassword(e.target.value)}
                                                 placeholder="Enter your password"
                                                 autoComplete="current-password"
-                                                className="flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1.5"
+                                                className="flex-1 bg-transparent text-[13px] sm:text-[15px] text-slate-800 outline-none placeholder:text-slate-400 py-1"
                                             />
                                             <button
                                                 type="button"
@@ -308,8 +316,8 @@ export default function AdminLogin() {
                                     </fieldset>
                                 </div>
 
-                                <div className="flex items-center justify-between mb-7">
-                                    <label className="flex items-center gap-2 text-[13px] text-slate-500 cursor-pointer">
+                                <div className="flex items-center justify-between mb-5 sm:mb-7">
+                                    <label className="flex items-center gap-2 text-xs sm:text-[13px] text-slate-500 cursor-pointer">
                                         <input
                                             type="checkbox"
                                             checked={rememberMe}
@@ -320,7 +328,7 @@ export default function AdminLogin() {
                                     </label>
                                     <a
                                         href="#"
-                                        className="text-[13px] text-blue-600 font-semibold hover:underline"
+                                        className="text-xs sm:text-[13px] text-blue-600 font-semibold hover:underline"
                                         onClick={(e) => {
                                             e.preventDefault();
                                             setShowForgot(true);
@@ -333,15 +341,28 @@ export default function AdminLogin() {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed text-white text-[15px] font-bold rounded-xl mb-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center gap-2"
+                                    className="w-full py-3 sm:py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed text-white text-sm sm:text-[15px] font-bold rounded-xl mb-4 sm:mb-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center gap-2"
                                 >
                                     {loading ? 'Logging in...' : (<>Login {Icon.arrowRight}</>)}
                                 </button>
 
-                                <p className="text-[11.5px] text-slate-400 leading-relaxed text-center">
+                                <p className="text-[10px] sm:text-[11.5px] text-slate-400 leading-relaxed text-center">
                                     By clicking the login button, you recognize the authority of Columban College to process your personal and sensitive information, pursuant to the Columban College General Privacy Notice and applicable laws.
                                 </p>
                             </form>
+                            <section className="md:hidden mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-600">Admin tools</h2>
+                                <ul className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
+                                    {features.map((feature) => (
+                                        <li key={feature} className="flex items-start gap-2 text-[11px] leading-snug text-slate-600">
+                                            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                                                <span className="scale-[0.65]">{Icon.check}</span>
+                                            </span>
+                                            {feature}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </section>
                         </div>
                     </div>
                 </div>

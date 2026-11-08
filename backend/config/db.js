@@ -25,8 +25,8 @@ export const supabase =
 export const isSupabaseConfigured = Boolean(supabase);
 
 export const getDbStatus = () => ({
-  connected: isSupabaseConfigured,
+  configured: isSupabaseConfigured,
   message: isSupabaseConfigured
-    ? 'Supabase is connected.'
+    ? 'Supabase credentials are configured.'
     : 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in the backend environment.',
 });

@@ -215,16 +215,16 @@ export default function Landing() {
       `}</style>
 
             {/* ===== NAVBAR ===== */}
-            <nav className={`nav-in fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm py-3' : 'bg-white/80 backdrop-blur-sm py-5'}`}>
-                <div className="max-w-7xl mx-auto flex items-center justify-between px-5 sm:px-8">
+            <nav className={`nav-in fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm py-2.5 sm:py-3' : 'bg-white/80 backdrop-blur-sm py-3 sm:py-5'}`}>
+                <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-8">
                     {/* Logo */}
-                    <a href="/" className="flex items-center gap-3 no-underline group">
+                    <a href="/" className="flex items-center gap-2.5 sm:gap-3 no-underline group">
                         <div>
-                            <img src="/CC.png" alt="CCNDM logo" className="w-10 h-10 object-contain" />
+                            <img src="/CC.png" alt="CCNDM logo" className="w-9 h-9 sm:w-10 sm:h-10 object-contain" />
                         </div>
-                        <div className="leading-none hidden sm:block">
-                            <div className="text-base font-bold text-slate-900 tracking-tight">CCNDM</div>
-                            <div className="text-[10px] font-medium text-slate-500 tracking-[0.15em] uppercase mt-0.5">Nursing Discipline</div>
+                        <div className="leading-none">
+                            <div className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">CCNDM</div>
+                            <div className="text-[9px] sm:text-[10px] font-medium text-slate-500 tracking-[0.1em] sm:tracking-[0.15em] uppercase mt-0.5">Nursing Discipline</div>
                         </div>
                     </a>
 
@@ -277,7 +277,7 @@ export default function Landing() {
                     onClick={() => setMobileOpen(false)}
                     aria-hidden="true"
                 />
-                <div className={`absolute top-0 right-0 h-full w-[80%] max-w-sm bg-white border-l border-slate-200 p-6 pt-24 transition-transform duration-300 shadow-2xl ${mobileOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className={`absolute top-0 right-0 h-full w-[84%] max-w-sm bg-white border-l border-slate-200 p-5 sm:p-6 pt-20 sm:pt-24 transition-transform duration-300 shadow-2xl ${mobileOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                     <div className="flex flex-col gap-1">
                         {NAV_LINKS.map((item) => (
                             <a
@@ -305,15 +305,15 @@ export default function Landing() {
             </div>
 
             {/* ===== HERO ===== */}
-            <section className="relative z-10 pt-32 sm:pt-40 pb-20 sm:pb-24 px-5 sm:px-8 bg-gradient-to-b from-blue-50/50 to-white">
+            <section className="relative z-10 pt-24 sm:pt-40 pb-12 sm:pb-24 px-4 sm:px-8 bg-gradient-to-b from-blue-50/70 via-white to-white">
                 <div className="absolute inset-0 grid-bg pointer-events-none" />
 
                 <div className="relative max-w-7xl mx-auto">
-                    <div className="grid lg:grid-cols-12 gap-12 items-center">
+                    <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 
                         {/* LEFT: copy */}
                         <div className="lg:col-span-6 text-center lg:text-left">
-                            <div className="fade-up inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-blue-200 bg-blue-50 mb-6">
+                            <div className="fade-up inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 mb-5 sm:mb-6">
                                 <span className="relative flex h-2 w-2">
                                     <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
@@ -321,12 +321,12 @@ export default function Landing() {
                                 <span className="text-xs font-semibold text-blue-700 tracking-wide">System Online · v1.0.0</span>
                             </div>
 
-                            <h1 className="fade-up-2 text-4xl sm:text-5xl lg:text-[64px] font-extrabold text-slate-900 leading-[1.05] tracking-tight mb-6">
+                            <h1 className="fade-up-2 text-[clamp(2rem,9vw,2.75rem)] sm:text-5xl lg:text-[64px] font-extrabold text-slate-900 leading-[1.05] tracking-tight mb-5 sm:mb-6">
                                 Nursing Discipline
                                 <span className="block text-gradient mt-1">Monitoring System</span>
                             </h1>
 
-                            <p className="fade-up-3 text-base sm:text-lg text-slate-600 leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
+                            <p className="fade-up-3 text-sm sm:text-lg text-slate-600 leading-relaxed mb-6 sm:mb-8 max-w-xl mx-auto lg:mx-0">
                                 A centralized digital platform for Columban College nursing students to
                                 track community service hours, monitor disciplinary records, and stay
                                 on top of every requirement.
@@ -336,7 +336,7 @@ export default function Landing() {
                                 <a
                                     href="#"
                                     onClick={handlePortalAccess}
-                                    className="group inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-7 py-4 rounded-xl font-bold text-base shadow-lg shadow-slate-900/10 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer w-full sm:w-auto justify-center"
+                                    className="group inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 sm:px-7 py-3.5 sm:py-4 rounded-xl font-bold text-sm sm:text-base shadow-lg shadow-slate-900/10 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer w-full sm:w-auto justify-center"
                                 >
                                     Get Started
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 group-hover:translate-x-1 transition-transform">
@@ -346,7 +346,7 @@ export default function Landing() {
                                 </a>
                                 <a
                                     href="#features"
-                                    className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-700 px-7 py-4 rounded-xl font-semibold text-base transition-all duration-200 w-full sm:w-auto justify-center"
+                                    className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-700 px-6 sm:px-7 py-3.5 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-200 w-full sm:w-auto justify-center"
                                 >
                                     Explore Features
                                 </a>
@@ -357,13 +357,13 @@ export default function Landing() {
                         <div className="lg:col-span-6 relative fade-up-3">
                             <div className="relative max-w-md mx-auto lg:max-w-none">
                                 {/* Soft shadow */}
-                                <div className="absolute -inset-6 bg-gradient-to-tr from-blue-200/40 via-indigo-100/30 to-cyan-100/40 rounded-[40px] blur-3xl" />
+                                <div className="absolute -inset-3 sm:-inset-6 bg-gradient-to-tr from-blue-200/40 via-indigo-100/30 to-cyan-100/40 rounded-[32px] sm:rounded-[40px] blur-3xl" />
 
                                 {/* App window */}
                                 <div className="relative">
-                                    <div className="bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(15,23,42,0.2)] border border-slate-200 overflow-hidden">
+                                    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-[0_20px_60px_-15px_rgba(15,23,42,0.2)] border border-slate-200 overflow-hidden">
                                         {/* Window bar */}
-                                        <div className="flex items-center gap-1.5 px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
+                                        <div className="flex items-center gap-1.5 px-4 sm:px-5 py-3 border-b border-slate-100 bg-slate-50/50">
                                             <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
                                             <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
                                             <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
@@ -371,9 +371,9 @@ export default function Landing() {
                                         </div>
 
                                         {/* Content */}
-                                        <div className="p-5 space-y-3">
+                                        <div className="p-3 sm:p-5 space-y-3">
                                             {/* Progress card */}
-                                            <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-5 relative overflow-hidden">
+                                            <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-4 sm:p-5 relative overflow-hidden">
                                                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
                                                 <div className="relative">
                                                     <div className="text-[10px] text-blue-100 font-medium uppercase tracking-wider">Progress</div>
@@ -427,14 +427,14 @@ export default function Landing() {
             </section>
 
             {/* ===== FEATURES ===== */}
-            <section id="features" className="relative z-10 px-5 sm:px-8 py-20 sm:py-28 bg-white">
+            <section id="features" className="relative z-10 px-4 sm:px-8 py-14 sm:py-20 lg:py-28 bg-white">
                 <div className="max-w-7xl mx-auto">
-                    <div className="max-w-3xl mb-14">
+                    <div className="max-w-3xl mb-9 sm:mb-14">
                         <div className="reveal inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-200 bg-blue-50 text-xs font-semibold text-blue-700 tracking-wider uppercase mb-5">
                             <span className="w-1 h-1 rounded-full bg-blue-600" />
                             Key Features
                         </div>
-                        <h2 className="reveal text-4xl sm:text-5xl lg:text-[56px] font-extrabold text-slate-900 leading-[1.05] tracking-tight mb-5" data-delay="1">
+                        <h2 className="reveal text-3xl sm:text-5xl lg:text-[56px] font-extrabold text-slate-900 leading-[1.05] tracking-tight mb-4 sm:mb-5" data-delay="1">
                             Built for the way
                             <span className="block text-gradient">students actually work.</span>
                         </h2>
@@ -452,14 +452,14 @@ export default function Landing() {
             </section>
 
             {/* ===== HOW IT WORKS ===== */}
-            <section id="how-it-works" className="relative z-10 px-5 sm:px-8 py-20 sm:py-28 bg-slate-50">
+            <section id="how-it-works" className="relative z-10 px-4 sm:px-8 py-14 sm:py-20 lg:py-28 bg-slate-50">
                 <div className="max-w-7xl mx-auto">
-                    <div className="text-center max-w-2xl mx-auto mb-14">
+                    <div className="text-center max-w-2xl mx-auto mb-9 sm:mb-14">
                         <div className="reveal inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-200 bg-blue-50 text-xs font-semibold text-blue-700 tracking-wider uppercase mb-5">
                             <span className="w-1 h-1 rounded-full bg-blue-600" />
                             How It Works
                         </div>
-                        <h2 className="reveal text-4xl sm:text-5xl lg:text-[56px] font-extrabold text-slate-900 leading-[1.05] tracking-tight mb-5" data-delay="1">
+                        <h2 className="reveal text-3xl sm:text-5xl lg:text-[56px] font-extrabold text-slate-900 leading-[1.05] tracking-tight mb-4 sm:mb-5" data-delay="1">
                             Three steps.
                             <span className="text-gradient"> Zero confusion.</span>
                         </h2>
@@ -469,7 +469,7 @@ export default function Landing() {
                         {STEPS.map((step, index) => (
                             <div
                                 key={step.num}
-                                className="reveal group relative rounded-3xl border border-slate-200 bg-white p-8 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300"
+                                className="reveal group relative rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-5 sm:p-8 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300"
                                 data-delay={index + 1}
                             >
                                 <div className="absolute top-6 right-6 text-[80px] font-black text-slate-300/60 leading-none select-none group-hover:text-blue-300/70 transition-colors">
@@ -490,8 +490,8 @@ export default function Landing() {
             </section>
 
             {/* ===== ABOUT / CTA ===== */}
-            <section id="about" className="relative z-10 px-5 sm:px-8 py-20 sm:py-28 bg-white">
-                <div className="reveal max-w-6xl mx-auto relative overflow-hidden rounded-[32px]">
+            <section id="about" className="relative z-10 px-4 sm:px-8 py-14 sm:py-20 lg:py-28 bg-white">
+                <div className="reveal max-w-6xl mx-auto relative overflow-hidden rounded-2xl sm:rounded-[32px]">
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-700" />
                     <div
                         className="absolute inset-0 opacity-25"
@@ -501,11 +501,11 @@ export default function Landing() {
                         }}
                     />
 
-                    <div className="relative px-8 sm:px-16 py-16 sm:py-20 text-center">
-                        <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-4 tracking-tight">
+                    <div className="relative px-5 sm:px-16 py-10 sm:py-20 text-center">
+                        <h2 className="text-2xl sm:text-5xl font-extrabold text-white mb-4 tracking-tight">
                             Ready to access your portal?
                         </h2>
-                        <p className="text-blue-100 text-base sm:text-lg mb-10 max-w-2xl mx-auto">
+                        <p className="text-sm sm:text-lg text-blue-100 mb-7 sm:mb-10 max-w-2xl mx-auto">
                             Sign in with your student credentials to view and manage your community service requirements.
                         </p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

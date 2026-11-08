@@ -153,7 +153,9 @@ app.get('/api/notifications', requireAuth, async (req, res, next) => {
     .select('*')
     .order('created_at', { ascending: false });
   if (req.user.role === 'student') {
-    query = query.or(`student_id.is.null,student_profile_id.eq.${req.user.id}`);
+    query = query.or(`and(student_id.is.null,admin_profile_id.is.null),student_profile_id.eq.${req.user.id}`);
+  } else {
+    query = query.eq('admin_profile_id', req.user.id);
   }
   const { data, error } = await query;
 

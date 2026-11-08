@@ -12,8 +12,6 @@ const I = {
     logout: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>,
     moon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>,
     sun: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /></svg>,
-    bell: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>,
-    bellRing: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /><path d="M2 8a10 10 0 0 1 2-6" /><path d="M22 8a10 10 0 0 0-2-6" /></svg>,
     shield: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
     home: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" /></svg>,
     rect: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="9" x2="15" y2="15" /><line x1="15" y1="9" x2="9" y2="15" /></svg>,
@@ -305,61 +303,20 @@ const uploadImageToBucket = async (bucket, file) => {
     }
 };
 
-//NOTIFICATION
 const notifMeta = (n) => {
-    const t = (n.type || n.notification_type || '').toLowerCase();
-    if (t.includes('penalty') || t.includes('violation'))
+    const type = (n.type || n.notification_type || '').toLowerCase();
+    if (type.includes('penalty') || type.includes('violation'))
         return { icon: 'alert', bg: 'bg-amber-100 dark:bg-amber-900/40', fg: 'text-amber-600 dark:text-amber-300' };
-    if (t.includes('appeal'))
+    if (type.includes('appeal'))
         return { icon: 'doc', bg: 'bg-violet-100 dark:bg-violet-900/40', fg: 'text-violet-600 dark:text-violet-300' };
-    if (t.includes('completed') || t.includes('approved') || t.includes('resolved'))
+    if (type.includes('completed') || type.includes('approved') || type.includes('resolved'))
         return { icon: 'checkCircle', bg: 'bg-emerald-100 dark:bg-emerald-900/40', fg: 'text-emerald-600 dark:text-emerald-300' };
-    if (t.includes('rejected'))
+    if (type.includes('rejected'))
         return { icon: 'xCircle', bg: 'bg-red-100 dark:bg-red-900/40', fg: 'text-red-600 dark:text-red-300' };
-    if (t.includes('reminder') || t.includes('deadline'))
+    if (type.includes('reminder') || type.includes('deadline'))
         return { icon: 'clock', bg: 'bg-blue-100 dark:bg-blue-900/40', fg: 'text-blue-600 dark:text-blue-300' };
     return { icon: 'info', bg: 'bg-slate-100 dark:bg-slate-700', fg: 'text-slate-600 dark:text-slate-300' };
 };
-
-function NotificationItem({ notification: n, onMarkRead, onDelete }) {
-    const meta = notifMeta(n);
-    const IconEl = I[meta.icon] || I.info;
-
-    return (
-        <div
-            onClick={() => !n.is_read && onMarkRead(n.id)}
-            className={`group relative flex items-start gap-3 p-4 rounded-xl mx-1 mb-1 transition cursor-pointer ${!n.is_read
-                ? 'bg-blue-50/70 dark:bg-blue-900/20 hover:bg-blue-50 dark:hover:bg-blue-900/30'
-                : 'hover:bg-slate-50 dark:hover:bg-slate-700/40'}`}
-        >
-            {!n.is_read && <span className="absolute left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-500" />}
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.fg}`}>
-                {IconEl}
-            </div>
-            <div className="flex-1 min-w-0 pr-8">
-                <p className={`text-base truncate ${!n.is_read ? 'font-bold text-slate-800 dark:text-slate-100' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
-                    {n.title || 'Notification'}
-                </p>
-                {n.message && (
-                    <p className={`text-sm mt-1 leading-relaxed line-clamp-2 ${!n.is_read ? 'text-slate-600 dark:text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>
-                        {n.message}
-                    </p>
-                )}
-                <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs font-medium text-slate-400 dark:text-slate-500">{timeAgo(n.created_at)}</span>
-                    {!n.is_read && <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">New</span>}
-                </div>
-            </div>
-            <button
-                onClick={(e) => { e.stopPropagation(); onDelete(n.id); }}
-                className="absolute top-3 right-3 p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 opacity-0 group-hover:opacity-100 transition"
-                title="Delete"
-            >
-                {I.trash}
-            </button>
-        </div>
-    );
-}
 
 //BADGE / STATUS
 const statusClass = (p) => {
@@ -452,14 +409,16 @@ export default function AdminDashboard() {
     const [students, setStudents] = useState([]);
     const [penalties, setPenalties] = useState([]);
     const [appeals, setAppeals] = useState([]);
-    const [notifications, setNotifications] = useState([]);
     const [activityLog, setActivityLog] = useState([]);
     const [announcements, setAnnouncements] = useState([]);
-    const [darkMode, setDarkMode] = useState(false);
+    const [darkMode, setDarkMode] = useState(() => {
+        const saved = localStorage.getItem('admin_dark_mode');
+        if (saved === 'true') return true;
+        if (saved === 'false') return false;
+        return window.matchMedia?.('(prefers-color-scheme: dark)').matches || false;
+    });
     const [largeTextPreference, setLargeTextPreference] = useState(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
-    const [showNotifications, setShowNotifications] = useState(false);
-    const [notifFilter, setNotifFilter] = useState('all');
     const [now, setNow] = useState(new Date());
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -494,11 +453,8 @@ export default function AdminDashboard() {
     const [announcementSearch, setAnnouncementSearch] = useState('');
 
     const [selectedPenalties, setSelectedPenalties] = useState([]);
-    const [selectedStudents, setSelectedStudents] = useState([]);
-
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [completePenaltyId, setCompletePenaltyId] = useState(null);
-    const [confirmDialog, setConfirmDialog] = useState(null);
     const [showAddPenalty, setShowAddPenalty] = useState(false);
     const [showEditPenalty, setShowEditPenalty] = useState(false);
     const [showAddStudent, setShowAddStudent] = useState(false);
@@ -510,7 +466,6 @@ export default function AdminDashboard() {
     const [showImportCSV, setShowImportCSV] = useState(false);
     const [showQuickNote, setShowQuickNote] = useState(false);
     const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
-    const [suggesting, setSuggesting] = useState(false);
     const [selectedAnnouncementPreview, setSelectedAnnouncementPreview] = useState(null);
 
     const [showAppealActionModal, setShowAppealActionModal] = useState(false);
@@ -570,16 +525,6 @@ export default function AdminDashboard() {
         setLargeTextPreference({ adminId, enabled: nextEnabled });
     };
 
-    // DARK MODE
-    useEffect(() => {
-        const saved = localStorage.getItem('admin_dark_mode');
-        let initial;
-        if (saved === 'true') initial = true;
-        else if (saved === 'false') initial = false;
-        else initial = window.matchMedia?.('(prefers-color-scheme: dark)').matches || false;
-        setDarkMode(initial);
-    }, []);
-
     const toggleDarkMode = () => {
         setDarkMode(v => {
             const next = !v;
@@ -620,16 +565,6 @@ export default function AdminDashboard() {
             setAppeals([]);
         }
     }, []);
-    const loadNotifications = useCallback(async () => {
-        try {
-            const data = await api.get('/api/notifications');
-            const filtered = (data || []).filter((item) => item.student_id !== null && item.student_id !== undefined && item.student_id !== '');
-            setNotifications(filtered);
-        } catch (e) {
-            console.error('[loadNotifications]', e);
-            setNotifications([]);
-        }
-    }, []);
     const loadActivity = useCallback(async () => {
         try {
             const data = await api.data.list('activity_log', {
@@ -645,8 +580,15 @@ export default function AdminDashboard() {
     }, []);
     const loadAnnouncements = useCallback(async () => {
         try {
-            const data = await api.get('/api/notifications');
-            const list = (data || []).filter((item) => item.student_id === null || item.student_id === undefined || item.student_id === '');
+            const data = await api.data.list('notifications', {
+                order: 'created_at',
+                ascending: false,
+                limit: 500,
+            });
+            const list = (data || []).filter((item) =>
+                (item.student_id === null || item.student_id === undefined || item.student_id === '')
+                && !item.admin_profile_id
+            );
             setAnnouncements(list);
         } catch (e) {
             console.error('[loadAnnouncements]', e);
@@ -656,12 +598,13 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         if (!admin) return;
-        setLoading(true);
-        Promise.all([
-            loadStudents(), loadPenalties(), loadAppeals(), loadNotifications(),
-            loadActivity(), loadAnnouncements(),
-        ]).finally(() => setLoading(false));
-    }, [admin, loadStudents, loadPenalties, loadAppeals, loadNotifications, loadActivity, loadAnnouncements]);
+        void Promise.resolve()
+            .then(() => Promise.all([
+                loadStudents(), loadPenalties(), loadAppeals(),
+                loadActivity(), loadAnnouncements(),
+            ]))
+            .finally(() => setLoading(false));
+    }, [admin, loadStudents, loadPenalties, loadAppeals, loadActivity, loadAnnouncements]);
 
     useEffect(() => {
         countdownRef.current = setInterval(() => setPenalties(prev => [...prev]), 1000);
@@ -672,11 +615,10 @@ export default function AdminDashboard() {
         const id = setInterval(() => {
             loadPenalties();
             loadAppeals();
-            loadNotifications();
             loadActivity();
         }, 60000);
         return () => clearInterval(id);
-    }, [loadPenalties, loadAppeals, loadNotifications, loadActivity]);
+    }, [loadPenalties, loadAppeals, loadActivity]);
 
     const stats = useMemo(() => {
         const pendingAppeals = appeals.filter(a => (a.status || '').toLowerCase() === 'pending').length;
@@ -801,11 +743,6 @@ export default function AdminDashboard() {
         return { months, maxMonth, avgResolutionDays, topViolations, maxViolationCount, byYearLevel, appealRate, resolvedCount: resolvedWithTimes.length };
     }, [students, penalties, appeals]);
 
-    const unreadCount = notifications.filter(n => !n.is_read).length;
-    const filteredNotifications = notifFilter === 'unread' ? notifications.filter(n => !n.is_read) : notifications;
-    const newNotifs = filteredNotifications.filter(n => !n.is_read);
-    const earlierNotifs = filteredNotifications.filter(n => n.is_read);
-
     const topStudents = useMemo(() => {
         const counts = {};
         penalties.forEach(p => {
@@ -898,7 +835,6 @@ export default function AdminDashboard() {
                 loadStudents(),
                 loadPenalties(),
                 loadAppeals(),
-                loadNotifications(),
                 loadActivity(),
                 loadAnnouncements(),
             ]);
@@ -910,7 +846,7 @@ export default function AdminDashboard() {
         } finally {
             setTimeout(() => setRefreshing(false), 400);
         }
-    }, [refreshing, loadStudents, loadPenalties, loadAppeals, loadNotifications, loadActivity, loadAnnouncements, showToast]);
+    }, [refreshing, loadStudents, loadPenalties, loadAppeals, loadActivity, loadAnnouncements, showToast]);
 
     const handleAddPenalty = async () => {
         const { violation, description, offenseLevel, serviceType, deadline, status, studentId, imageFile } = penaltyForm;
@@ -1209,6 +1145,7 @@ export default function AdminDashboard() {
                     title: isApprove ? 'Appeal approved' : 'Appeal rejected',
                     message: `Your appeal for "${selectedAppeal.penalty_violation || selectedAppeal.violation || 'violation'}" has been ${isApprove ? 'approved' : 'rejected'}.\n\nRemarks: ${comment}`,
                     type: isApprove ? 'approved' : 'rejected',
+                    related_appeal_id: String(selectedAppeal.id),
                     is_read: false,
                     created_at: nowIso,
                 }]);
@@ -1231,7 +1168,6 @@ export default function AdminDashboard() {
 
         await loadAppeals();
         await loadActivity();
-        await loadNotifications();
     };
 
     const handleMarkPenaltyComplete = (id) => {
@@ -1362,7 +1298,6 @@ export default function AdminDashboard() {
         await logActivity('system', `Sent notification: ${quickNote.title}`);
         setShowQuickNote(false);
         setQuickNote({ title: '', message: '', targetStudent: '', type: 'info' });
-        await loadNotifications();
         await loadActivity();
     };
 
@@ -1370,38 +1305,6 @@ export default function AdminDashboard() {
         title: '', message: '', type: 'info', target: '', priority: 'normal',
         imageFile: null, imageUrl: '',
     });
-
-    const handleSuggestCaption = async () => {
-        const title = announcementForm.title.trim();
-        if (title.length < 2) {
-            showToast('warning', 'Add a title first', 'Type at least a few words before asking AI');
-            return;
-        }
-        if (suggesting) return;
-
-        setSuggesting(true);
-        try {
-            const data = await api.post('/api/admin/suggest-caption', { title });
-
-            if (!data || data.error) {
-                showToast('error', 'AI could not respond', data?.error || 'Unknown error');
-                return;
-            }
-
-            setAnnouncementForm(prev => ({
-                ...prev,
-                message: prev.message?.trim() ? prev.message : data.caption,
-                type: data.type || prev.type,
-                priority: data.priority || prev.priority,
-            }));
-
-            showToast('success', '✨ Caption suggested', 'Review it and tweak if needed');
-        } catch (err) {
-            showToast('error', 'AI request failed', err?.message || 'Check your connection');
-        } finally {
-            setSuggesting(false);
-        }
-    };
 
     const handleSaveAnnouncement = async () => {
         if (!announcementForm.title.trim() || !announcementForm.message.trim()) {
@@ -1452,7 +1355,6 @@ export default function AdminDashboard() {
         setSelectedAnnouncement(null);
         resetAnnouncementForm();
         await loadAnnouncements();
-        await loadNotifications();
         await loadActivity();
     };
 
@@ -1465,7 +1367,6 @@ export default function AdminDashboard() {
         }
         showToast('success', 'Deleted', 'Announcement removed');
         await loadAnnouncements();
-        await loadNotifications();
     };
 
     const openEditAnnouncement = (a) => {
@@ -1520,44 +1421,6 @@ export default function AdminDashboard() {
         setShowEditStudent(true);
     };
 
-    const markAllRead = async () => {
-        try {
-            await api.data.update('notifications', { is_read: false }, {
-                is_read: true,
-                read_at: new Date().toISOString(),
-            });
-        } catch (error) {
-            return showToast('error', 'Unable to update notifications', error.message);
-        }
-        await loadNotifications();
-        showToast('info', 'All marked as read', '');
-    };
-    const deleteNotif = async (id) => {
-        const target = notifications.find((n) => n.id === id);
-        if (target && target.student_id == null) {
-            showToast('warning', 'Cannot delete here', 'Announcements can only be deleted from the Announcements tab');
-            return;
-        }
-        try {
-            await api.data.remove('notifications', { id });
-        } catch (error) {
-            return showToast('error', 'Unable to delete notification', error.message);
-        }
-        await loadNotifications();
-        if (loadAnnouncements) await loadAnnouncements();
-    };
-    const markNotifRead = async (id) => {
-        try {
-            await api.data.update('notifications', { id }, {
-                is_read: true,
-                read_at: new Date().toISOString(),
-            });
-        } catch (error) {
-            return showToast('error', 'Unable to update notification', error.message);
-        }
-        await loadNotifications();
-    };
-
     const confirmLogout = () => {
         logout();
     };
@@ -1570,7 +1433,7 @@ export default function AdminDashboard() {
     };
 
     useEffect(() => {
-        if (!showNotifications) return;
+        if (!completePenaltyId) return;
         const prevOverflow = document.body.style.overflow;
         const prevPointer = document.body.style.pointerEvents;
         document.body.style.overflow = 'hidden';
@@ -1579,19 +1442,7 @@ export default function AdminDashboard() {
             document.body.style.overflow = prevOverflow;
             document.body.style.pointerEvents = prevPointer;
         };
-    }, [showNotifications]);
-
-    useEffect(() => {
-        if (!confirmDialog && !completePenaltyId) return;
-        const prevOverflow = document.body.style.overflow;
-        const prevPointer = document.body.style.pointerEvents;
-        document.body.style.overflow = 'hidden';
-        document.body.style.pointerEvents = 'none';
-        return () => {
-            document.body.style.overflow = prevOverflow;
-            document.body.style.pointerEvents = prevPointer;
-        };
-    }, [confirmDialog, completePenaltyId]);
+    }, [completePenaltyId]);
 
     if (!admin) return null;
     const adminName = admin.full_name || admin.name || 'Admin';
@@ -1643,6 +1494,40 @@ export default function AdminDashboard() {
             @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
             @keyframes pulseSoft { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
             .dashboard-dark { color-scheme: dark; }
+            @media (max-width: 639px) {
+                .dashboard-canvas {
+                    min-height: 100dvh;
+                    background-image: linear-gradient(180deg, rgba(37, 99, 235, 0.045), transparent 16rem);
+                }
+                .dashboard-dark .dashboard-canvas {
+                    background-image: linear-gradient(180deg, rgba(37, 99, 235, 0.1), transparent 16rem);
+                }
+                .dashboard-canvas header {
+                    height: 3.75rem;
+                    padding-left: max(0.75rem, env(safe-area-inset-left));
+                    padding-right: max(0.75rem, env(safe-area-inset-right));
+                }
+                .dashboard-canvas main {
+                    padding: 1rem 0.75rem calc(5rem + env(safe-area-inset-bottom));
+                }
+                .dashboard-canvas main h1 {
+                    font-size: clamp(1.25rem, 5vw, 1.5rem);
+                    line-height: 1.35;
+                }
+                .dashboard-canvas main [class~="p-5"] { padding: 1rem; }
+                .dashboard-canvas main [class~="p-6"] { padding: 1rem; }
+                .dashboard-canvas main [class~="p-7"] { padding: 1.125rem; }
+                .dashboard-canvas main [class~="p-8"] { padding: 1.25rem; }
+                .dashboard-canvas main input,
+                .dashboard-canvas main select,
+                .dashboard-canvas main textarea {
+                    font-size: 16px;
+                }
+                .dashboard-canvas main .overflow-x-auto {
+                    max-width: 100%;
+                    overscroll-behavior-x: contain;
+                }
+            }
         `}</style>
 
                 {drawerOpen && (
@@ -1740,8 +1625,8 @@ export default function AdminDashboard() {
                     </div>
                 </aside>
 
-                <header className="sticky top-0 z-[100] h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-8 md:ml-[68px]">
-                    <div className="flex items-center gap-3">
+                <header className="sticky top-0 z-[100] h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-3 sm:px-4 md:px-8 md:ml-[68px]">
+                    <div className="flex items-center gap-1 sm:gap-3">
                         <button
                             type="button"
                             className="md:hidden flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -1753,9 +1638,9 @@ export default function AdminDashboard() {
                             <span className="w-5 h-0.5 bg-slate-700 dark:bg-slate-200 rounded" />
                             <span className="w-5 h-0.5 bg-slate-700 dark:bg-slate-200 rounded" />
                         </button>
-                        <div className="flex items-center gap-3">
-                            <img src="/CC.png" alt="CCNDM" className="w-9 h-9 object-contain rounded-lg bg-blue-50 dark:bg-slate-700 p-1" />
-                            <span className="text-lg font-bold text-blue-600">CCNDM</span>
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            <img src="/CC.png" alt="CCNDM" className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg bg-blue-50 dark:bg-slate-700 p-1" />
+                            <span className="text-base sm:text-lg font-bold text-blue-600">CCNDM</span>
                             <span className="hidden md:inline text-xs text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-3 uppercase tracking-wide">{tabLabel}</span>
                         </div>
                     </div>
@@ -1795,90 +1680,35 @@ export default function AdminDashboard() {
                         <button className="p-2.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition" onClick={toggleDarkMode}>
                             {darkMode ? I.sun : I.moon}
                         </button>
-                        <button className="p-2.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition relative" onClick={() => setShowNotifications(true)}>
-                            {I.bell}
-                            {unreadCount > 0 && (
-                                <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-                                    {unreadCount > 99 ? '99+' : unreadCount}
-                                </span>
-                            )}
-                        </button>
                         <button className="ml-1.5 hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-white text-xs font-semibold shadow-sm hover:shadow-md transition">
                             {I.shield} Admin
                         </button>
                     </div>
                 </header>
 
-                {showNotifications && (
-                    <div className="fixed inset-0 z-[20000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 select-none" style={{ pointerEvents: 'auto' }}>
-                        <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-                            <div className="flex items-center justify-between px-7 py-5 border-b border-slate-200 dark:border-slate-700">
-                                <div className="flex items-center gap-3">
-                                    <div className="relative">
-                                        <span className="text-slate-700 dark:text-slate-200 scale-125">{I.bellRing}</span>
-                                        {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-800 animate-pulse" />}
-                                    </div>
-                                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Notifications</h3>
-                                    {unreadCount > 0 && (
-                                        <span className="text-xs font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-full">
-                                            {unreadCount} new
-                                        </span>
-                                    )}
-                                </div>
-                                <button className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition" onClick={() => setShowNotifications(false)}>
-                                    {I.close}
-                                </button>
-                            </div>
-                            <div className="flex items-center gap-1 px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-700/60">
-                                {[{ key: 'all', label: 'All', count: notifications.length }, { key: 'unread', label: 'Unread', count: unreadCount }].map((f) => (
-                                    <button
-                                        key={f.key}
-                                        onClick={() => setNotifFilter(f.key)}
-                                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition flex items-center gap-2 ${notifFilter === f.key
-                                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                                            : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/60 dark:text-slate-400'}`}
-                                    >
-                                        {f.label}
-                                        <span className={`text-xs px-2 py-0.5 rounded-full ${notifFilter === f.key
-                                            ? 'bg-blue-200/70 dark:bg-blue-800 text-blue-800 dark:text-blue-100'
-                                            : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
-                                            {f.count}
-                                        </span>
-                                    </button>
-                                ))}
-                                <div className="flex-1" />
-                                <button
-                                    onClick={markAllRead}
-                                    disabled={unreadCount === 0}
-                                    className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed px-3 py-1.5"
-                                >
-                                    Mark all read
-                                </button>
-                            </div>
-                            <div className="flex-1 overflow-y-auto px-2 py-2">
-                                {filteredNotifications.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                                        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center mb-5 relative">
-                                            <span className="text-blue-400 dark:text-blue-500 scale-150">{I.bell}</span>
-                                            <span className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                                                {I.check}
-                                            </span>
-                                        </div>
-                                        <p className="text-base font-bold text-slate-700 dark:text-slate-200">{notifFilter === 'unread' ? "You're all caught up!" : 'No notifications yet'}</p>
-                                        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1 max-w-[280px]">{notifFilter === 'unread' ? "You've read everything." : 'Updates will show up here.'}</p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        {newNotifs.length > 0 && <div className="px-4 pt-3 pb-1"><p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">New</p></div>}
-                                        {newNotifs.map((n) => <NotificationItem key={n.id} notification={n} onMarkRead={markNotifRead} onDelete={deleteNotif} />)}
-                                        {earlierNotifs.length > 0 && <div className="px-4 pt-5 pb-1"><p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Earlier</p></div>}
-                                        {earlierNotifs.map((n) => <NotificationItem key={n.id} notification={n} onMarkRead={markNotifRead} onDelete={deleteNotif} />)}
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <div className="sm:hidden sticky top-[3.75rem] z-[95] flex items-center gap-2 overflow-x-auto px-3 py-2 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur">
+                    <button
+                        type="button"
+                        onClick={handleSendAnnouncement}
+                        className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[11px] font-bold text-white bg-gradient-to-br from-fuchsia-500 to-purple-600"
+                    >
+                        {I.megaphone} Announcement
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setShowQuickNote(true)}
+                        className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[11px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30"
+                    >
+                        {I.messageCircle} Quick note
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => { setImportFile(null); setShowImportCSV(true); }}
+                        className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700"
+                    >
+                        {I.upload} Import CSV
+                    </button>
+                </div>
 
                 <main className={`md:ml-[68px] p-4 md:p-8 pb-20 md:pb-8 ${currentTab === 'reports' ? 'admin-report-print-main' : ''}`}>
                     {currentTab === 'dashboard' && (
@@ -3425,33 +3255,12 @@ export default function AdminDashboard() {
                     <div className="space-y-6">
                         <div>
                             <label className={labelCls}>Title *</label>
-                            <div className="flex gap-2 items-stretch">
-                                <input
-                                    value={announcementForm.title}
-                                    onChange={(e) => setAnnouncementForm(prev => ({ ...prev, title: e.target.value }))}
-                                    className={inputCls + ' flex-1'}
-                                    placeholder="Announcement title"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleSuggestCaption}
-                                    disabled={suggesting || !announcementForm.title.trim()}
-                                    className="shrink-0 px-4 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 hover:from-violet-600 hover:to-fuchsia-700 text-white text-sm font-semibold shadow-sm hover:shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
-                                    title="Ask AI to write a caption based on the title"
-                                >
-                                    {suggesting ? (
-                                        <>
-                                            <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-                                            Thinking…
-                                        </>
-                                    ) : (
-                                        <>✨ Suggest</>
-                                    )}
-                                </button>
-                            </div>
-                            <p className="text-sm text-slate-400 mt-2">
-                                Tip: type a title, then click ✨ Suggest — the AI will write a caption and pick the type/priority.
-                            </p>
+                            <input
+                                value={announcementForm.title}
+                                onChange={(e) => setAnnouncementForm(prev => ({ ...prev, title: e.target.value }))}
+                                className={inputCls}
+                                placeholder="Announcement title"
+                            />
                         </div>
                         <div>
                             <label className={labelCls}>Message *</label>

@@ -52,7 +52,7 @@ const resourceRules = {
   notifications: {
     fields: [
       'id', 'student_id', 'title', 'message', 'type', 'is_read', 'read_at',
-      'created_at', 'image_url', 'priority',
+      'created_at', 'image_url', 'priority', 'admin_profile_id', 'related_appeal_id',
     ],
     admin: ['read', 'create', 'update', 'delete'],
     student: ['read', 'update', 'delete'],
@@ -430,6 +430,41 @@ router.all('/:table', requireAuth, async (req, res, next) => {
         }
       }
       ({ data, error } = await supabase.from(table).insert(rows).select('*'));
+      if (!error && role === 'student' && table === 'appeals') {
+        const { data: activeAdmins, error: adminsError } = await supabase
+          .from('admins')
+          .select('id')
+          .eq('status', 'active');
+        const adminNotifications = (data || []).flatMap((appeal) =>
+          (activeAdmins || []).map((admin) => ({
+            admin_profile_id: admin.id,
+            related_appeal_id: String(appeal.id),
+            title: 'New student appeal',
+            message: `${req.user.name || 'A student'} (${req.user.student_id_number}) submitted an appeal for "${appeal.penalty_violation || 'violation'}".`,
+            type: 'appeal',
+            is_read: false,
+            created_at: new Date().toISOString(),
+          }))
+        );
+        if (adminsError || adminNotifications.length === 0) {
+          console.error('[appeal admin notifications]', adminsError || 'No active administrators found.');
+          return res.status(201).json({
+            data: projectFields(data || [], rules.fields),
+            notificationWarning: 'The appeal was submitted, but administrator notifications could not be delivered.',
+          });
+        }
+
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert(adminNotifications);
+        if (notificationError) {
+          console.error('[appeal admin notifications]', notificationError);
+          return res.status(201).json({
+            data: projectFields(data || [], rules.fields),
+            notificationWarning: 'The appeal was submitted, but administrator notifications could not be delivered.',
+          });
+        }
+      }
     } else if (req.method === 'PATCH') {
       const values = getRows(req.body?.values, rules, role, 'update')[0];
       if (!Object.keys(filters).length) {

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "github-copilot-modernization/normalized-assessment",
+  "metadata": {
+    "id": "20261108074821",
+    "runId": "20261108074821",
+    "generatedAt": "2026-11-08T08:07:04.372Z",
+    "analysisStartTime": "2026-11-08T07:48:22.033Z",
+    "analysisEndTime": "2026-11-08T08:07:04.376Z",
+    "status": "completed",
+    "domains": [],
+    "language": "javascript",
+    "intent": {
+      "version": 1,
+      "captured_at": "2026-11-08T07:48:22.033Z",
+      "language": "javascript",
+      "selected_groups": null,
+      "analysis_coverage": "issue-only",
+      "coverage_source": "default"
+    },
+    "totalFindings": 0,
+    "totalActionableFindings": 0,
+    "totalTrackedFindings": 0
+  },
+  "categories": [],
+  "findings": [],
+  "security": []
+}

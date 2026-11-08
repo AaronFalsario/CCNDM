@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export default function TermsModal({ isOpen, onClose, onAccept }) {
-    const [checked, setChecked] = useState(false);
-
-    useEffect(() => {
-        if (isOpen) setChecked(false);
-    }, [isOpen]);
-
     if (!isOpen) return null;
+    return <TermsModalContent onClose={onClose} onAccept={onAccept} />;
+}
+
+function TermsModalContent({ onClose, onAccept }) {
+    const [checked, setChecked] = useState(false);
 
     const handleOverlayClick = (e) => {
         if (e.target.classList.contains('terms-modal-overlay')) onClose();

@@ -18,14 +18,17 @@ const frontend = spawn(npmCmd, ['run', 'dev:frontend'], {
 function cleanup() {
   try {
     backend.kill();
-  } catch {}
+  } catch (error) {
+    console.error('Failed to stop backend process:', error);
+  }
   try {
     frontend.kill();
-  } catch {}
+  } catch (error) {
+    console.error('Failed to stop frontend process:', error);
+  }
   process.exit();
 }
 
 process.on('SIGINT', cleanup);
 process.on('SIGTERM', cleanup);
 process.on('exit', cleanup);
-

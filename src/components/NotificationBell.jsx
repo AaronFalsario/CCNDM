@@ -107,21 +107,10 @@ export default function NotificationBell({
     onItemClick,
 }) {
     const [open, setOpen] = useState(false);
-    const [mounted, setMounted] = useState(false);
     const wrapRef = useRef(null);
 
     const unread = notifications.filter((n) => !n.is_read);
     const unreadCount = unread.length;
-
-    //ENTRANCE ANIMATION
-    useEffect(() => {
-        if (open) {
-            const id = requestAnimationFrame(() => setMounted(true));
-            return () => cancelAnimationFrame(id);
-        } else {
-            setMounted(false);
-        }
-    }, [open]);
 
     //CLOSE ON OUTSIDE CLICK
     useEffect(() => {

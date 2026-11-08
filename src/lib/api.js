@@ -12,7 +12,10 @@ async function apiRequest(path, options = {}) {
       ...options,
     });
   } catch (networkError) {
-    throw new Error('Unable to connect to the server. Please check your network or verify the backend is running.');
+    throw new Error(
+      'Unable to connect to the server. Please check your network or verify the backend is running.',
+      { cause: networkError }
+    );
   }
 
   const text = await response.text();

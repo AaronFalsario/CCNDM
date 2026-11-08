@@ -1,0 +1,161 @@
+{
+  "input_name": "JavaScript/TypeScript dependency updates",
+  "analysis_method": "npm-check-updates",
+  "status": "success",
+  "result": {
+    "finding": "24 dependency update(s) available",
+    "confidence": "high",
+    "evidence": [
+      ".github\\modernize\\.memory\\runs\\20261108074821\\javascript\\js-assessment-report.md"
+    ],
+    "values": [
+      {
+        "category": "Updates",
+        "package": "autoprefixer",
+        "current": "^10.6.1",
+        "latest": "^10.6.2"
+      },
+      {
+        "category": "Updates",
+        "package": "cors",
+        "current": "^2.8.5",
+        "latest": "^2.8.6"
+      },
+      {
+        "category": "Updates",
+        "package": "jsonwebtoken",
+        "current": "^9.0.2",
+        "latest": "^9.0.3"
+      },
+      {
+        "category": "Updates",
+        "package": "jspdf-autotable",
+        "current": "^5.0.8",
+        "latest": "^5.0.9"
+      },
+      {
+        "category": "Updates",
+        "package": "postcss",
+        "current": "^8.5.28",
+        "latest": "^8.5.32"
+      },
+      {
+        "category": "Updates",
+        "package": "react-router-dom",
+        "current": "^7.18.4",
+        "latest": "^7.18.5"
+      },
+      {
+        "category": "Updates",
+        "package": "vite",
+        "current": "^8.3.0",
+        "latest": "^8.3.6"
+      },
+      {
+        "category": "Updates",
+        "package": "@supabase/supabase-js",
+        "current": "^2.116.0",
+        "latest": "^2.119.0"
+      },
+      {
+        "category": "Updates",
+        "package": "@types/react",
+        "current": "^19.2.18",
+        "latest": "^19.3.0"
+      },
+      {
+        "category": "Updates",
+        "package": "@types/react-dom",
+        "current": "^19.2.7",
+        "latest": "^19.3.0"
+      },
+      {
+        "category": "Updates",
+        "package": "@vitejs/plugin-react",
+        "current": "^6.1.1",
+        "latest": "^6.2.1"
+      },
+      {
+        "category": "Updates",
+        "package": "chart.js",
+        "current": "^4.5.1",
+        "latest": "^4.6.1"
+      },
+      {
+        "category": "Updates",
+        "package": "eslint",
+        "current": "^10.10.0",
+        "latest": "^10.14.0"
+      },
+      {
+        "category": "Updates",
+        "package": "express",
+        "current": "^5.1.0",
+        "latest": "^5.3.0"
+      },
+      {
+        "category": "Updates",
+        "package": "express-rate-limit",
+        "current": "^8.2.1",
+        "latest": "^8.7.3"
+      },
+      {
+        "category": "Updates",
+        "package": "globals",
+        "current": "^17.12.0",
+        "latest": "^17.14.0"
+      },
+      {
+        "category": "Updates",
+        "package": "helmet",
+        "current": "^8.1.0",
+        "latest": "^8.3.0"
+      },
+      {
+        "category": "Updates",
+        "package": "nodemailer",
+        "current": "^10.3.1",
+        "latest": "^10.4.0"
+      },
+      {
+        "category": "Updates",
+        "package": "react",
+        "current": "^19.2.8",
+        "latest": "^19.3.1"
+      },
+      {
+        "category": "Updates",
+        "package": "react-dom",
+        "current": "^19.2.8",
+        "latest": "^19.3.1"
+      },
+      {
+        "category": "Updates",
+        "package": "resend",
+        "current": "^6.9.3",
+        "latest": "^6.37.0"
+      },
+      {
+        "category": "Updates",
+        "package": "dotenv",
+        "current": "^17.2.3",
+        "latest": "^18.0.9"
+      },
+      {
+        "category": "Updates",
+        "package": "tailwindcss",
+        "current": "^3.4.19",
+        "latest": "^4.3.5"
+      },
+      {
+        "category": "Updates",
+        "package": "eslint-plugin-react-refresh",
+        "current": "^0.5.6",
+        "latest": "^0.5.7"
+      }
+    ]
+  },
+  "execution_time_seconds": 0,
+  "timestamp": "2026-11-08T07:48:46.284Z",
+  "run_id": "20261108074821"
+}

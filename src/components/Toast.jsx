@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export default function Toast({
     message,
@@ -63,10 +63,10 @@ export default function Toast({
     const finalTitle = title || defaultTitles[type] || 'Information';
 
     // CLOSE
-    const close = () => {
+    const close = useCallback(() => {
         setRemoving(true);
         setTimeout(() => onClose?.(), 220);
-    };
+    }, [onClose]);
 
     // MOUNT ENTRANCE
     useEffect(() => {
@@ -88,7 +88,7 @@ export default function Toast({
             clearTimeout(timeout);
             clearInterval(tick);
         };
-    }, [duration]);
+    }, [duration, close]);
 
     return (
         // ⬇️ the wrapper now carries the scoped dark class when `dark` is true

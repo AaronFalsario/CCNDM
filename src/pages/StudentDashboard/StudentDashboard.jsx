@@ -11,7 +11,6 @@ const I = {
     logout: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>,
     moon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>,
     sun: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /></svg>,
-    bell: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>,
     cap: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>,
     home: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" /></svg>,
     rect: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="9" x2="15" y2="15" /><line x1="15" y1="9" x2="9" y2="15" /></svg>,
@@ -26,24 +25,17 @@ const I = {
     key: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" /></svg>,
     alert: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>,
     success: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="9 12 11 14 15 10" /></svg>,
-    bellRing: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /><path d="M2 8a10 10 0 0 1 2-6" /><path d="M22 8a10 10 0 0 0-2-6" /></svg>,
     warning: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>,
     fileText: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>,
     checkCircle: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>,
     calendar: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>,
-    trophy: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" /></svg>,
     chart: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" /></svg>,
     helpCircle: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>,
-    target: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>,
     zap: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>,
-    shield: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
-    award: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="6" /><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" /></svg>,
-    flame: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></svg>,
     book: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>,
     phone: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>,
     trendUp: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>,
     userEdit: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /><path d="M18 11l3-3-1.5-1.5L16.5 9.5" /></svg>,
-    refresh: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>,
     megaphone: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-5v12L3 14v-3z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></svg>,
     image: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>,
 };
@@ -134,19 +126,6 @@ const formatCountdown = (t) => {
 };
 const fadeInStyle = { animation: 'fadeIn 0.3s ease-out' };
 
-/*ACHIEVEMENTS RESET WINDOW*/
-const RESET_WINDOW_MONTHS = 4;
-const windowStart = () => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - RESET_WINDOW_MONTHS);
-    return d;
-};
-const isWithinWindow = (dateStr) => {
-    if (!dateStr) return false;
-    const d = new Date(dateStr);
-    return d >= windowStart();
-};
-
 /* COUNTDOWN TIMER */
 function CountdownTimer({ penalty }) {
     const time = calculateRemainingTime(penalty);
@@ -181,6 +160,7 @@ function CountdownTimer({ penalty }) {
 }
 
 /* NOTIFICATION META */
+/* MAIN */
 const notifMeta = (n) => {
     const type = (n.type || n.notification_type || '').toLowerCase();
     if (type.includes('penalty') || type.includes('violation'))
@@ -196,84 +176,13 @@ const notifMeta = (n) => {
     return { icon: 'info', bg: 'bg-slate-100 dark:bg-slate-700', fg: 'text-slate-600 dark:text-slate-300' };
 };
 
-function NotificationItem({ notification: n, onMarkRead, onAction }) {
-    const meta = notifMeta(n);
-    const IconEl = I[meta.icon] || I.info;
-    return (
-        <div
-            onClick={() => {
-                if (!n.is_read) onMarkRead(n.id);
-                if (onAction) onAction(n);
-            }}
-            className={`group relative flex items-start gap-3 p-3 rounded-xl mx-1 mb-1 transition cursor-pointer ${!n.is_read
-                ? 'bg-blue-50/70 dark:bg-blue-950/40 hover:bg-blue-50 dark:hover:bg-blue-900/30'
-                : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                }`}
-        >
-            {!n.is_read && (
-                <span className="absolute left-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500" />
-            )}
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.fg}`}>
-                {IconEl}
-            </div>
-            <div className="flex-1 min-w-0">
-                <p className={`text-sm truncate ${!n.is_read ? 'font-bold text-slate-800 dark:text-slate-100' : 'font-semibold text-slate-700 dark:text-slate-200'}`}>
-                    {n.title || 'Notification'}
-                </p>
-                {n.message && (
-                    <p className={`text-xs mt-0.5 leading-relaxed line-clamp-2 ${!n.is_read ? 'text-slate-600 dark:text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>
-                        {n.message}
-                    </p>
-                )}
-                <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
-                        {timeAgo(n.created_at)}
-                    </span>
-                    {!n.is_read && (
-                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
-                            New
-                        </span>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-/*ACHIEVEMENT BADGES*/
-const BADGE_DEFS = [
-    // Tier 1 — starter
-    { key: 'first_step', name: 'First Step', desc: 'Complete your first hour', icon: 'award', color: 'from-emerald-400 to-emerald-600', tier: 'starter' },
-    { key: 'getting_started', name: 'Getting Started', desc: 'Complete 5 hours', icon: 'zap', color: 'from-blue-400 to-blue-600', tier: 'starter' },
-    { key: 'on_fire', name: 'On Fire', desc: 'Complete 10 hours', icon: 'flame', color: 'from-orange-400 to-red-600', tier: 'starter' },
-    { key: 'marathon', name: 'Marathon', desc: 'Complete 20 hours', icon: 'trendUp', color: 'from-cyan-400 to-blue-600', tier: 'milestone' },
-
-    // Tier 2 — compliance
-    { key: 'halfway_hero', name: 'Halfway Hero', desc: 'Reach 50% compliance', icon: 'shield', color: 'from-violet-400 to-violet-600', tier: 'compliance' },
-    { key: 'compliance_pro', name: 'Compliance Pro', desc: 'Reach 75% compliance', icon: 'star', color: 'from-amber-400 to-amber-600', tier: 'compliance' },
-    { key: 'perfect_record', name: 'Perfect Record', desc: 'Reach 100% compliance', icon: 'trophy', color: 'from-yellow-400 to-orange-600', tier: 'compliance' },
-    { key: 'zero_pending', name: 'Zero Pending', desc: 'Clear all pending penalties', icon: 'checkCircle', color: 'from-cyan-400 to-cyan-600', tier: 'compliance' },
-
-    // Tier 3 — speed & streaks
-    { key: 'speed_demon', name: 'Speed Demon', desc: 'Finish a 5+ hr penalty in under 24h', icon: 'zap', color: 'from-pink-400 to-rose-600', tier: 'speed' },
-    { key: 'perfect_week', name: 'Perfect Week', desc: 'Log a service session 7 days in a row', icon: 'calendar', color: 'from-indigo-400 to-purple-600', tier: 'streak' },
-
-    // Tier 4 — comeback & resolve
-    { key: 'comeback_kid', name: 'Comeback Kid', desc: 'Go from 3+ pending to 0 pending', icon: 'refresh', color: 'from-teal-400 to-emerald-600', tier: 'comeback' },
-    { key: 'early_bird', name: 'Early Bird', desc: 'Complete every penalty before its deadline', icon: 'target', color: 'from-sky-400 to-blue-600', tier: 'resolve' },
-    { key: 'appeal_master', name: 'Appeal Master', desc: 'Win an appeal', icon: 'fileText', color: 'from-fuchsia-400 to-purple-600', tier: 'appeal' },
-
-    // Tier 5 — long game
-    { key: 'century', name: 'Century', desc: 'Complete 100 total hours', icon: 'award', color: 'from-amber-400 to-yellow-600', tier: 'legendary' },
-];
-
-/* MAIN */
 export default function StudentDashboard() {
     const navigate = useNavigate();
     const { user: student, setUser: setStudent, logout, loading: authLoading } = useAuth('student');
 
     const [currentTab, setCurrentTab] = useState(() => {
-        return sessionStorage.getItem('student_current_tab') || 'dashboard';
+        const savedTab = sessionStorage.getItem('student_current_tab');
+        return savedTab && savedTab !== 'achievements' ? savedTab : 'dashboard';
     });
 
     useEffect(() => {
@@ -281,9 +190,7 @@ export default function StudentDashboard() {
     }, [currentTab]);
     const [penalties, setPenalties] = useState([]);
     const [appeals, setAppeals] = useState([]);
-    const [notifications, setNotifications] = useState([]);
     const [sessions, setSessions] = useState([]);
-    const [achievements, setAchievements] = useState([]);
     /* Announcements state */
     const [announcements, setAnnouncements] = useState([]);
     const [announcementFilter, setAnnouncementFilter] = useState('all');
@@ -292,8 +199,6 @@ export default function StudentDashboard() {
 
     const [darkMode, setDarkMode] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
-    const [showNotifications, setShowNotifications] = useState(false);
-    const [notifFilter, setNotifFilter] = useState('all');
     const [now, setNow] = useState(new Date());
     const [loading, setLoading] = useState(true);
 
@@ -392,20 +297,6 @@ export default function StudentDashboard() {
         }
     }, [student]);
 
-    const loadNotifications = useCallback(async () => {
-        if (!student) return;
-        const sid = student.student_id_number || student.studentId || student.id;
-
-        try {
-            const data = await api.get('/api/notifications');
-            const filtered = (data || []).filter((item) => String(item.student_id || '') === String(sid));
-            setNotifications(filtered);
-        } catch (e) {
-            console.error('loadNotifications:', e);
-            setNotifications([]);
-        }
-    }, [student]);
-
     const loadAnnouncements = useCallback(async () => {
         if (!student) return;
         try {
@@ -437,29 +328,17 @@ export default function StudentDashboard() {
         }
     }, [student]);
 
-    const loadAchievements = useCallback(async () => {
-        if (!student) return;
-        const sid = student.student_id_number || student.studentId || student.id;
-        try {
-            const data = await api.data.list('achievements', { filters: { student_id: sid } });
-            setAchievements(data || []);
-        } catch (e) {
-            console.error('loadAchievements:', e);
-        }
-    }, [student]);
-
     useEffect(() => {
         if (!student) return;
-        setLoading(true);
-        Promise.all([
-            loadPenalties(),
-            loadAppeals(),
-            loadNotifications(),
-            loadSessions(),
-            loadAchievements(),
-            loadAnnouncements(),
-        ]).finally(() => setLoading(false));
-    }, [student, loadPenalties, loadAppeals, loadNotifications, loadSessions, loadAchievements, loadAnnouncements]);
+        void Promise.resolve()
+            .then(() => Promise.all([
+                loadPenalties(),
+                loadAppeals(),
+                loadSessions(),
+                loadAnnouncements(),
+            ]))
+            .finally(() => setLoading(false));
+    }, [student, loadPenalties, loadAppeals, loadSessions, loadAnnouncements]);
 
     useEffect(() => {
         if (!student) return undefined;
@@ -468,19 +347,12 @@ export default function StudentDashboard() {
     }, [student, loadPenalties]);
 
     useEffect(() => {
-        if (!student) return undefined;
-        const fallbackId = setInterval(loadNotifications, 15000);
-        return () => clearInterval(fallbackId);
-    }, [student, loadNotifications, loadAnnouncements]);
-
-    useEffect(() => {
         if (!student) return;
         const id = setInterval(() => {
-            loadNotifications();
             loadAnnouncements();
         }, 60000);
         return () => clearInterval(id);
-    }, [student, loadNotifications, loadAnnouncements]);
+    }, [student, loadAnnouncements]);
 
     /* DERIVED STATS */
     const pendingCount = penalties.filter((p) =>
@@ -493,124 +365,8 @@ export default function StudentDashboard() {
 
     const totalHours = penalties.reduce((s, p) => s + (parseInt(p.hours) || 0), 0);
     const complianceRate = totalHours ? Math.round((completedHours / totalHours) * 100) : 100;
-    const unreadCount = notifications.filter((n) => !n.is_read).length;
-
-    const filteredNotifications = notifFilter === 'unread'
-        ? notifications.filter((n) => !n.is_read)
-        : notifications;
-    const newNotifs = filteredNotifications.filter((n) => !n.is_read);
-    const earlierNotifs = filteredNotifications.filter((n) => n.is_read);
-
     /* announcement counters */
     const unreadAnnouncements = announcements.filter((a) => !a.is_read).length;
-
-    /* ACHIEVEMENTS — time-windowed + expanded */
-    const activeAchievements = achievements.filter((a) => isWithinWindow(a.unlocked_at));
-    const unlockedKeys = new Set(activeAchievements.map((a) => a.badge_key));
-
-    /* Speed Demon: find any penalty completed in < 24h from creation */
-    const hasSpeedDemon = penalties.some((p) => {
-        const s = (p.status || '').toLowerCase();
-        if (s !== 'completed' && s !== 'resolved') return false;
-        const start = p.started_at || p.created_at;
-        const end = p.completed_at || p.updated_at;
-        if (!start || !end) return false;
-        const hrs = (new Date(end) - new Date(start)) / (1000 * 60 * 60);
-        const ph = parseInt(p.hours, 10) || 0;
-        return hrs > 0 && hrs < 24 && ph >= 5;
-    });
-
-    /* Perfect Week: 7 consecutive days with at least 1 completed session */
-    const hasPerfectWeek = (() => {
-        if (sessions.length === 0) return false;
-        const days = new Set(
-            sessions
-                .filter((s) => (s.status || '').toLowerCase() === 'completed')
-                .map((s) => {
-                    const d = parseDbDate(s.completed_at || s.scheduled_date);
-                    return d ? d.toISOString().slice(0, 10) : null;
-                })
-                .filter(Boolean)
-        );
-        if (days.size < 7) return false;
-        const sorted = [...days].sort();
-        let streak = 1;
-        for (let i = 1; i < sorted.length; i++) {
-            const prev = new Date(sorted[i - 1]);
-            const cur = new Date(sorted[i]);
-            const diff = (cur - prev) / (1000 * 60 * 60 * 24);
-            streak = diff === 1 ? streak + 1 : 1;
-            if (streak >= 7) return true;
-        }
-        return false;
-    })();
-
-    /* Comeback Kid: has resolved penalties AND currently no pending */
-    const hasComebackKid = penalties.length >= 3
-        && penalties.some((p) => ['completed', 'resolved'].includes((p.status || '').toLowerCase()))
-        && pendingCount === 0;
-
-    /* Early Bird: all penalties have completed_at before their deadline */
-    const hasEarlyBird = penalties.length > 0 && penalties.every((p) => {
-        const s = (p.status || '').toLowerCase();
-        if (s !== 'completed' && s !== 'resolved') return false;
-        if (!p.deadline || !p.completed_at) return false;
-        return new Date(p.completed_at) < new Date(p.deadline);
-    });
-
-    /* Appeal Master: any approved appeal within window */
-    const hasAppealMaster = appeals.some(
-        (a) => ['approved', 'accepted', 'granted'].includes((a.status || '').toLowerCase())
-            && isWithinWindow(a.created_at)
-    );
-
-    /* AUTO-UNLOCK ACHIEVEMENTS */
-    useEffect(() => {
-        if (!student || loading) return;
-
-        const checkMap = {
-            first_step: completedHours >= 1,
-            getting_started: completedHours >= 5,
-            on_fire: completedHours >= 10,
-            marathon: completedHours >= 20,
-            halfway_hero: complianceRate >= 50,
-            compliance_pro: complianceRate >= 75,
-            perfect_record: complianceRate >= 100 && totalHours > 0,
-            zero_pending: pendingCount === 0 && penalties.length > 0,
-            speed_demon: hasSpeedDemon,
-            perfect_week: hasPerfectWeek,
-            comeback_kid: hasComebackKid,
-            early_bird: hasEarlyBird,
-            appeal_master: hasAppealMaster,
-            century: completedHours >= 100,
-        };
-
-        const newlyUnlocked = BADGE_DEFS.filter((b) => !unlockedKeys.has(b.key) && checkMap[b.key]);
-        if (newlyUnlocked.length === 0) return;
-
-        (async () => {
-            try {
-                const { unlocked = [] } = await api.post('/api/data/achievements/unlock', {
-                    keys: newlyUnlocked.map((badge) => badge.key),
-                });
-                if (!unlocked.length) return;
-                const unlockedKeys = new Set(unlocked.map((achievement) => achievement.badge_key));
-                await loadAchievements();
-                newlyUnlocked
-                    .filter((badge) => unlockedKeys.has(badge.key))
-                    .forEach((badge) => {
-                        showToast('success', `🏆 Badge unlocked: ${badge.name}`, badge.desc);
-                    });
-            } catch (error) {
-                console.error('Failed to unlock achievements:', error);
-            }
-        })();
-    }, [
-        student, loading, completedHours, complianceRate, pendingCount,
-        penalties.length, activeAchievements.length,
-        hasSpeedDemon, hasPerfectWeek, hasComebackKid, hasEarlyBird, hasAppealMaster,
-        loadAchievements, showToast, totalHours,
-    ]);
 
     /* FILTER */
     let filteredPenalties = [...penalties];
@@ -689,8 +445,9 @@ export default function StudentDashboard() {
         }
         const penalty = penalties.find((p) => String(p.id) === String(appealPenaltyId));
         if (!penalty) return;
+        let notificationWarning;
         try {
-            await api.data.insert('appeals', [{
+            const result = await api.data.insert('appeals', [{
                 penalty_id: penalty.id,
                 penalty_violation: penalty.violation,
                 penalty_hours: penalty.hours,
@@ -699,11 +456,16 @@ export default function StudentDashboard() {
                 supporting_statement: appealStatement.trim() || null,
                 created_at: new Date().toISOString(),
             }]);
+            notificationWarning = result?.notificationWarning;
         } catch (error) {
             showToast('error', 'Submission failed', error.message);
             return;
         }
-        showToast('success', 'Appeal submitted', 'Your appeal has been sent for review');
+        showToast(
+            notificationWarning ? 'warning' : 'success',
+            'Appeal submitted',
+            notificationWarning || 'Your appeal has been sent for review'
+        );
         setAppealPenaltyId('');
         setAppealReason('');
         setAppealStatement('');
@@ -711,12 +473,11 @@ export default function StudentDashboard() {
     };
 
     /* EDIT PROFILE */
-    useEffect(() => {
-        if (student) {
-            setEditName(student.name || '');
-            setEditEmail(student.email || '');
-        }
-    }, [student, showEditProfile]);
+    const openEditProfile = () => {
+        setEditName(student?.name || '');
+        setEditEmail(student?.email || '');
+        setShowEditProfile(true);
+    };
 
     const saveProfile = async () => {
         if (!editName.trim()) return showToast('error', 'Name required', 'Please enter your name');
@@ -730,35 +491,6 @@ export default function StudentDashboard() {
         setStudent(updated);
         setShowEditProfile(false);
         showToast('success', 'Profile updated', 'Your info has been saved');
-    };
-
-    /* NOTIFICATIONS */
-    const markAllRead = async () => {
-        try {
-            await api.data.update('notifications', { is_read: false }, {
-                is_read: true,
-                read_at: new Date().toISOString(),
-            });
-        } catch (error) {
-            console.error('Unable to mark notifications as read:', error);
-            return showToast('error', 'Unable to update notifications', error.message);
-        }
-        await loadNotifications();
-        showToast('info', 'All marked as read', '');
-    };
-
-    const markNotifRead = async (id) => {
-        try {
-            await api.data.update('notifications', { id }, {
-                is_read: true,
-                read_at: new Date().toISOString(),
-            });
-        } catch (error) {
-            console.error('Unable to mark notification as read:', error);
-            return showToast('error', 'Unable to update notification', error.message);
-        }
-        await loadNotifications();
-        await loadAnnouncements();
     };
 
     const announcementReadRequests = useRef(new Set());
@@ -775,8 +507,7 @@ export default function StudentDashboard() {
             return showToast('error', 'Unable to update announcement', error.message);
         }
         await loadAnnouncements();
-        await loadNotifications();
-    }, [loadAnnouncements, loadNotifications, showToast]);
+    }, [loadAnnouncements, showToast]);
 
     useEffect(() => {
         if (currentTab === 'announcements' && selectedAnnouncement && !selectedAnnouncement.is_read) {
@@ -789,11 +520,9 @@ export default function StudentDashboard() {
     const idleTimer = useRef(null);
     const idleCountdownTimer = useRef(null);
 
-    const resetIdleTimer = useCallback(() => {
+    const scheduleIdleTimer = useCallback(() => {
         if (idleTimer.current) clearTimeout(idleTimer.current);
         if (idleCountdownTimer.current) clearInterval(idleCountdownTimer.current);
-        setShowIdleWarning(false);
-        setIdleCountdown(30);
 
         idleTimer.current = setTimeout(() => {
             setShowIdleWarning(true);
@@ -811,17 +540,23 @@ export default function StudentDashboard() {
         }, 5 * 60 * 1000);
     }, [logout]);
 
+    const resetIdleTimer = useCallback(() => {
+        setShowIdleWarning(false);
+        setIdleCountdown(30);
+        scheduleIdleTimer();
+    }, [scheduleIdleTimer]);
+
     useEffect(() => {
         if (!student) return;
         const events = ['mousemove', 'mousedown', 'click', 'scroll', 'keydown', 'touchstart', 'touchmove', 'wheel'];
-        resetIdleTimer();
+        scheduleIdleTimer();
         events.forEach((e) => document.addEventListener(e, resetIdleTimer, { passive: true }));
         return () => {
             events.forEach((e) => document.removeEventListener(e, resetIdleTimer));
             if (idleTimer.current) clearTimeout(idleTimer.current);
             if (idleCountdownTimer.current) clearInterval(idleCountdownTimer.current);
         };
-    }, [student, resetIdleTimer]);
+    }, [student, resetIdleTimer, scheduleIdleTimer]);
 
     const confirmLogout = () => {
         logout();
@@ -847,11 +582,10 @@ export default function StudentDashboard() {
             : currentTab === 'penalties' ? 'My Penalties'
                 : currentTab === 'schedule' ? 'Service Schedule'
                     : currentTab === 'progress' ? 'My Progress'
-                        : currentTab === 'achievements' ? 'Achievements'
-                            : currentTab === 'history' ? 'History'
-                                : currentTab === 'announcements' ? 'Announcements'
-                                    : currentTab === 'appeal' ? 'Submit Appeal'
-                                        : currentTab === 'help' ? 'Help Center' : '';
+                        : currentTab === 'history' ? 'History'
+                            : currentTab === 'announcements' ? 'Announcements'
+                                : currentTab === 'appeal' ? 'Submit Appeal'
+                                    : currentTab === 'help' ? 'Help Center' : '';
 
     /* SCHEDULE COMPUTED VALUES */
     const today = new Date();
@@ -907,6 +641,40 @@ export default function StudentDashboard() {
                 @keyframes modalPop { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
                 .modal-pop { animation: modalPop 0.22s cubic-bezier(0.2, 0.9, 0.4, 1.1) both; }
                 .dashboard-dark { color-scheme: dark; }
+                @media (max-width: 639px) {
+                    .dashboard-canvas {
+                        min-height: 100dvh;
+                        background-image: linear-gradient(180deg, rgba(37, 99, 235, 0.045), transparent 16rem);
+                    }
+                    .dashboard-dark .dashboard-canvas {
+                        background-image: linear-gradient(180deg, rgba(37, 99, 235, 0.1), transparent 16rem);
+                    }
+                    .dashboard-canvas header {
+                        height: 3.75rem;
+                        padding-left: max(0.75rem, env(safe-area-inset-left));
+                        padding-right: max(0.75rem, env(safe-area-inset-right));
+                    }
+                    .dashboard-canvas main {
+                        padding: 1rem 0.75rem calc(5rem + env(safe-area-inset-bottom));
+                    }
+                    .dashboard-canvas main h1 {
+                        font-size: clamp(1.25rem, 5vw, 1.5rem);
+                        line-height: 1.35;
+                    }
+                    .dashboard-canvas main [class~="p-5"] { padding: 1rem; }
+                    .dashboard-canvas main [class~="p-6"] { padding: 1rem; }
+                    .dashboard-canvas main [class~="p-7"] { padding: 1.125rem; }
+                    .dashboard-canvas main [class~="p-8"] { padding: 1.25rem; }
+                    .dashboard-canvas main input,
+                    .dashboard-canvas main select,
+                    .dashboard-canvas main textarea {
+                        font-size: 16px;
+                    }
+                    .dashboard-canvas main .overflow-x-auto {
+                        max-width: 100%;
+                        overscroll-behavior-x: contain;
+                    }
+                }
             `}</style>
 
                 {/* DRAWER OVERLAY */}
@@ -954,7 +722,6 @@ export default function StudentDashboard() {
                             { tab: 'penalties', label: 'Penalties', icon: I.rect },
                             { tab: 'schedule', label: 'Schedule', icon: I.calendar },
                             { tab: 'progress', label: 'My Progress', icon: I.chart },
-                            { tab: 'achievements', label: 'Achievements', icon: I.trophy },
                             { tab: 'history', label: 'History', icon: I.clock },
                             { tab: 'announcements', label: 'Announcements', icon: I.megaphone },
                             { tab: 'appeal', label: 'Appeal', icon: I.doc },
@@ -988,7 +755,7 @@ export default function StudentDashboard() {
 
                     <div className="border-t border-slate-200 dark:border-slate-800 flex-shrink-0">
                         <button
-                            onClick={() => setShowEditProfile(true)}
+                            onClick={openEditProfile}
                             className="relative flex items-center w-full h-12 text-slate-600 dark:text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 transition-colors duration-150"
                         >
                             <span className="w-14 md:w-[68px] flex-shrink-0 flex items-center justify-center">{I.userEdit}</span>
@@ -1009,8 +776,8 @@ export default function StudentDashboard() {
                 </aside>
 
                 {/* TOPBAR */}
-                <header className="sticky top-0 z-[100] h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-8 md:ml-[68px]">
-                    <div className="flex items-center gap-3">
+                <header className="sticky top-0 z-[100] h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-3 sm:px-4 md:px-8 md:ml-[68px]">
+                    <div className="flex items-center gap-1 sm:gap-3">
                         <button
                             type="button"
                             className="md:hidden flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -1022,9 +789,9 @@ export default function StudentDashboard() {
                             <span className="w-5 h-0.5 bg-slate-700 dark:bg-slate-200 rounded" />
                             <span className="w-5 h-0.5 bg-slate-700 dark:bg-slate-200 rounded" />
                         </button>
-                        <div className="flex items-center gap-3">
-                            <img src="/CC.png" alt="CCNDM" className="w-9 h-9 object-contain rounded-lg bg-blue-50 dark:bg-slate-800 p-1" />
-                            <span className="text-lg font-bold text-blue-600">CCNDM</span>
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            <img src="/CC.png" alt="CCNDM" className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg bg-blue-50 dark:bg-slate-800 p-1" />
+                            <span className="text-base sm:text-lg font-bold text-blue-600">CCNDM</span>
                             <span className="hidden md:inline text-xs text-slate-400 border-l border-slate-200 dark:border-slate-800 pl-3 uppercase tracking-wide">
                                 {tabLabel}
                             </span>
@@ -1033,11 +800,11 @@ export default function StudentDashboard() {
 
                     <div className="flex items-center gap-1.5">
                         <button
-                            className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-fuchsia-600 bg-fuchsia-50 hover:bg-fuchsia-100 dark:bg-fuchsia-950/40 dark:text-fuchsia-300 dark:hover:bg-fuchsia-950/60 transition relative"
+                            className="flex items-center gap-1 sm:gap-1.5 p-2 sm:px-3 sm:py-2 rounded-lg text-xs font-semibold text-fuchsia-600 bg-fuchsia-50 hover:bg-fuchsia-100 dark:bg-fuchsia-950/40 dark:text-fuchsia-300 dark:hover:bg-fuchsia-950/60 transition relative"
                             onClick={() => setCurrentTab('announcements')}
                             title="Announcements"
                         >
-                            {I.megaphone} Announcements
+                            {I.megaphone}<span className="hidden sm:inline">Announcements</span>
                             {unreadAnnouncements > 0 && (
                                 <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                                     {unreadAnnouncements > 9 ? '9+' : unreadAnnouncements}
@@ -1052,19 +819,7 @@ export default function StudentDashboard() {
                             {darkMode ? I.sun : I.moon}
                         </button>
                         <button
-                            className="p-2.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition relative"
-                            onClick={() => setShowNotifications(true)}
-                            title="Notifications"
-                        >
-                            {I.bell}
-                            {unreadCount > 0 && (
-                                <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-                                    {unreadCount > 99 ? '99+' : unreadCount}
-                                </span>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setShowEditProfile(true)}
+                            onClick={openEditProfile}
                             className="ml-1.5 hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white text-xs font-semibold shadow-sm hover:shadow-md transition"
                             title="Edit profile"
                         >
@@ -1073,141 +828,6 @@ export default function StudentDashboard() {
                         </button>
                     </div>
                 </header>
-
-                {/* NOTIFICATIONS MODAL */}
-                {showNotifications && (
-                    <div className="fixed inset-0 z-[20000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-                        <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
-                            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-                                <div className="flex items-center gap-2">
-                                    <div className="relative">
-                                        <span className="text-slate-700 dark:text-slate-200">{I.bellRing}</span>
-                                        {unreadCount > 0 && (
-                                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse" />
-                                        )}
-                                    </div>
-                                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
-                                        Notifications
-                                    </h3>
-                                    {unreadCount > 0 && (
-                                        <span className="text-[11px] font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
-                                            {unreadCount} new
-                                        </span>
-                                    )}
-                                </div>
-                                <button
-                                    className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                                    onClick={() => setShowNotifications(false)}
-                                >
-                                    {I.close}
-                                </button>
-                            </div>
-
-                            <div className="flex items-center gap-1 px-3 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800/60">
-                                {[
-                                    { key: 'all', label: 'All', count: notifications.length },
-                                    { key: 'unread', label: 'Unread', count: unreadCount },
-                                ].map((f) => (
-                                    <button
-                                        key={f.key}
-                                        onClick={() => setNotifFilter(f.key)}
-                                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 ${notifFilter === f.key
-                                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
-                                            : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400'
-                                            }`}
-                                    >
-                                        {f.label}
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${notifFilter === f.key
-                                            ? 'bg-blue-200/70 dark:bg-blue-800 text-blue-800 dark:text-blue-100'
-                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                                            }`}>
-                                            {f.count}
-                                        </span>
-                                    </button>
-                                ))}
-                                <div className="flex-1" />
-                                <button
-                                    onClick={markAllRead}
-                                    disabled={unreadCount === 0}
-                                    className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed px-2 py-1"
-                                >
-                                    Mark all read
-                                </button>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto px-2 py-2">
-                                {filteredNotifications.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-800 dark:to-slate-900 flex items-center justify-center mb-4 relative">
-                                            <span className="text-blue-400 dark:text-blue-500">{I.bell}</span>
-                                            <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                                                {I.check}
-                                            </span>
-                                        </div>
-                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                                            {notifFilter === 'unread' ? "You're all caught up!" : 'No notifications yet'}
-                                        </p>
-                                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-[240px]">
-                                            {notifFilter === 'unread'
-                                                ? "You've read everything. Nice work!"
-                                                : 'Updates about your penalties and appeals will show up here.'}
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        {newNotifs.length > 0 && (
-                                            <div className="px-3 pt-2 pb-1">
-                                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                                                    New
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {newNotifs.map((n) => (
-                                            <NotificationItem
-                                                key={n.id}
-                                                notification={n}
-                                                onMarkRead={markNotifRead}
-                                                onAction={(notif) => {
-                                                    setShowNotifications(false);
-                                                    if (notif.action_tab) setCurrentTab(notif.action_tab);
-                                                }}
-                                            />
-                                        ))}
-
-                                        {earlierNotifs.length > 0 && (
-                                            <div className="px-3 pt-4 pb-1">
-                                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                                                    Earlier
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {earlierNotifs.map((n) => (
-                                            <NotificationItem
-                                                key={n.id}
-                                                notification={n}
-                                                onMarkRead={markNotifRead}
-                                                onAction={(notif) => {
-                                                    setShowNotifications(false);
-                                                    if (notif.action_tab) setCurrentTab(notif.action_tab);
-                                                }}
-                                            />
-                                        ))}
-                                    </>
-                                )}
-                            </div>
-
-                            {notifications.length > 0 && (
-                                <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/60 dark:bg-slate-950/60">
-                                    <p className="text-[11px] text-center text-slate-400 dark:text-slate-500">
-                                        Showing {filteredNotifications.length} of {notifications.length} notifications
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
 
                 {/* MAIN */}
                 <main className="md:ml-[68px] p-4 md:p-8 pb-20 md:pb-8">
@@ -1239,9 +859,9 @@ export default function StudentDashboard() {
                                             Complete your service hours to stay compliant and avoid further action.
                                         </p>
                                     </div>
-                                    <button
+                                                <button
                                         onClick={() => setCurrentTab('penalties')}
-                                        className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition flex-shrink-0"
+                                                    className="inline-flex items-center gap-1 px-2 py-1.5 sm:px-3 bg-blue-600 hover:bg-blue-700 text-white text-[11px] sm:text-xs font-semibold rounded-lg transition flex-shrink-0"
                                     >
                                         View
                                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1787,68 +1407,6 @@ export default function StudentDashboard() {
                                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-3 text-center">
                                     Completed service hours per day (this week)
                                 </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ACHIEVEMENTS */}
-                    {currentTab === 'achievements' && (
-                        <div style={fadeInStyle}>
-                            <div className="bg-gradient-to-br from-amber-500 to-orange-700 rounded-xl p-6 md:p-7 mb-6 text-white">
-                                <h1 className="text-2xl font-bold">Achievements</h1>
-                                <p className="text-sm text-amber-100 mt-1">
-                                    Unlock badges as you complete your service hours · resets every {RESET_WINDOW_MONTHS} months
-                                </p>
-                            </div>
-
-                            <div className={`${cardCls} p-6 mb-6`}>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-base font-semibold">Overall Progress</h3>
-                                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                                        {completedHours} / {totalHours || 0} hrs
-                                    </span>
-                                </div>
-                                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 rounded-full transition-all duration-700"
-                                        style={{ width: `${totalHours ? Math.min(100, (completedHours / totalHours) * 100) : 0}%` }}
-                                    />
-                                </div>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                                    Keep going! You're making great progress.
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {BADGE_DEFS.map((b) => {
-                                    const unlockedRecord = activeAchievements.find((a) => a.badge_key === b.key);
-                                    const isUnlocked = !!unlockedRecord;
-                                    return (
-                                        <div
-                                            key={b.key}
-                                            className={`${cardCls} p-5 text-center transition ${isUnlocked
-                                                ? 'hover:-translate-y-1 hover:shadow-lg'
-                                                : 'opacity-50 grayscale'
-                                                }`}
-                                        >
-                                            <div className={`w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-white bg-gradient-to-br ${b.color} ${isUnlocked ? 'shadow-lg' : ''
-                                                }`}>
-                                                {I[b.icon]}
-                                            </div>
-                                            <h4 className="text-sm font-bold mb-1">{b.name}</h4>
-                                            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">{b.desc}</p>
-                                            {isUnlocked ? (
-                                                <span className="inline-block mt-3 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                                    Unlocked{unlockedRecord?.unlocked_at ? ` · ${timeAgo(unlockedRecord.unlocked_at)}` : ''}
-                                                </span>
-                                            ) : (
-                                                <span className="inline-block mt-3 text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                                    Locked
-                                                </span>
-                                            )}
-                                        </div>
-                                    );
-                                })}
                             </div>
                         </div>
                     )}
