@@ -632,9 +632,28 @@ export default function AdminDashboard() {
         const totalViolations = penalties.length;
         const resolved = penalties.filter(p => p.status === 'Resolved' || p.status === 'Completed').length;
         const activeStudents = students.filter(s => s.status === 'Good').length;
+        const studentsRequiringAttention = students.filter(s =>
+            ['probation', 'warning', 'suspended'].includes((s.status || '').trim().toLowerCase())
+        ).length;
         const activePenalties = penalties.filter(p => p.status === 'Active' || p.status === 'in-progress').length;
         const totalHours = penalties.reduce((sum, p) => sum + (p.hours || 0), 0);
         const completedHours = penalties.filter(p => p.status === 'Completed' || p.status === 'Resolved').reduce((sum, p) => sum + (p.hours || 0), 0);
+        const ratingMetrics = [];
+        if (totalViolations > 0) ratingMetrics.push((resolved / totalViolations) * 100);
+        if (students.length > 0) ratingMetrics.push((activeStudents / students.length) * 100);
+        if (totalHours > 0) ratingMetrics.push((completedHours / totalHours) * 100);
+        const campusRatingScore = ratingMetrics.length
+            ? Math.round(ratingMetrics.reduce((sum, rating) => sum + rating, 0) / ratingMetrics.length)
+            : null;
+        const campusRating = campusRatingScore === null
+            ? 'Not rated'
+            : campusRatingScore >= 85
+                ? 'Excellent'
+                : campusRatingScore >= 70
+                    ? 'Good'
+                    : campusRatingScore >= 50
+                        ? 'Fair'
+                        : 'Needs attention';
 
         const last7 = Array.from({ length: 7 }).map((_, i) => {
             const d = new Date();
@@ -672,11 +691,14 @@ export default function AdminDashboard() {
             resolved,
             complianceRate: students.length > 0 ? Math.round((students.length - activePenalties) / students.length * 100) : 0,
             activeStudents,
+            studentsRequiringAttention,
             resolutionRate: totalViolations > 0 ? Math.round((resolved / totalViolations) * 100) : 0,
             appealSuccessRate: appeals.length > 0 ? Math.round((approvedAppeals / appeals.length) * 100) : 0,
             engagementRate: students.length > 0 ? Math.round((activeStudents / students.length) * 100) : 0,
             totalHours,
             completedHours,
+            campusRatingScore,
+            campusRating,
             last7,
             categoryDist,
             offenseDist,
@@ -1896,12 +1918,30 @@ export default function AdminDashboard() {
                             </div>
 
                             <div className={`${cardCls} p-6 mb-6`}>
-                                <h3 className="text-base font-bold mb-5 flex items-center gap-2">{I.chart} System Overview</h3>
+                                <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                                    <div>
+                                        <h3 className="text-base font-bold flex items-center gap-2">{I.chart} System Overview</h3>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                            Campus rating averages resolution, good standing, and completed service-hour rates.
+                                        </p>
+                                    </div>
+                                    <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold ${
+                                        stats.campusRating === 'Excellent' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                            : stats.campusRating === 'Good' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                                : stats.campusRating === 'Fair' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                                    : stats.campusRating === 'Needs attention' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                                        : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                                    }`}>
+                                        <span>Campus rating</span>
+                                        <span className="font-bold">{stats.campusRating}</span>
+                                        {stats.campusRatingScore !== null && <span className="opacity-75">{stats.campusRatingScore}/100</span>}
+                                    </div>
+                                </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     {[
                                         { pct: stats.resolutionRate, label: 'Resolution Rate', color: '#10b981', sub: `${stats.resolved}/${stats.totalViolations} resolved` },
                                         { pct: stats.appealSuccessRate, label: 'Appeal Success', color: '#f59e0b', sub: `${stats.approvedAppeals}/${appeals.length} approved` },
-                                        { pct: stats.engagementRate, label: 'Student Engagement', color: '#3b82f6', sub: `${stats.activeStudents} active` },
+                                        { pct: stats.totalStudents > 0 ? Math.round((stats.studentsRequiringAttention / stats.totalStudents) * 100) : 0, label: 'Students Requiring Attention', color: '#ef4444', sub: `${stats.studentsRequiringAttention} flagged` },
                                         { pct: stats.totalHours > 0 ? Math.round((stats.completedHours / stats.totalHours) * 100) : 0, label: 'Hours Completed', color: '#8b5cf6', sub: `${stats.completedHours}/${stats.totalHours} hrs` },
                                     ].map((r, i) => {
                                         const r32 = 42;
