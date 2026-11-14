@@ -58,7 +58,7 @@ const FEATURES = [
 ];
 
 const STEPS = [
-    { num: '01', title: 'Sign In', desc: 'Access the portal using your official student credentials.' },
+    { num: '01', title: 'Register', desc: 'Access the portal using your official student credentials.' },
     { num: '02', title: 'Review', desc: 'See your assigned service hours, deadlines, and records.' },
     { num: '03', title: 'Complete', desc: 'Submit activities and track your progress in real-time.' },
 ];

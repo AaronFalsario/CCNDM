@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { rateLimit } from 'express-rate-limit';
 import { supabase } from '../config/db.js';
-import { COOKIE_NAME, getJwtSecret, requireAuth } from '../middleware/authMiddleware.js';
+import { COOKIE_NAME, ROLE_COOKIE_NAMES, getJwtSecret, requireAuth } from '../middleware/authMiddleware.js';
 import { isEmailConfigured, sendEmail } from '../lib/email.js';
 
 const router = Router();
@@ -72,7 +72,7 @@ function setSession(res, profile, role, remember) {
     }
   );
 
-  res.cookie(COOKIE_NAME, token, cookieOptions(remember));
+  res.cookie(ROLE_COOKIE_NAMES[role], token, cookieOptions(remember));
 }
 
 function passwordMatches(password, storedPassword) {
@@ -773,12 +773,35 @@ router.get('/me', requireAuth, (req, res) => {
 });
 
 router.post('/logout', (req, res) => {
-  res.clearCookie(COOKIE_NAME, {
+  const role = req.body?.role;
+  const cookieConfig = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     path: '/',
-  });
+  };
+
+  if (role === 'student' || role === 'admin') {
+    res.clearCookie(ROLE_COOKIE_NAMES[role], cookieConfig);
+
+    const legacyToken = req.cookies?.[COOKIE_NAME]
+      || (req.headers.cookie || '')
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith(`${COOKIE_NAME}=`))
+        ?.slice(COOKIE_NAME.length + 1);
+    if (legacyToken) {
+      try {
+        const claims = jwt.verify(decodeURIComponent(legacyToken), getJwtSecret(), { issuer: 'ccndm-backend' });
+        if (claims.role === role) res.clearCookie(COOKIE_NAME, cookieConfig);
+      } catch {
+        res.clearCookie(COOKIE_NAME, cookieConfig);
+      }
+    }
+  } else {
+    res.clearCookie(COOKIE_NAME, cookieConfig);
+  }
+
   return res.json({ ok: true });
 });
 

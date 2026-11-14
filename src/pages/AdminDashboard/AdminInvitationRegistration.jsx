@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
+import EmailVerificationField from '../../components/EmailVerificationField';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../lib/api';
 
@@ -16,6 +17,8 @@ export default function AdminInvitationRegistration() {
   const [invitation, setInvitation] = useState(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [emailVerification, setEmailVerification] = useState({ verificationId: '', verified: false });
+  const [emailVerificationReset, setEmailVerificationReset] = useState(0);
 
   const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10';
   const labelClass = 'mb-2 block text-sm font-semibold text-slate-700';
@@ -24,14 +27,23 @@ export default function AdminInvitationRegistration() {
     event.preventDefault();
     setError('');
     setInvitation(null);
+    if (!emailVerification.verified) {
+      setError('Verify the email address before sending an administrator invitation.');
+      return;
+    }
     setSaving(true);
     try {
-      const result = await api.post('/api/admin/admins', form);
+      const result = await api.post('/api/admin/admins', {
+        ...form,
+        emailVerificationId: emailVerification.verificationId,
+      });
       setInvitation({
         message: result.message,
         invitationUrl: result.invitationUrl || null,
       });
       setForm(initialForm);
+      setEmailVerification({ verificationId: '', verified: false });
+      setEmailVerificationReset((reset) => reset + 1);
     } catch (requestError) {
       setError(requestError.message || 'Could not create the administrator invitation.');
     } finally {
@@ -42,7 +54,7 @@ export default function AdminInvitationRegistration() {
   if (loading || !admin) return <DashboardSkeleton variant="admin" />;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 font-sans">
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8 font-sans">
       <section className="mx-auto w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
         <header className="bg-gradient-to-r from-blue-700 to-indigo-700 px-7 py-8 text-white sm:px-10">
           <Link to="/admin/dashboard" className="text-sm font-semibold text-blue-100 hover:text-white">
@@ -51,7 +63,7 @@ export default function AdminInvitationRegistration() {
           <p className="mt-7 text-xs font-bold uppercase tracking-[0.2em] text-blue-100">Admin only</p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Invite an administrator</h1>
           <p className="mt-2 text-sm leading-6 text-blue-100">
-            Send a secure, one-time link. The invited administrator will choose her own password.
+            Verify the recipient's email first, then send a secure, one-time link to create an administrator password.
           </p>
         </header>
 
@@ -113,23 +125,19 @@ export default function AdminInvitationRegistration() {
                 required
               />
             </div>
-            <div>
-              <label htmlFor="admin-email" className={labelClass}>Email address</label>
-              <input
-                id="admin-email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                maxLength={254}
-                className={inputClass}
-                value={form.email}
-                onChange={(event) => setForm({ ...form, email: event.target.value })}
-                required
-              />
-            </div>
+            <EmailVerificationField
+              key={emailVerificationReset}
+              id="admin-email"
+              email={form.email}
+              onEmailChange={(event) => setForm({ ...form, email: event.target.value })}
+              purpose="admin"
+              inputClass={inputClass}
+              labelClass={labelClass}
+              onVerificationChange={setEmailVerification}
+            />
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || !emailVerification.verified}
               className="w-full rounded-xl bg-blue-600 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? 'Sending invitation...' : 'Send admin invitation'}

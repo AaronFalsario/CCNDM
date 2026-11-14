@@ -44,7 +44,7 @@ export default function AdminStudentRegistration() {
   if (loading || !admin) return <DashboardSkeleton variant="admin" />;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 font-sans">
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8 font-sans">
       <section className="mx-auto w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
         <header className="bg-gradient-to-r from-blue-700 to-indigo-700 px-7 py-8 text-white sm:px-10">
           <Link to="/admin/dashboard" className="text-sm font-semibold text-blue-100 hover:text-white">
@@ -53,7 +53,7 @@ export default function AdminStudentRegistration() {
           <p className="mt-7 text-xs font-bold uppercase tracking-[0.2em] text-blue-100">Admin only</p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Register a student</h1>
           <p className="mt-2 text-sm leading-6 text-blue-100">
-            Create an account for a verified student. Their temporary password will be shown once and must be changed at first sign-in.
+            Create an account for a verified student. Their invitation link will be sent to the email address provided.
           </p>
         </header>
 

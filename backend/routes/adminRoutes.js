@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
@@ -21,6 +21,20 @@ const adminInvitationLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: 'Too many administrator invitations. Please try again later.' },
 });
+const emailVerificationSendLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { message: 'Too many email verification codes requested. Please try again later.' },
+});
+const emailVerificationCheckLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { message: 'Too many email verification attempts. Please try again later.' },
+});
 
 function escapeHtml(value) {
   return value.replace(/[&<>"']/g, (character) => ({
@@ -31,6 +45,208 @@ function escapeHtml(value) {
     "'": '&#39;',
   })[character]);
 }
+
+function handleEmailVerificationStorageError(error, res, next) {
+  if (
+    error?.code === '42P01'
+    || error?.code === 'PGRST205'
+    || /admin_email_verifications.*(does not exist|not found)/i.test(error?.message || '')
+  ) {
+    return res.status(503).json({
+      message: 'Email verification is not configured. Apply the latest Supabase database migration and try again.',
+    });
+  }
+  return next(error);
+}
+
+async function consumeEmailVerification({ verificationId, email, purpose, requesterId }) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(verificationId)) {
+    return { valid: false };
+  }
+
+  const now = new Date().toISOString();
+  const { data: verification, error: lookupError } = await supabase
+    .from('admin_email_verifications')
+    .select('id')
+    .eq('id', verificationId)
+    .eq('requester_id', requesterId)
+    .eq('purpose', purpose)
+    .eq('email', email)
+    .not('verified_at', 'is', null)
+    .is('consumed_at', null)
+    .gt('expires_at', now)
+    .maybeSingle();
+  if (lookupError) return { error: lookupError };
+  if (!verification) return { valid: false };
+
+  const { data: consumed, error: consumeError } = await supabase
+    .from('admin_email_verifications')
+    .update({ consumed_at: now })
+    .eq('id', verificationId)
+    .is('consumed_at', null)
+    .gt('expires_at', now)
+    .select('id')
+    .maybeSingle();
+  if (consumeError) return { error: consumeError };
+  return { valid: Boolean(consumed) };
+}
+
+router.post(
+  '/email-verifications',
+  requireAuth,
+  requireRole('admin'),
+  emailVerificationSendLimiter,
+  async (req, res, next) => {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const purpose = String(req.body?.purpose || '');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+      return res.status(400).json({ message: 'Enter a valid email address.' });
+    }
+    if (purpose !== 'admin') {
+      return res.status(400).json({ message: 'Email verification is only available for administrator invitations.' });
+    }
+    if (!supabase) return res.status(503).json({ message: 'Authentication service is not configured.' });
+
+    try {
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const { error: cleanupError } = await supabase
+        .from('admin_email_verifications')
+        .delete()
+        .lt('expires_at', nowIso);
+      if (cleanupError) return handleEmailVerificationStorageError(cleanupError, res, next);
+
+      const { error: invalidateError } = await supabase
+        .from('admin_email_verifications')
+        .update({ expires_at: nowIso })
+        .eq('requester_id', req.user.id)
+        .eq('purpose', purpose)
+        .is('consumed_at', null)
+        .gt('expires_at', nowIso);
+      if (invalidateError) return handleEmailVerificationStorageError(invalidateError, res, next);
+
+      const verificationId = randomUUID();
+      const code = String(randomInt(100000, 1000000));
+      const expiresAt = new Date(now.getTime() + 10 * 60 * 1000).toISOString();
+      const { error: insertError } = await supabase
+        .from('admin_email_verifications')
+        .insert({
+          id: verificationId,
+          requester_id: req.user.id,
+          purpose,
+          email,
+          code_hash: await bcrypt.hash(code, 10),
+          expires_at: expiresAt,
+        });
+      if (insertError) return handleEmailVerificationStorageError(insertError, res, next);
+
+      const emailResult = await sendEmail({
+        to: [{ email }],
+        subject: 'Your CCNDM email verification code',
+        text: `Your CCNDM email verification code is ${code}. It expires in 10 minutes. If you did not request this code, you can ignore this message.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+            <h2 style="color: #1e3a8a; margin-top: 0;">Verify your email address</h2>
+            <p style="color: #475569; line-height: 1.6;">Enter this code in CCNDM to confirm you can receive email at <strong>${escapeHtml(email)}</strong>.</p>
+            <p style="margin: 24px 0; text-align: center; font-size: 30px; font-weight: bold; letter-spacing: 0.3em; color: #1d4ed8;">${code}</p>
+            <p style="color: #64748b; font-size: 13px;">The code expires in 10 minutes. No account invitation will be created until the code is verified.</p>
+          </div>
+        `,
+      });
+
+      if (!emailResult.sent) {
+        const { error: removeError } = await supabase
+          .from('admin_email_verifications')
+          .delete()
+          .eq('id', verificationId);
+        if (removeError) return handleEmailVerificationStorageError(removeError, res, next);
+        return res.status(503).json({ message: 'Email delivery is unavailable. No invitation was created.' });
+      }
+
+      return res.status(201).json({
+        verificationId,
+        message: `A verification code was sent to ${email}. Confirm the code before creating the invitation.`,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  '/email-verifications/:verificationId/verify',
+  requireAuth,
+  requireRole('admin'),
+  emailVerificationCheckLimiter,
+  async (req, res, next) => {
+    const verificationId = String(req.params.verificationId || '');
+    const code = String(req.body?.code || '').trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(verificationId)) {
+      return res.status(400).json({ message: 'Request a new email verification code.' });
+    }
+    if (!/^\d{6}$/.test(code)) {
+      return res.status(400).json({ message: 'Enter the 6-digit verification code.' });
+    }
+
+    try {
+      const now = new Date().toISOString();
+      const { data: verification, error: lookupError } = await supabase
+        .from('admin_email_verifications')
+        .select('id, code_hash, attempts, expires_at, verified_at, consumed_at')
+        .eq('id', verificationId)
+        .eq('requester_id', req.user.id)
+        .maybeSingle();
+      if (lookupError) return handleEmailVerificationStorageError(lookupError, res, next);
+      if (!verification) return res.status(400).json({ message: 'This verification code is invalid. Request a new code.' });
+      if (verification.expires_at <= now) {
+        return res.status(410).json({ message: 'This verification code has expired. Request a new code.' });
+      }
+      if (verification.consumed_at) {
+        return res.status(409).json({ message: 'This verification code has already been used.' });
+      }
+      if (verification.verified_at) {
+        return res.json({ message: 'Email address verified. You can now create the invitation.' });
+      }
+      if (verification.attempts >= 5) {
+        return res.status(429).json({ message: 'Too many incorrect codes. Request a new code.' });
+      }
+
+      const matches = await bcrypt.compare(code, verification.code_hash);
+      if (!matches) {
+        const { error: attemptsError } = await supabase
+          .from('admin_email_verifications')
+          .update({ attempts: verification.attempts + 1 })
+          .eq('id', verificationId)
+          .eq('attempts', verification.attempts)
+          .is('verified_at', null)
+          .is('consumed_at', null);
+        if (attemptsError) return handleEmailVerificationStorageError(attemptsError, res, next);
+        return res.status(400).json({
+          message: verification.attempts + 1 >= 5
+            ? 'Too many incorrect codes. Request a new code.'
+            : 'That code is incorrect. Check it and try again.',
+        });
+      }
+
+      const { data: updated, error: updateError } = await supabase
+        .from('admin_email_verifications')
+        .update({ verified_at: now })
+        .eq('id', verificationId)
+        .eq('requester_id', req.user.id)
+        .is('verified_at', null)
+        .is('consumed_at', null)
+        .gt('expires_at', now)
+        .select('id')
+        .maybeSingle();
+      if (updateError) return handleEmailVerificationStorageError(updateError, res, next);
+      if (!updated) return res.status(409).json({ message: 'This code can no longer be used. Request a new code.' });
+
+      return res.json({ message: 'Email address verified. You can now create the invitation.' });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
 
 router.post('/admins', requireAuth, requireRole('admin'), adminInvitationLimiter, async (req, res, next) => {
   const adminId = String(req.body?.adminId || '').trim();
@@ -63,17 +279,32 @@ router.post('/admins', requireAuth, requireRole('admin'), adminInvitationLimiter
     if (idLookupError) return next(idLookupError);
     if (emailLookupError) return next(emailLookupError);
 
-    let profile;
-    let createdProfile = false;
-    if (existingById || existingByEmail) {
-      if (
+    if (
+      (existingById || existingByEmail)
+      && (
         !existingById
         || !existingByEmail
         || existingById.id !== existingByEmail.id
         || !existingById.invitation_pending
-      ) {
-        return res.status(409).json({ message: 'That Admin ID or email address is already in use.' });
-      }
+      )
+    ) {
+      return res.status(409).json({ message: 'That Admin ID or email address is already in use.' });
+    }
+
+    const verification = await consumeEmailVerification({
+      verificationId: String(req.body?.emailVerificationId || ''),
+      email,
+      purpose: 'admin',
+      requesterId: req.user.id,
+    });
+    if (verification.error) return handleEmailVerificationStorageError(verification.error, res, next);
+    if (!verification.valid) {
+      return res.status(403).json({ message: 'Verify this email address before creating an administrator invitation.' });
+    }
+
+    let profile;
+    let createdProfile = false;
+    if (existingById || existingByEmail) {
       profile = existingById;
       const { error: updateError } = await supabase
         .from('admins')

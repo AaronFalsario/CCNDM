@@ -45,7 +45,7 @@ export function useAuth(role) {
 
   const logout = useCallback(async () => {
     try {
-      await api.post('/api/auth/logout');
+      await api.post('/api/auth/logout', { role });
     } catch (error) {
       console.error('[logout]', error);
     } finally {

@@ -2,14 +2,17 @@ const API_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL ?? '');
 
 async function apiRequest(path, options = {}) {
   let response;
+  const portal = window.location.pathname.split('/')[1];
+  const sessionRole = portal === 'admin' || portal === 'student' ? portal : null;
   try {
     response = await fetch(`${API_URL}${path}`, {
       credentials: 'include',
+      ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(sessionRole ? { 'X-CCNDM-Session-Role': sessionRole } : {}),
         ...(options.headers || {}),
       },
-      ...options,
     });
   } catch (networkError) {
     throw new Error(
