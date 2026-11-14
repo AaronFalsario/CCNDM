@@ -240,30 +240,20 @@ export default function StudentDashboard() {
     const [editEmail, setEditEmail] = useState('');
 
     const [toast, setToast] = useState(null);
-    const toastTimeoutRef = useRef(null);
+    const toastIdRef = useRef(0);
 
     const showToast = useCallback((type, title, message = '') => {
-        if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-        setToast({ type, title, message });
-        toastTimeoutRef.current = setTimeout(() => setToast(null), 4000);
+        toastIdRef.current += 1;
+        setToast({ id: toastIdRef.current, type, title, message });
     }, []);
 
-    const closeToast = () => {
-        if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-        setToast(null);
-    };
+    const closeToast = useCallback(() => setToast(null), []);
 
     const toggleDarkMode = () => setDarkMode((current) => !current);
 
     /* CLOCK */
     useEffect(() => {
         const id = setInterval(() => setNow(new Date()), 1000);
-        return () => clearInterval(id);
-    }, []);
-
-    /* LIVE TICK for countdowns */
-    useEffect(() => {
-        const id = setInterval(() => setPenalties((prev) => [...prev]), 1000);
         return () => clearInterval(id);
     }, []);
 
@@ -342,7 +332,7 @@ export default function StudentDashboard() {
 
     useEffect(() => {
         if (!student) return undefined;
-        const fallbackId = setInterval(loadPenalties, 15000);
+        const fallbackId = setInterval(loadPenalties, 60000);
         return () => clearInterval(fallbackId);
     }, [student, loadPenalties]);
 
@@ -2397,6 +2387,7 @@ export default function StudentDashboard() {
 
                 {toast && (
                     <Toast
+                        key={toast.id}
                         message={toast.message}
                         type={toast.type}
                         title={toast.title}

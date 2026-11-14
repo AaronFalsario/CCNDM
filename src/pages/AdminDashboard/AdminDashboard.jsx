@@ -496,18 +496,13 @@ export default function AdminDashboard() {
     });
 
     const [toast, setToast] = useState(null);
-    const toastTimeoutRef = useRef(null);
-    const countdownRef = useRef(null);
+    const toastIdRef = useRef(0);
 
     const showToast = useCallback((type, title, message = '') => {
-        if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-        setToast({ type, title, message });
-        toastTimeoutRef.current = setTimeout(() => setToast(null), 4000);
+        toastIdRef.current += 1;
+        setToast({ id: toastIdRef.current, type, title, message });
     }, []);
-    const closeToast = () => {
-        if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-        setToast(null);
-    };
+    const closeToast = useCallback(() => setToast(null), []);
 
     const isLargeText = Boolean(
         admin?.id
@@ -610,11 +605,6 @@ export default function AdminDashboard() {
             ]))
             .finally(() => setLoading(false));
     }, [admin, loadStudents, loadPenalties, loadAppeals, loadActivity, loadAnnouncements]);
-
-    useEffect(() => {
-        countdownRef.current = setInterval(() => setPenalties(prev => [...prev]), 1000);
-        return () => clearInterval(countdownRef.current);
-    }, []);
 
     useEffect(() => {
         const id = setInterval(() => {
@@ -4134,6 +4124,7 @@ export default function AdminDashboard() {
 
                 {toast && (
                     <Toast
+                        key={toast.id}
                         message={toast.message}
                         type={toast.type}
                         title={toast.title}

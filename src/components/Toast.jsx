@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function Toast({
     message,
@@ -11,6 +11,9 @@ export default function Toast({
     const [removing, setRemoving] = useState(false);
     const [progress, setProgress] = useState(100);
     const [mounted, setMounted] = useState(false);
+    const onCloseRef = useRef(onClose);
+    const closeTimerRef = useRef(null);
+    const closedRef = useRef(false);
 
     // ICON + LABEL + COLOR PER TYPE
     const config = {
@@ -64,8 +67,18 @@ export default function Toast({
 
     // CLOSE
     const close = useCallback(() => {
+        if (closedRef.current) return;
+        closedRef.current = true;
         setRemoving(true);
-        setTimeout(() => onClose?.(), 220);
+        closeTimerRef.current = setTimeout(() => onCloseRef.current?.(), 220);
+    }, []);
+
+    useEffect(() => () => {
+        if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    }, []);
+
+    useEffect(() => {
+        onCloseRef.current = onClose;
     }, [onClose]);
 
     // MOUNT ENTRANCE
@@ -82,7 +95,7 @@ export default function Toast({
             const elapsed = Date.now() - start;
             const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
             setProgress(remaining);
-        }, 30);
+        }, 100);
         const timeout = setTimeout(close, duration);
         return () => {
             clearTimeout(timeout);

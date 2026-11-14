@@ -308,13 +308,13 @@ router.all('/:table', requireAuth, async (req, res, next) => {
         }
         query = supabase
           .from(table)
-          .select('*')
+          .select(rules.fields.join(','))
           .or(`student_id.is.null,student_profile_id.eq.${req.user.id}`);
       }
     }
 
     if (req.method === 'GET') {
-      if (!query) query = supabase.from(table).select('*');
+      if (!query) query = supabase.from(table).select(rules.fields.join(','));
       const queryFilters = role === 'student' && table === 'notifications'
         ? Object.fromEntries(
           Object.entries(filters).filter(([field]) => !['student_id', 'student_profile_id'].includes(field))
@@ -429,7 +429,7 @@ router.all('/:table', requireAuth, async (req, res, next) => {
           row.student_profile_id = profileId;
         }
       }
-      ({ data, error } = await supabase.from(table).insert(rows).select('*'));
+      ({ data, error } = await supabase.from(table).insert(rows).select(rules.fields.join(',')));
       if (!error && role === 'student' && table === 'appeals') {
         const { data: activeAdmins, error: adminsError } = await supabase
           .from('admins')
@@ -480,7 +480,7 @@ router.all('/:table', requireAuth, async (req, res, next) => {
         filters.student_profile_id = req.user.id;
       }
       query = applyFilters(query, filters);
-      ({ data, error } = await query.select('*'));
+      ({ data, error } = await query.select(rules.fields.join(',')));
     } else if (req.method === 'DELETE') {
       if (!Object.keys(filters).length) {
         return res.status(400).json({ message: 'Deletes require at least one filter.' });
@@ -492,7 +492,7 @@ router.all('/:table', requireAuth, async (req, res, next) => {
         filters.student_profile_id = req.user.id;
       }
       query = applyFilters(query, filters);
-      ({ data, error } = await query.select('*'));
+      ({ data, error } = await query.select(rules.fields.join(',')));
     } else {
       return res.status(405).json({ message: 'Method not allowed.' });
     }
