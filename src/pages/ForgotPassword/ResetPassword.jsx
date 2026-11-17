@@ -83,7 +83,7 @@ export default function ResetPassword() {
             <div className="w-full max-w-md">
                 <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
                     <div className="flex flex-col items-center text-center mb-6">
-                        <img src="/CC.png" alt="CCNDM" className="w-14 h-14 object-contain rounded-xl bg-blue-50 p-2 mb-3" />
+                        <img src="/CC.webp" alt="CCNDM" className="w-14 h-14 object-contain rounded-xl bg-blue-50 p-2 mb-3" />
                         <h1 className="text-xl font-bold text-slate-800">
                             {done && invitationMode ? 'Your Account Is Ready' : done ? 'Password Updated' : invitationMode ? 'Create Your Password' : 'Set New Password'}
                         </h1>

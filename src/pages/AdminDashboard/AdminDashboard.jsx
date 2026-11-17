@@ -1693,7 +1693,7 @@ export default function AdminDashboard() {
                             <span className="w-5 h-0.5 bg-slate-700 dark:bg-slate-200 rounded" />
                         </button>
                         <div className="flex items-center gap-2 sm:gap-3">
-                            <img src="/CC.png" alt="CCNDM" className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg bg-blue-50 dark:bg-slate-700 p-1" />
+                            <img src="/CC.webp" alt="CCNDM" className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg bg-blue-50 dark:bg-slate-700 p-1" />
                             <span className="text-base sm:text-lg font-bold text-blue-600">CCNDM</span>
                             <span className="hidden md:inline text-xs text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-3 uppercase tracking-wide">{tabLabel}</span>
                         </div>

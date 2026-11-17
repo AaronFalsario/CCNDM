@@ -223,7 +223,7 @@ export default function AdminLogin() {
 
                         <div className="relative z-10 flex flex-col items-center">
                             <img
-                                src="/CC.png"
+                                src="/CC.webp"
                                 alt="CCNDM Logo"
                                 className="w-28 h-28 sm:w-32 sm:h-32 object-contain mb-6 anim-logo drop-shadow-lg"
                             />
@@ -246,7 +246,7 @@ export default function AdminLogin() {
                     <div className="w-full md:w-[55%] flex-1 p-4 sm:p-10 md:p-14 flex flex-col justify-center anim-right">
                         <div className="w-full max-w-[440px] mx-auto">
                             <div className="md:hidden flex items-center gap-3 mb-5 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-3">
-                                <img src="/CC.png" alt="Columban College Logo" className="h-12 w-12 shrink-0 object-contain" />
+                                <img src="/CC.webp" alt="Columban College Logo" className="h-12 w-12 shrink-0 object-contain" />
                                 <div className="min-w-0">
                                     <p className="text-xs font-extrabold tracking-wide text-slate-800">COLUMBAN COLLEGE</p>
                                     <p className="mt-0.5 text-[10px] leading-snug text-slate-500">Nursing Discipline Monitoring</p>

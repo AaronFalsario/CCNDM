@@ -220,7 +220,7 @@ export default function Landing() {
                     {/* Logo */}
                     <a href="/" className="flex items-center gap-2.5 sm:gap-3 no-underline group">
                         <div>
-                            <img src="/CC.png" alt="CCNDM logo" className="w-9 h-9 sm:w-10 sm:h-10 object-contain" />
+                            <img src="/CC.webp" alt="CCNDM logo" className="w-9 h-9 sm:w-10 sm:h-10 object-contain" />
                         </div>
                         <div className="leading-none">
                             <div className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">CCNDM</div>
@@ -539,7 +539,7 @@ export default function Landing() {
                         <div className="col-span-2 md:col-span-1">
                             <div className="flex items-center gap-3 mb-5">
                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                                    <img src="/CC.png" alt="CCNDM logo" className="w-7 h-7 object-contain" />
+                                    <img src="/CC.webp" alt="CCNDM logo" className="w-7 h-7 object-contain" />
                                 </div>
                                 <div>
                                     <div className="text-base font-bold text-slate-900 tracking-tight">CCNDM</div>

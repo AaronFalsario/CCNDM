@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../../lib/api';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
 import PasswordStrength from '../../components/PasswordStrength';
-import logo from '../../assets/CC.png';
 
 const Icon = {
     user: (
@@ -216,7 +215,7 @@ export default function StudentLogin() {
 
                     <div className="relative z-10 flex flex-col items-center">
                         <img
-                            src={logo}
+                            src="/CC.webp"
                             alt="Columban College Logo"
                             className="w-28 h-28 sm:w-32 sm:h-32 object-contain mb-6 drop-shadow-lg"
                         />
@@ -239,7 +238,7 @@ export default function StudentLogin() {
                 <div className="w-full md:w-[55%] flex-1 p-4 sm:p-10 md:p-14 flex flex-col justify-center bg-white">
                     <div className="max-w-[420px] w-full mx-auto">
                         <div className="md:hidden flex items-center gap-3 mb-5 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-3">
-                            <img src={logo} alt="Columban College Logo" className="h-12 w-12 shrink-0 object-contain" />
+                            <img src="/CC.webp" alt="Columban College Logo" className="h-12 w-12 shrink-0 object-contain" />
                             <div className="min-w-0">
                                 <p className="text-xs font-extrabold tracking-wide text-slate-800">COLUMBAN COLLEGE</p>
                                 <p className="mt-0.5 text-[10px] leading-snug text-slate-500">Nursing Discipline Monitoring</p>
