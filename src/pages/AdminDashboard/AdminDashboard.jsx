@@ -868,7 +868,8 @@ export default function AdminDashboard() {
     }, [refreshing, loadStudents, loadPenalties, loadAppeals, loadActivity, loadAnnouncements, showToast]);
 
     const handleAddPenalty = async () => {
-        const { violation, description, offenseLevel, serviceType, deadline, status, studentId, imageFile } = penaltyForm;
+        const { description, offenseLevel, serviceType, deadline, status, studentId, imageFile } = penaltyForm;
+        const violation = penaltyForm.violation.trim();
         if (!violation) return showToast('error', 'Missing fields', 'Please select a violation type');
         if (!studentId) return showToast('error', 'Missing fields', 'Please select a student');
 
@@ -879,8 +880,25 @@ export default function AdminDashboard() {
 
         const categoryMap = {
             'Academic Dishonesty': 'Academic', 'Cheating': 'Academic', 'Plagiarism': 'Academic',
-            'Class Disruption': 'Behavior', 'Insubordination': 'Behavior', 'Bullying': 'Behavior', 'Fighting': 'Behavior',
-            'Tardiness': 'Attendance', 'Absenteeism': 'Attendance', 'Uniform Violation': 'Uniform',
+            'Forgery or Falsification of Academic Records': 'Academic', 'Unauthorized Collaboration': 'Academic',
+            'Class Disruption': 'Behavior', 'Insubordination': 'Behavior', 'Bullying or Harassment': 'Behavior',
+            'Bullying': 'Behavior', 'Fighting': 'Behavior',
+            'Fighting or Physical Assault': 'Behavior', 'Threats or Intimidation': 'Behavior', 'Profanity or Abusive Language': 'Behavior',
+            'Gambling': 'Behavior', 'Unauthorized Solicitation or Selling': 'Behavior',
+            'Tardiness': 'Attendance', 'Unexcused Absence': 'Attendance', 'Absenteeism': 'Attendance', 'Cutting Class': 'Attendance',
+            'Leaving Campus Without Permission': 'Attendance', 'Failure to Attend Clinical Duty': 'Attendance',
+            'Uniform Violation': 'Uniform', 'Improper Grooming or Dress Code Violation': 'Uniform',
+            'Failure to Wear or Bring School ID': 'Uniform',
+            'Smoking': 'Safety', 'Vaping or Possession of E-Cigarettes': 'Safety',
+            'Alcohol Possession or Use': 'Safety', 'Illegal Drug Possession or Use': 'Safety',
+            'Possession of Prohibited Items': 'Safety', 'Violation of Safety Procedures': 'Safety',
+            'Tampering with Fire Safety Equipment': 'Safety', 'Unauthorized Entry to Restricted Areas': 'Safety',
+            'Theft': 'Property', 'Vandalism or Damage to School Property': 'Property', 'Littering': 'Property',
+            'Unauthorized Use of School Facilities or Equipment': 'Property',
+            'Misuse of Laboratory or Clinical Equipment': 'Clinical',
+            'Breach of Patient Confidentiality': 'Clinical', 'Unsafe Clinical Practice': 'Clinical',
+            'Unauthorized Recording or Photography': 'Privacy', 'Cyberbullying or Misuse of School Network': 'Technology',
+            'Cellphone Use During Class or Examination': 'Technology',
         };
 
         const isFirstOffense = offenseLevel === '1st Offense';
@@ -949,7 +967,8 @@ export default function AdminDashboard() {
 
     const handleEditPenalty = async () => {
         if (!selectedPenalty) return;
-        const { violation, description, offenseLevel, serviceType, deadline, status, studentId, imageFile } = penaltyForm;
+        const { description, offenseLevel, serviceType, deadline, status, studentId, imageFile } = penaltyForm;
+        const violation = penaltyForm.violation.trim();
         if (!violation || !studentId) return showToast('error', 'Missing fields', 'Fill all required fields');
 
         const selectedStudent = students.find(s =>
@@ -1039,8 +1058,8 @@ export default function AdminDashboard() {
 
     const handleEditStudent = async () => {
         if (!selectedStudent) return;
-        const { name, studentId, email, course, year, status } = studentForm;
-        if (!name || !studentId || !email) return showToast('error', 'Missing', 'Fill all required fields');
+        const { name, studentId, course, year, status } = studentForm;
+        if (!name || !studentId) return showToast('error', 'Missing', 'Fill all required fields');
         if (!/^\d{8}$/.test(studentId)) return showToast('error', 'Invalid', 'Student ID must be 8 digits');
 
         const dup = students.find(s => s.student_id_number === studentId && s.id !== selectedStudent.id);
@@ -1048,7 +1067,7 @@ export default function AdminDashboard() {
 
         try {
             await api.data.update('students', { id: selectedStudent.id }, {
-            name, student_id_number: studentId, email, course,
+            name, student_id_number: studentId, course,
             year_level: year, status, updated_at: new Date().toISOString(),
             });
         } catch (error) {
@@ -1485,8 +1504,21 @@ export default function AdminDashboard() {
 
     const violationOptions = [
         'Academic Dishonesty', 'Cheating', 'Plagiarism',
-        'Class Disruption', 'Insubordination', 'Bullying', 'Fighting',
-        'Tardiness', 'Absenteeism', 'Uniform Violation',
+        'Forgery or Falsification of Academic Records', 'Unauthorized Collaboration',
+        'Class Disruption', 'Insubordination', 'Bullying or Harassment',
+        'Bullying', 'Fighting', 'Fighting or Physical Assault', 'Threats or Intimidation',
+        'Profanity or Abusive Language', 'Gambling', 'Unauthorized Solicitation or Selling',
+        'Tardiness', 'Unexcused Absence', 'Absenteeism', 'Cutting Class',
+        'Leaving Campus Without Permission', 'Failure to Attend Clinical Duty',
+        'Uniform Violation', 'Improper Grooming or Dress Code Violation', 'Failure to Wear or Bring School ID',
+        'Smoking', 'Vaping or Possession of E-Cigarettes', 'Alcohol Possession or Use',
+        'Illegal Drug Possession or Use', 'Possession of Prohibited Items',
+        'Tampering with Fire Safety Equipment', 'Unauthorized Entry to Restricted Areas',
+        'Theft', 'Vandalism or Damage to School Property', 'Littering',
+        'Unauthorized Use of School Facilities or Equipment', 'Misuse of Laboratory or Clinical Equipment',
+        'Violation of Safety Procedures', 'Breach of Patient Confidentiality', 'Unsafe Clinical Practice',
+        'Unauthorized Recording or Photography', 'Cyberbullying or Misuse of School Network',
+        'Cellphone Use During Class or Examination',
     ];
     const serviceTypeOptions = [
         'Community Service',
@@ -1507,6 +1539,9 @@ export default function AdminDashboard() {
 
     return (
         <div className={darkMode ? 'dashboard-dark' : ''}>
+            <datalist id="violation-options">
+                {violationOptions.map(v => <option key={v} value={v} />)}
+            </datalist>
             <div className={`dashboard-canvas min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans text-base leading-relaxed ${isLargeText ? 'admin-large-text' : ''} ${currentTab === 'reports' ? 'admin-report-print' : ''}`}>
                 <style>{`
             @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -3296,7 +3331,7 @@ export default function AdminDashboard() {
                 >
                     <div className="space-y-6">
                         <div>
-                            <label className={labelCls}>Title *</label>
+                            <label className={labelCls}>Title <span className="text-red-500">*</span></label>
                             <input
                                 value={announcementForm.title}
                                 onChange={(e) => setAnnouncementForm(prev => ({ ...prev, title: e.target.value }))}
@@ -3305,7 +3340,7 @@ export default function AdminDashboard() {
                             />
                         </div>
                         <div>
-                            <label className={labelCls}>Message *</label>
+                            <label className={labelCls}>Message <span className="text-red-500">*</span></label>
                             <textarea
                                 rows={6}
                                 value={announcementForm.message}
@@ -3517,7 +3552,7 @@ export default function AdminDashboard() {
                 >
                     <div className="space-y-6">
                         <div>
-                            <label className={labelCls}>Student *</label>
+                            <label className={labelCls}>Student <span className="text-red-500">*</span></label>
                             <select value={penaltyForm.studentId} onChange={(e) => setPenaltyForm({ ...penaltyForm, studentId: e.target.value })} className={inputCls}>
                                 <option value="">Select a student...</option>
                                 {students.map(s => {
@@ -3527,11 +3562,9 @@ export default function AdminDashboard() {
                             </select>
                         </div>
                         <div>
-                            <label className={labelCls}>Violation Type *</label>
-                            <select value={penaltyForm.violation} onChange={(e) => setPenaltyForm({ ...penaltyForm, violation: e.target.value })} className={inputCls}>
-                                <option value="">Select violation...</option>
-                                {violationOptions.map(v => <option key={v} value={v}>{v}</option>)}
-                            </select>
+                            <label className={labelCls}>Violation Type <span className="text-red-500">*</span></label>
+                            <input type="text" list="violation-options" autoComplete="off" placeholder="Choose a suggestion or type a violation..." value={penaltyForm.violation} onChange={(e) => setPenaltyForm({ ...penaltyForm, violation: e.target.value })} className={inputCls} />
+                            <p className="text-sm text-slate-400 mt-1.5">Choose a suggestion or enter a custom violation.</p>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div>
@@ -3654,11 +3687,9 @@ export default function AdminDashboard() {
                             <p className="text-sm text-slate-400 mt-1.5">Student cannot be changed after a penalty is created.</p>
                         </div>
                         <div>
-                            <label className={labelCls}>Violation Type *</label>
-                            <select value={penaltyForm.violation} onChange={(e) => setPenaltyForm({ ...penaltyForm, violation: e.target.value })} className={inputCls}>
-                                <option value="">Select violation...</option>
-                                {violationOptions.map(v => <option key={v} value={v}>{v}</option>)}
-                            </select>
+                            <label className={labelCls}>Violation Type <span className="text-red-500">*</span></label>
+                            <input type="text" list="violation-options" autoComplete="off" placeholder="Choose a suggestion or type a violation..." value={penaltyForm.violation} onChange={(e) => setPenaltyForm({ ...penaltyForm, violation: e.target.value })} className={inputCls} />
+                            <p className="text-sm text-slate-400 mt-1.5">Choose a suggestion or enter a custom violation.</p>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div>
@@ -3752,16 +3783,16 @@ export default function AdminDashboard() {
                 >
                     <div className="space-y-5">
                         <div>
-                            <label className={labelCls}>Full Name *</label>
+                            <label className={labelCls}>Full Name <span className="text-red-500">*</span></label>
                             <input type="text" value={studentForm.name} onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })} className={inputCls} placeholder="Juan Dela Cruz" />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div>
-                                <label className={labelCls}>Student ID * (8 digits)</label>
+                                <label className={labelCls}>Student ID <span className="text-red-500">*</span> (8 digits)</label>
                                 <input type="text" value={studentForm.studentId} onChange={(e) => setStudentForm({ ...studentForm, studentId: e.target.value.replace(/\D/g, '').slice(0, 8) })} className={inputCls} placeholder="24000001" />
                             </div>
                             <div>
-                                <label className={labelCls}>Email *</label>
+                                <label className={labelCls}>Email <span className="text-red-500">*</span></label>
                                 <input type="email" value={studentForm.email} onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })} className={inputCls} placeholder="student@example.com" />
                             </div>
                         </div>
@@ -3803,17 +3834,18 @@ export default function AdminDashboard() {
                 >
                     <div className="space-y-5">
                         <div>
-                            <label className={labelCls}>Full Name *</label>
+                            <label className={labelCls}>Full Name <span className="text-red-500">*</span></label>
                             <input type="text" value={studentForm.name} onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })} className={inputCls} />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div>
-                                <label className={labelCls}>Student ID *</label>
+                                <label className={labelCls}>Student ID <span className="text-red-500">*</span></label>
                                 <input type="text" value={studentForm.studentId} onChange={(e) => setStudentForm({ ...studentForm, studentId: e.target.value.replace(/\D/g, '').slice(0, 8) })} className={inputCls} />
                             </div>
                             <div>
-                                <label className={labelCls}>Email *</label>
-                                <input type="email" value={studentForm.email} onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })} className={inputCls} />
+                                <label className={labelCls}>Email</label>
+                                <input type="email" value={studentForm.email} readOnly className={inputCls + ' cursor-not-allowed bg-slate-100 dark:bg-slate-800'} />
+                                <p className="text-sm text-slate-400 mt-1.5">Email addresses cannot be changed here.</p>
                             </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
@@ -4074,11 +4106,11 @@ export default function AdminDashboard() {
                 >
                     <div className="space-y-5">
                         <div>
-                            <label className={labelCls}>Title *</label>
+                            <label className={labelCls}>Title <span className="text-red-500">*</span></label>
                             <input type="text" value={quickNote.title} onChange={(e) => setQuickNote({ ...quickNote, title: e.target.value })} className={inputCls} placeholder="Notification title" />
                         </div>
                         <div>
-                            <label className={labelCls}>Message *</label>
+                            <label className={labelCls}>Message <span className="text-red-500">*</span></label>
                             <textarea rows={5} value={quickNote.message} onChange={(e) => setQuickNote({ ...quickNote, message: e.target.value })} className={inputCls + ' resize-y'} placeholder="Type your message..." />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
