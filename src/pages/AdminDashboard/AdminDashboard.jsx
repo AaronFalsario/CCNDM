@@ -279,6 +279,37 @@ const exportReportToPDF = async ({ stats, students, penalties, appeals, departme
 };
 const fadeInStyle = { animation: 'fadeIn 0.3s ease-out' };
 
+function EvidenceImage({ file, url, className }) {
+    const imageRef = useRef(null);
+
+    useEffect(() => {
+        if (!file || !imageRef.current) return undefined;
+        const nextObjectUrl = URL.createObjectURL(file);
+        imageRef.current.src = nextObjectUrl;
+        return () => URL.revokeObjectURL(nextObjectUrl);
+    }, [file]);
+
+    return <img ref={imageRef} src={file ? undefined : url} alt="Evidence preview" className={className} />;
+}
+
+function LiveClock() {
+    const [now, setNow] = useState(() => new Date());
+
+    useEffect(() => {
+        const intervalId = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(intervalId);
+    }, []);
+
+    return (
+        <>
+            {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at{' '}
+            <strong className="text-slate-700 dark:text-slate-200">
+                {now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+            </strong>
+        </>
+    );
+}
+
 //UPLOAD HELPER
 const uploadImageToBucket = async (bucket, file) => {
     if (!file) return { url: null, error: null };
@@ -419,7 +450,6 @@ export default function AdminDashboard() {
     });
     const [largeTextPreference, setLargeTextPreference] = useState(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
-    const [now, setNow] = useState(new Date());
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -477,6 +507,8 @@ export default function AdminDashboard() {
     const [selectedPenalty, setSelectedPenalty] = useState(null);
     const [selectedAppeal, setSelectedAppeal] = useState(null);
     const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+    const [savingPenalty, setSavingPenalty] = useState(false);
+    const savingPenaltyRef = useRef(false);
 
     const [penaltyForm, setPenaltyForm] = useState({
         violation: '', description: '', offenseLevel: '1st Offense',
@@ -527,11 +559,6 @@ export default function AdminDashboard() {
             return next;
         });
     };
-
-    useEffect(() => {
-        const id = setInterval(() => setNow(new Date()), 1000);
-        return () => clearInterval(id);
-    }, []);
 
     const loadStudents = useCallback(async (throwOnError = false) => {
         try {
@@ -868,6 +895,7 @@ export default function AdminDashboard() {
     }, [refreshing, loadStudents, loadPenalties, loadAppeals, loadActivity, loadAnnouncements, showToast]);
 
     const handleAddPenalty = async () => {
+        if (savingPenaltyRef.current) return;
         const { description, offenseLevel, serviceType, deadline, status, studentId, imageFile } = penaltyForm;
         const violation = penaltyForm.violation.trim();
         if (!violation) return showToast('error', 'Missing fields', 'Please select a violation type');
@@ -878,94 +906,113 @@ export default function AdminDashboard() {
         );
         if (!selectedStudent) return showToast('error', 'Not found', 'Selected student not found');
 
-        const categoryMap = {
-            'Academic Dishonesty': 'Academic', 'Cheating': 'Academic', 'Plagiarism': 'Academic',
-            'Forgery or Falsification of Academic Records': 'Academic', 'Unauthorized Collaboration': 'Academic',
-            'Class Disruption': 'Behavior', 'Insubordination': 'Behavior', 'Bullying or Harassment': 'Behavior',
-            'Bullying': 'Behavior', 'Fighting': 'Behavior',
-            'Fighting or Physical Assault': 'Behavior', 'Threats or Intimidation': 'Behavior', 'Profanity or Abusive Language': 'Behavior',
-            'Gambling': 'Behavior', 'Unauthorized Solicitation or Selling': 'Behavior',
-            'Tardiness': 'Attendance', 'Unexcused Absence': 'Attendance', 'Absenteeism': 'Attendance', 'Cutting Class': 'Attendance',
-            'Leaving Campus Without Permission': 'Attendance', 'Failure to Attend Clinical Duty': 'Attendance',
-            'Uniform Violation': 'Uniform', 'Improper Grooming or Dress Code Violation': 'Uniform',
-            'Failure to Wear or Bring School ID': 'Uniform',
-            'Smoking': 'Safety', 'Vaping or Possession of E-Cigarettes': 'Safety',
-            'Alcohol Possession or Use': 'Safety', 'Illegal Drug Possession or Use': 'Safety',
-            'Possession of Prohibited Items': 'Safety', 'Violation of Safety Procedures': 'Safety',
-            'Tampering with Fire Safety Equipment': 'Safety', 'Unauthorized Entry to Restricted Areas': 'Safety',
-            'Theft': 'Property', 'Vandalism or Damage to School Property': 'Property', 'Littering': 'Property',
-            'Unauthorized Use of School Facilities or Equipment': 'Property',
-            'Misuse of Laboratory or Clinical Equipment': 'Clinical',
-            'Breach of Patient Confidentiality': 'Clinical', 'Unsafe Clinical Practice': 'Clinical',
-            'Unauthorized Recording or Photography': 'Privacy', 'Cyberbullying or Misuse of School Network': 'Technology',
-            'Cellphone Use During Class or Examination': 'Technology',
-        };
+        savingPenaltyRef.current = true;
+        setSavingPenalty(true);
+        try {
+            const categoryMap = {
+                'Academic Dishonesty': 'Academic', 'Cheating': 'Academic', 'Plagiarism': 'Academic',
+                'Forgery or Falsification of Academic Records': 'Academic', 'Unauthorized Collaboration': 'Academic',
+                'Class Disruption': 'Behavior', 'Insubordination': 'Behavior', 'Bullying or Harassment': 'Behavior',
+                'Bullying': 'Behavior', 'Fighting': 'Behavior',
+                'Fighting or Physical Assault': 'Behavior', 'Threats or Intimidation': 'Behavior', 'Profanity or Abusive Language': 'Behavior',
+                'Gambling': 'Behavior', 'Unauthorized Solicitation or Selling': 'Behavior',
+                'Tardiness': 'Attendance', 'Unexcused Absence': 'Attendance', 'Absenteeism': 'Attendance', 'Cutting Class': 'Attendance',
+                'Leaving Campus Without Permission': 'Attendance', 'Failure to Attend Clinical Duty': 'Attendance',
+                'Uniform Violation': 'Uniform', 'Improper Grooming or Dress Code Violation': 'Uniform',
+                'Failure to Wear or Bring School ID': 'Uniform',
+                'Smoking': 'Safety', 'Vaping or Possession of E-Cigarettes': 'Safety',
+                'Alcohol Possession or Use': 'Safety', 'Illegal Drug Possession or Use': 'Safety',
+                'Possession of Prohibited Items': 'Safety', 'Violation of Safety Procedures': 'Safety',
+                'Tampering with Fire Safety Equipment': 'Safety', 'Unauthorized Entry to Restricted Areas': 'Safety',
+                'Theft': 'Property', 'Vandalism or Damage to School Property': 'Property', 'Littering': 'Property',
+                'Unauthorized Use of School Facilities or Equipment': 'Property',
+                'Misuse of Laboratory or Clinical Equipment': 'Clinical',
+                'Breach of Patient Confidentiality': 'Clinical', 'Unsafe Clinical Practice': 'Clinical',
+                'Unauthorized Recording or Photography': 'Privacy', 'Cyberbullying or Misuse of School Network': 'Technology',
+                'Cellphone Use During Class or Examination': 'Technology',
+            };
 
-        const isFirstOffense = offenseLevel === '1st Offense';
-        const hours = offenseLevel === '1st Offense' ? 0 : offenseLevel === '2nd Offense' ? 5 : 10;
-        const nowIso = new Date().toISOString();
-        const sid = String(selectedStudent.student_id_number || selectedStudent.student_id || selectedStudent.id);
+            const isFirstOffense = offenseLevel === '1st Offense';
+            const hours = offenseLevel === '1st Offense' ? 0 : offenseLevel === '2nd Offense' ? 5 : 10;
+            const nowIso = new Date().toISOString();
+            const sid = String(selectedStudent.student_id_number || selectedStudent.student_id || selectedStudent.id);
 
-        let imageUrl = null;
-        if (imageFile) {
-            const { url, error: upErr } = await uploadImageToBucket('penalties', imageFile);
-            if (upErr) {
-                showToast('warning', 'Image upload skipped', upErr.message || 'Check Supabase Storage bucket "penalties"');
-            } else {
-                imageUrl = url;
+            let imageUrl = null;
+            if (imageFile) {
+                const { url, error: upErr } = await uploadImageToBucket('penalties', imageFile);
+                if (upErr) {
+                    showToast('warning', 'Image upload skipped', upErr.message || 'Check Supabase Storage bucket "penalties"');
+                } else {
+                    imageUrl = url;
+                }
             }
-        }
 
-        const data = {
-            student_id: sid,
-            student_name: selectedStudent.name,
-            student_email: selectedStudent.email || '',
-            violation,
-            violation_type: violation,
-            category: categoryMap[violation] || 'Other',
-            hours,
-            status: isFirstOffense ? 'Resolved' : status,
-            offense_level: offenseLevel,
-            is_warning: isFirstOffense,
-            description: description || violation,
-            created_at: nowIso,
-            updated_at: nowIso,
-        };
-        if (imageUrl) data.image_url = imageUrl;
-        if (!isFirstOffense && (status === 'in-progress' || status === 'Active')) data.started_at = nowIso;
-        else if (!isFirstOffense && status === 'Completed') data.completed_at = nowIso;
-        if (!isFirstOffense) {
-            if (serviceType) data.service_type = serviceType;
-            if (deadline) data.deadline = deadline;
-        }
-
-        try {
-            await api.data.insert('penalties', [data]);
-        } catch (error) {
-            return showToast('error', 'Failed', error.message);
-        }
-
-        try {
-            await api.data.insert('notifications', [{
+            const data = {
                 student_id: sid,
-                title: 'New violation assigned',
-                message: `${violation} has been assigned to your account.`,
-                type: 'violation',
-                is_read: false,
+                student_name: selectedStudent.name,
+                student_email: selectedStudent.email || '',
+                violation,
+                violation_type: violation,
+                category: categoryMap[violation] || 'Other',
+                hours,
+                status: isFirstOffense ? 'Resolved' : status,
+                offense_level: offenseLevel,
+                is_warning: isFirstOffense,
+                description: description || violation,
                 created_at: nowIso,
-            }]);
+                updated_at: nowIso,
+            };
+            if (imageUrl) data.image_url = imageUrl;
+            if (!isFirstOffense && (status === 'in-progress' || status === 'Active')) data.started_at = nowIso;
+            else if (!isFirstOffense && status === 'Completed') data.completed_at = nowIso;
+            if (!isFirstOffense) {
+                if (serviceType) data.service_type = serviceType;
+                if (deadline) data.deadline = deadline;
+            }
+
+            let insertedPenalties;
+            try {
+                insertedPenalties = await api.data.insert('penalties', [data]);
+            } catch (error) {
+                return showToast('error', 'Failed', error.message);
+            }
+            if (insertedPenalties?.length) {
+                setPenalties((current) => [...insertedPenalties, ...current]);
+            } else {
+                await loadPenalties();
+            }
+
+            setShowAddPenalty(false);
+            resetPenaltyForm();
             showToast('success', 'Penalty added', `Recorded for ${selectedStudent.name}`);
-        } catch {
-            showToast('warning', 'Penalty added', 'The violation was saved, but its notification could not be sent');
+            void Promise.allSettled([
+                api.data.insert('notifications', [{
+                    student_id: sid,
+                    title: 'New violation assigned',
+                    message: `${violation} has been assigned to your account.`,
+                    type: 'violation',
+                    is_read: false,
+                    created_at: nowIso,
+                }]),
+                logActivity('penalty', `Added ${violation} (${offenseLevel}) for ${selectedStudent.name}`),
+            ]).then(async ([notificationResult, activityResult]) => {
+                if (activityResult.status === 'fulfilled' && activityResult.value) {
+                    setActivityLog((current) => [activityResult.value, ...current].slice(0, 50));
+                } else {
+                    await loadActivity();
+                }
+                if (notificationResult.status === 'rejected') {
+                    showToast('warning', 'Penalty added', 'The violation was saved, but its notification could not be sent');
+                }
+            });
+        } finally {
+            savingPenaltyRef.current = false;
+            setSavingPenalty(false);
         }
-        await logActivity('penalty', `Added ${violation} (${offenseLevel}) for ${selectedStudent.name}`);
-        setShowAddPenalty(false);
-        resetPenaltyForm();
-        await loadPenalties();
-        await loadActivity();
     };
 
     const handleEditPenalty = async () => {
+        if (savingPenaltyRef.current) return;
         if (!selectedPenalty) return;
         const { description, offenseLevel, serviceType, deadline, status, studentId, imageFile } = penaltyForm;
         const violation = penaltyForm.violation.trim();
@@ -976,54 +1023,75 @@ export default function AdminDashboard() {
         );
         if (!selectedStudent) return showToast('error', 'Not found', 'Student not found');
 
-        const isFirstOffense = offenseLevel === '1st Offense';
-        const hours = offenseLevel === '1st Offense' ? 0 : offenseLevel === '2nd Offense' ? 5 : 10;
-        const nowIso = new Date().toISOString();
-        const sid = String(selectedStudent.student_id_number || selectedStudent.student_id || selectedStudent.id);
-
-        let imageUrl = selectedPenalty.image_url || null;
-        if (imageFile) {
-            const { url, error: upErr } = await uploadImageToBucket('penalties', imageFile);
-            if (upErr) {
-                showToast('warning', 'Image upload skipped', upErr.message || 'Check Supabase Storage bucket "penalties"');
-            } else {
-                imageUrl = url;
-            }
-        }
-
-        const update = {
-            student_id: sid,
-            student_name: selectedStudent.name,
-            student_email: selectedStudent.email || '',
-            violation, violation_type: violation,
-            hours, status: isFirstOffense ? 'Resolved' : status,
-            offense_level: offenseLevel,
-            is_warning: isFirstOffense,
-            description: description || violation,
-            updated_at: nowIso,
-        };
-        if (imageUrl) update.image_url = imageUrl;
-        if (!isFirstOffense && (status === 'in-progress' || status === 'Active') && !selectedPenalty.started_at) {
-            update.started_at = nowIso;
-        }
-        if (!isFirstOffense && status === 'Completed') update.completed_at = nowIso;
-        if (!isFirstOffense) {
-            if (serviceType) update.service_type = serviceType;
-            if (deadline) update.deadline = deadline;
-        }
-
+        savingPenaltyRef.current = true;
+        setSavingPenalty(true);
         try {
-            await api.data.update('penalties', { id: selectedPenalty.id }, update);
-        } catch (error) {
-            return showToast('error', 'Failed', error.message);
+            const isFirstOffense = offenseLevel === '1st Offense';
+            const hours = offenseLevel === '1st Offense' ? 0 : offenseLevel === '2nd Offense' ? 5 : 10;
+            const nowIso = new Date().toISOString();
+            const sid = String(selectedStudent.student_id_number || selectedStudent.student_id || selectedStudent.id);
+
+            let imageUrl = selectedPenalty.image_url || null;
+            if (imageFile) {
+                const { url, error: upErr } = await uploadImageToBucket('penalties', imageFile);
+                if (upErr) {
+                    showToast('warning', 'Image upload skipped', upErr.message || 'Check Supabase Storage bucket "penalties"');
+                } else {
+                    imageUrl = url;
+                }
+            }
+
+            const update = {
+                student_id: sid,
+                student_name: selectedStudent.name,
+                student_email: selectedStudent.email || '',
+                violation, violation_type: violation,
+                hours, status: isFirstOffense ? 'Resolved' : status,
+                offense_level: offenseLevel,
+                is_warning: isFirstOffense,
+                description: description || violation,
+                updated_at: nowIso,
+            };
+            if (imageUrl) update.image_url = imageUrl;
+            if (!isFirstOffense && (status === 'in-progress' || status === 'Active') && !selectedPenalty.started_at) {
+                update.started_at = nowIso;
+            }
+            if (!isFirstOffense && status === 'Completed') update.completed_at = nowIso;
+            if (!isFirstOffense) {
+                if (serviceType) update.service_type = serviceType;
+                if (deadline) update.deadline = deadline;
+            }
+
+            let updatedPenalties;
+            try {
+                updatedPenalties = await api.data.update('penalties', { id: selectedPenalty.id }, update);
+            } catch (error) {
+                return showToast('error', 'Failed', error.message);
+            }
+            if (updatedPenalties?.length) {
+                const updatedPenalty = updatedPenalties[0];
+                setPenalties((current) => current.map((penalty) =>
+                    String(penalty.id) === String(updatedPenalty.id) ? updatedPenalty : penalty
+                ));
+            } else {
+                await loadPenalties();
+            }
+
+            showToast('success', 'Updated', 'Penalty updated successfully');
+            setShowEditPenalty(false);
+            setSelectedPenalty(null);
+            resetPenaltyForm();
+            void logActivity('penalty', `Updated penalty for ${selectedStudent.name}`).then((activity) => {
+                if (activity) {
+                    setActivityLog((current) => [activity, ...current].slice(0, 50));
+                } else {
+                    return loadActivity();
+                }
+            });
+        } finally {
+            savingPenaltyRef.current = false;
+            setSavingPenalty(false);
         }
-        showToast('success', 'Updated', 'Penalty updated successfully');
-        await logActivity('penalty', `Updated penalty for ${selectedStudent.name}`);
-        setShowEditPenalty(false);
-        setSelectedPenalty(null);
-        resetPenaltyForm();
-        await loadPenalties();
-        await loadActivity();
     };
 
     const handleAddStudent = async () => {
@@ -1776,10 +1844,7 @@ export default function AdminDashboard() {
                                         {getGreeting()}, <span className="text-blue-600">{adminName.split(' ')[0]}</span>
                                     </h1>
                                     <p className="text-sm text-slate-400 mt-1.5">
-                                        {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at{' '}
-                                        <strong className="text-slate-700 dark:text-slate-200">
-                                            {now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
-                                        </strong>
+                                        <LiveClock />
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -3546,7 +3611,13 @@ export default function AdminDashboard() {
                     footer={
                         <>
                             <button onClick={() => { setShowAddPenalty(false); resetPenaltyForm(); }} className={btnSecondary}>Cancel</button>
-                            <button onClick={handleAddPenalty} className={btnPrimary}>Add Penalty</button>
+                            <button
+                                onClick={handleAddPenalty}
+                                disabled={savingPenalty}
+                                className={`${btnPrimary} disabled:opacity-60 disabled:cursor-not-allowed`}
+                            >
+                                {savingPenalty ? 'Saving...' : 'Add Penalty'}
+                            </button>
                         </>
                     }
                 >
@@ -3609,9 +3680,9 @@ export default function AdminDashboard() {
                             <div className="flex items-start gap-4 flex-wrap">
                                 {(penaltyForm.imageFile || penaltyForm.imageUrl) && (
                                     <div className="relative">
-                                        <img
-                                            src={penaltyForm.imageFile ? URL.createObjectURL(penaltyForm.imageFile) : penaltyForm.imageUrl}
-                                            alt="preview"
+                                        <EvidenceImage
+                                            file={penaltyForm.imageFile}
+                                            url={penaltyForm.imageUrl}
                                             className="w-40 h-40 rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700"
                                         />
                                         <button
@@ -3629,7 +3700,7 @@ export default function AdminDashboard() {
                                     <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Choose image</span>
                                     <input
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/jpeg,image/png,image/webp"
                                         className="hidden"
                                         onChange={(e) => {
                                             const f = e.target.files?.[0] || null;
@@ -3662,7 +3733,13 @@ export default function AdminDashboard() {
                     footer={
                         <>
                             <button onClick={() => { setShowEditPenalty(false); setSelectedPenalty(null); resetPenaltyForm(); }} className={btnSecondary}>Cancel</button>
-                            <button onClick={handleEditPenalty} className={btnPrimary}>Save Changes</button>
+                            <button
+                                onClick={handleEditPenalty}
+                                disabled={savingPenalty}
+                                className={`${btnPrimary} disabled:opacity-60 disabled:cursor-not-allowed`}
+                            >
+                                {savingPenalty ? 'Saving...' : 'Save Changes'}
+                            </button>
                         </>
                     }
                 >
@@ -3734,9 +3811,9 @@ export default function AdminDashboard() {
                             <div className="flex items-start gap-4 flex-wrap">
                                 {(penaltyForm.imageFile || penaltyForm.imageUrl) && (
                                     <div className="relative">
-                                        <img
-                                            src={penaltyForm.imageFile ? URL.createObjectURL(penaltyForm.imageFile) : penaltyForm.imageUrl}
-                                            alt="preview"
+                                        <EvidenceImage
+                                            file={penaltyForm.imageFile}
+                                            url={penaltyForm.imageUrl}
                                             className="w-40 h-40 rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700"
                                         />
                                         <button
@@ -3754,7 +3831,7 @@ export default function AdminDashboard() {
                                     <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Choose image</span>
                                     <input
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/jpeg,image/png,image/webp"
                                         className="hidden"
                                         onChange={(e) => {
                                             const f = e.target.files?.[0] || null;
