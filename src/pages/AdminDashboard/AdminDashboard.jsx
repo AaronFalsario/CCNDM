@@ -514,6 +514,9 @@ export default function AdminDashboard() {
         violation: '', description: '', offenseLevel: '1st Offense',
         serviceType: 'Community Service', deadline: '', status: 'Pending', studentId: '', imageFile: null, imageUrl: ''
     });
+    const [penaltyStudentSearch, setPenaltyStudentSearch] = useState('');
+    const [showPenaltyStudentOptions, setShowPenaltyStudentOptions] = useState(false);
+    const [activePenaltyStudentIndex, setActivePenaltyStudentIndex] = useState(-1);
     const [studentForm, setStudentForm] = useState({
         name: '', studentId: '', email: '', course: 'BSN', year: '1st', status: 'Good'
     });
@@ -826,6 +829,14 @@ export default function AdminDashboard() {
         if (studentStatusFilter) f = f.filter(st => st.status === studentStatusFilter);
         return f;
     }, [students, studentSearch, studentCourseFilter, studentStatusFilter]);
+
+    const penaltyStudentOptions = useMemo(() => {
+        const search = penaltyStudentSearch.trim().toLowerCase();
+        return students.filter((student) => {
+            const sid = student.student_id_number || student.student_id || student.id;
+            return !search || `${student.name || ''} ${sid}`.toLowerCase().includes(search);
+        }).slice(0, 50);
+    }, [students, penaltyStudentSearch]);
 
     const filteredAppeals = useMemo(() => {
         let f = appeals;
@@ -1489,11 +1500,16 @@ export default function AdminDashboard() {
         setShowAnnouncementModal(true);
     };
 
-    const resetPenaltyForm = () => setPenaltyForm({
-        violation: '', description: '', offenseLevel: '1st Offense',
-        serviceType: 'Community Service', deadline: '', status: 'Pending', studentId: '',
-        imageFile: null, imageUrl: ''
-    });
+    const resetPenaltyForm = () => {
+        setPenaltyStudentSearch('');
+        setShowPenaltyStudentOptions(false);
+        setActivePenaltyStudentIndex(-1);
+        setPenaltyForm({
+            violation: '', description: '', offenseLevel: '1st Offense',
+            serviceType: 'Community Service', deadline: '', status: 'Pending', studentId: '',
+            imageFile: null, imageUrl: ''
+        });
+    };
     const resetStudentForm = () => setStudentForm({
         name: '', studentId: generateStudentId(students), email: '', course: 'BSN', year: '1st', status: 'Good'
     });
@@ -3624,13 +3640,89 @@ export default function AdminDashboard() {
                     <div className="space-y-6">
                         <div>
                             <label className={labelCls}>Student <span className="text-red-500">*</span></label>
-                            <select value={penaltyForm.studentId} onChange={(e) => setPenaltyForm({ ...penaltyForm, studentId: e.target.value })} className={inputCls}>
-                                <option value="">Select a student...</option>
-                                {students.map(s => {
-                                    const sid = s.student_id_number || s.student_id || s.id;
-                                    return <option key={s.id} value={sid}>{s.name} — {sid}</option>;
-                                })}
-                            </select>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    autoComplete="off"
+                                    value={penaltyStudentSearch}
+                                    onFocus={() => setShowPenaltyStudentOptions(true)}
+                                    onBlur={() => setShowPenaltyStudentOptions(false)}
+                                    onChange={(e) => {
+                                        setPenaltyStudentSearch(e.target.value);
+                                        setPenaltyForm((current) => ({ ...current, studentId: '' }));
+                                        setActivePenaltyStudentIndex(-1);
+                                        setShowPenaltyStudentOptions(true);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'ArrowDown' && penaltyStudentOptions.length) {
+                                            e.preventDefault();
+                                            setShowPenaltyStudentOptions(true);
+                                            setActivePenaltyStudentIndex((index) => (
+                                                index < 0 ? 0 : Math.min(index + 1, penaltyStudentOptions.length - 1)
+                                            ));
+                                        } else if (e.key === 'ArrowUp' && penaltyStudentOptions.length) {
+                                            e.preventDefault();
+                                            setActivePenaltyStudentIndex((index) => (
+                                                index < 0 ? penaltyStudentOptions.length - 1 : Math.max(index - 1, 0)
+                                            ));
+                                        } else if (e.key === 'Enter' && showPenaltyStudentOptions && penaltyStudentOptions.length) {
+                                            e.preventDefault();
+                                            const student = penaltyStudentOptions[Math.max(activePenaltyStudentIndex, 0)];
+                                            const sid = student.student_id_number || student.student_id || student.id;
+                                            setPenaltyStudentSearch(`${student.name} — ${sid}`);
+                                            setPenaltyForm((current) => ({ ...current, studentId: String(sid) }));
+                                            setShowPenaltyStudentOptions(false);
+                                        } else if (e.key === 'Escape') {
+                                            setShowPenaltyStudentOptions(false);
+                                        }
+                                    }}
+                                    className={inputCls}
+                                    placeholder="Search by student name or ID..."
+                                    role="combobox"
+                                    aria-autocomplete="list"
+                                    aria-expanded={showPenaltyStudentOptions}
+                                    aria-controls="penalty-student-options"
+                                    aria-activedescendant={showPenaltyStudentOptions && activePenaltyStudentIndex >= 0
+                                        ? `penalty-student-option-${activePenaltyStudentIndex}`
+                                        : undefined}
+                                />
+                                {showPenaltyStudentOptions && (
+                                    <div
+                                        id="penalty-student-options"
+                                        role="listbox"
+                                        className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                                    >
+                                        {penaltyStudentOptions.length ? penaltyStudentOptions.map((student, index) => {
+                                            const sid = student.student_id_number || student.student_id || student.id;
+                                            return (
+                                                <button
+                                                    key={student.id}
+                                                    id={`penalty-student-option-${index}`}
+                                                    type="button"
+                                                    role="option"
+                                                    aria-selected={index === activePenaltyStudentIndex}
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onMouseEnter={() => setActivePenaltyStudentIndex(index)}
+                                                    onClick={() => {
+                                                        setPenaltyStudentSearch(`${student.name} — ${sid}`);
+                                                        setPenaltyForm((current) => ({ ...current, studentId: String(sid) }));
+                                                        setShowPenaltyStudentOptions(false);
+                                                    }}
+                                                    className={`block w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 ${
+                                                        index === activePenaltyStudentIndex
+                                                            ? 'bg-blue-50 dark:bg-slate-800'
+                                                            : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+                                                    }`}
+                                                >
+                                                    {student.name} — {sid}
+                                                </button>
+                                            );
+                                        }) : (
+                                            <p className="px-4 py-2 text-sm text-slate-500 dark:text-slate-400">No students found</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         <div>
                             <label className={labelCls}>Violation Type <span className="text-red-500">*</span></label>
