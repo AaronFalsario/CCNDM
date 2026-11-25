@@ -34,7 +34,7 @@ const allowedOrigins = new Set([
   'https://ccndm.vercel.app',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  'ccndm.columban-college.workers.dev', 
+  'https://ccndm.columban-college.workers.dev',
   'http://localhost:5050',
   'http://127.0.0.1:5050',
   ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
