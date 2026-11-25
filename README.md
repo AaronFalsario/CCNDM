@@ -72,7 +72,7 @@ The `202611030001_admin_student_provisioning.sql` migration adds the student fir
 
 The `202611030002_admin_invitations.sql` migration adds the private admin invitation-token table and pending-invitation flag. Apply it before deploying admin invitations. Signed-in active administrators can use **Dashboard → Invite Admin** to send a one-time invitation; the invitee sets her own password, and her account is activated only after setup.
 
-The `202611080001_actionable_notifications.sql` migration adds appeal references to notifications and administrator-specific recipients. Apply it before deploying the linked notification workflow. Students can open their own appeal details from an appeal decision notification; administrators can open an appeal from its new-submission notification.
+The `202611080001_actionable_notifications.sql` migration adds appeal references to notifications and administrator-specific recipients. Apply it before deploying the linked notification workflow. Students can open their own appeal details from an appeal decision notification; administrators can open an appeal from its new-submission notifications.
 
 ## Build and lint
 
